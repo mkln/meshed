@@ -20,6 +20,37 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// matern_halfint
+arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int numinushalf);
+RcppExport SEXP _spmeshed_matern_halfint(SEXP xSEXP, SEXP ySEXP, SEXP phiSEXP, SEXP sameSEXP, SEXP numinushalfSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const double& >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
+    Rcpp::traits::input_parameter< int >::type numinushalf(numinushalfSEXP);
+    rcpp_result_gen = Rcpp::wrap(matern_halfint(x, y, phi, same, numinushalf));
+    return rcpp_result_gen;
+END_RCPP
+}
+// gneiting2002
+arma::mat gneiting2002(const arma::mat& x, const arma::mat& y, const double& a, const double& c, const double& beta, bool same);
+RcppExport SEXP _spmeshed_gneiting2002(SEXP xSEXP, SEXP ySEXP, SEXP aSEXP, SEXP cSEXP, SEXP betaSEXP, SEXP sameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const double& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const double& >::type c(cSEXP);
+    Rcpp::traits::input_parameter< const double& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
+    rcpp_result_gen = Rcpp::wrap(gneiting2002(x, y, a, c, beta, same));
+    return rcpp_result_gen;
+END_RCPP
+}
 // blanket
 arma::field<arma::uvec> blanket(const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::uvec& names, const arma::uvec& block_ct_obs);
 RcppExport SEXP _spmeshed_blanket(SEXP parentsSEXP, SEXP childrenSEXP, SEXP namesSEXP, SEXP block_ct_obsSEXP) {
@@ -172,9 +203,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cube_tcrossprod
+arma::cube cube_tcrossprod(const arma::cube& x);
+RcppExport SEXP _spmeshed_cube_tcrossprod(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::cube& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(cube_tcrossprod(x));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_spmeshed_caching_pairwise_compare_uci", (DL_FUNC) &_spmeshed_caching_pairwise_compare_uci, 4},
+    {"_spmeshed_matern_halfint", (DL_FUNC) &_spmeshed_matern_halfint, 5},
+    {"_spmeshed_gneiting2002", (DL_FUNC) &_spmeshed_gneiting2002, 6},
     {"_spmeshed_blanket", (DL_FUNC) &_spmeshed_blanket, 4},
     {"_spmeshed_coloring", (DL_FUNC) &_spmeshed_coloring, 3},
     {"_spmeshed_kthresholdscp", (DL_FUNC) &_spmeshed_kthresholdscp, 2},
@@ -184,6 +228,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spmeshed_knn_naive", (DL_FUNC) &_spmeshed_knn_naive, 3},
     {"_spmeshed_mesh_graph_hyper", (DL_FUNC) &_spmeshed_mesh_graph_hyper, 7},
     {"_spmeshed_lmc_mgp_mcmc", (DL_FUNC) &_spmeshed_lmc_mgp_mcmc, 33},
+    {"_spmeshed_cube_tcrossprod", (DL_FUNC) &_spmeshed_cube_tcrossprod, 1},
     {NULL, NULL, 0}
 };
 

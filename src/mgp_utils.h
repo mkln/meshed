@@ -13,8 +13,11 @@ bool compute_block(bool predicting, int block_ct, bool rfc);
 struct MeshDataLMC {
   arma::mat theta; 
   
+  arma::field<arma::cube> Kxxi_cache;
+  
   arma::field<arma::cube> w_cond_mean_K;
   arma::field<arma::cube> w_cond_prec;
+  arma::field<arma::cube> w_cond_prec_times_cmk;
   
   arma::vec logdetCi_comps;
   double logdetCi;
@@ -33,6 +36,13 @@ struct MeshDataLMC {
   arma::mat Ddiag; //***
   //arma::field<arma::mat> KcxKxxi_obs; // ***
   
+  
+  // w cache
+  arma::field<arma::mat> Sigi_chol;
+  arma::field<arma::mat> Smu_start;
+  
+  arma::field<arma::field<arma::cube> > AK_uP;
+  //arma::field<arma::field<arma::mat> > LambdaH_Ditau; // for forced grids;
 };
 
 

@@ -2,32 +2,88 @@
 
 using namespace std;
 
-// Attention: this REQUIRES a change in the indexing 
-// because we are outputing block diagonal matrices
-// ie sorting by variable first, then coordinates
-// which is NOT what the other code is currently doing!
-
-
-// exponential covariance
-arma::mat expcorrel(const arma::mat& x, const arma::mat& y, const double& phi, bool same){
+// matern covariance with nu = p + 1/2, and p=0,1,2
+arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int numinushalf){
   // 0 based indexing
+  arma::mat D;
   if(same){
     arma::mat pmag = arma::sum(x % x, 1);
     int np = x.n_rows;
-    arma::mat K = exp(-phi * sqrt(abs(arma::repmat(pmag.t(), np, 1) + arma::repmat(pmag, 1, np) - 2 * x * x.t())));
-    return K;
+    D = sqrt(abs(arma::repmat(pmag.t(), np, 1) + arma::repmat(pmag, 1, np) - 2 * x * x.t()));
   } else {
     arma::mat pmag = arma::sum(x % x, 1);
     arma::mat qmag = arma::sum(y % y, 1);
     int np = x.n_rows;
     int nq = y.n_rows;
-    arma::mat K = exp(-phi * sqrt(abs(arma::repmat(qmag.t(), np, 1) + arma::repmat(pmag, 1, nq) - 2 * x * y.t())));
-    return K;
+    D = sqrt(abs(arma::repmat(qmag.t(), np, 1) + arma::repmat(pmag, 1, nq) - 2 * x * y.t()));
+  }
+  
+  if(numinushalf == 0){ // nu = 1/2, exponential covariance
+    return exp(-phi * D);
+  }
+  if(numinushalf == 1){ // nu = 3/2
+    arma::mat Dstar = phi * sqrt(3.0) * D;
+    return (1 + Dstar) % exp(-Dstar);
+  }
+  if(numinushalf == 2){ // nu = 5/2
+    arma::mat Dstar = phi * sqrt(5.0) * D;
+    return (1 + Dstar + pow(Dstar,2.0) / 3.0) % exp(-Dstar);
   }
 }
 
+// gneiting 2002 eq. 15 with a,c,beta left unknown
+arma::mat gneiting2002(const arma::mat& x, const arma::mat& y, 
+                       const double& a, const double& c, const double& beta, bool same){
+  // NOT reparametrized here
+  arma::mat xH = x.cols(0, 1);
+  arma::mat xU = x.col(2);
+  arma::mat yH = y.cols(0, 1);
+  arma::mat yU = y.col(2);
+  arma::mat H, U;
+  if(same){
+    arma::mat pmagH = arma::sum(xH % xH, 1);
+    int np = x.n_rows;
+    H = sqrt(abs(arma::repmat(pmagH.t(), np, 1) + arma::repmat(pmagH, 1, np) - 2 * xH * xH.t()));
+    U = abs(arma::repmat(xU.t(), np, 1) - arma::repmat(xU, 1, np));
+  } else {
+    arma::mat pmagH = arma::sum(xH % xH, 1);
+    arma::mat qmagH = arma::sum(yH % yH, 1);
+    int np = x.n_rows;
+    int nq = y.n_rows;
+    H = sqrt(abs(arma::repmat(qmagH.t(), np, 1) + arma::repmat(pmagH, 1, nq) - 2 * xH * yH.t()));
+    U = abs(arma::repmat(yU.t(), np, 1) - arma::repmat(xU, 1, nq));
+  }
+  arma::mat Umod = 1.0/(a*U+1);
+  return Umod % exp(-c*H % pow(Umod, beta/2.0));
+  //arma::mat Umod = 1.0/(U+1.0/a);
+  //return Umod % exp(-c*H/a % pow(Umod, beta/2.0))/c;
+}
+
 arma::mat Correlationf(const arma::mat& x, const arma::mat& y, const arma::vec& theta, bool same){
-  return expcorrel(x, y, theta(0), same);
+  // these are not actually correlation functions because they are reparametrized to have 
+  // C(0) = 1/spatial decay
+  if(x.n_cols == 2){
+    // spatial matern
+    // reparametrized here
+    int numinushalf = 0;
+    double reparam = 1;
+    if(numinushalf == 0){ // nu = 1/2, exponential covariance
+      reparam = theta(0);
+    }
+    if(numinushalf == 1){ // nu = 3/2
+      reparam = pow(theta(0), 3.0);
+    }
+    if(numinushalf == 2){ // nu = 5/2
+      reparam = pow(theta(0), 5.0);
+    }
+    return matern_halfint(x, y, theta(0), same, 0)/reparam;
+  } else {
+    // theta 0: temporal decay, 
+    // theta 1: spatial decay,
+    // theta 2: separability
+    // reparametrized here
+    return gneiting2002(x, y, theta(0), theta(1), theta(2), same)/theta(1);
+  }
 }
 
 
@@ -166,7 +222,7 @@ void CviaKron_HRj_chol_bdiag(
     const arma::mat& coords, const arma::uvec& indx, const arma::uvec& indy, 
     int k, const arma::mat& theta){
   
-  arma::mat Iselect = arma::eye(k, k);
+  //arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   arma::mat coordsy = coords.rows(indy);
   
@@ -194,12 +250,18 @@ void CviaKron_HRj_chol_bdiag_wcache(
     const arma::mat& coords, const arma::uvec& indx, const arma::uvec& indy, 
     int k, const arma::mat& theta){
   
-  arma::mat Iselect = arma::eye(k, k);
+  //arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   arma::mat coordsy = coords.rows(indy);
   
   for(int j=0; j<k; j++){
-    arma::mat Cyy_i = Kxxi_cache.slice(j);//arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), true) );
+    arma::mat Cyy_i = Kxxi_cache.slice(j);//
+      //arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), true) );
+    
+    //Rcpp::Rcout << "difference calculated for pred and cached " 
+    //            << abs(arma::accu(Cyy_i - Kxxi_cache.slice(j))) 
+    //            << " j: " << j << endl;
+    
     for(int ix=0; ix<indx.n_rows; ix++){
       if(naix(ix) == 0){ // otherwise it's not missing
         arma::mat Cxx = Correlationf(coordsx.row(ix), coordsx.row(ix), theta.col(j), true);

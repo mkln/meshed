@@ -1,15 +1,15 @@
-// Attention: this REQUIRES a change in the indexing 
-// because we are outputing block diagonal matrices
-// ie sorting by variable first, then coordinates
-// which is NOT what the other code is currently doing!
-
 #include <RcppArmadillo.h>
 
 using namespace std;
 
 
-// exponential correlation
-arma::mat expcorrel(const arma::mat& x, const arma::mat& y, const double& phi, bool same);
+// matern half integer correlation + reparametrization
+//[[Rcpp::export]]
+arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int numinushalf=0);
+
+//[[Rcpp::export]]
+arma::mat gneiting2002(const arma::mat& x, const arma::mat& y, 
+                       const double& a, const double& c, const double& beta, bool same=false);
 
 arma::mat Correlationf(const arma::mat& x, const arma::mat& y, const arma::vec& theta, bool same);
 

@@ -107,7 +107,7 @@ Rcpp::List lmc_mgp_mcmc(
   
   arma::cube b_mcmc = arma::zeros(X.n_cols, q, mcmc_thin*mcmc_keep);
   arma::mat tausq_mcmc = arma::zeros(q, mcmc_thin*mcmc_keep);
-  arma::mat theta_mcmc = arma::zeros(param.n_elem, mcmc_thin*mcmc_keep);
+  arma::cube theta_mcmc = arma::zeros(param.n_elem/k, k, mcmc_thin*mcmc_keep);
   arma::cube lambda_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   
   arma::vec llsave = arma::zeros(mcmc_thin*mcmc_keep);
@@ -138,17 +138,8 @@ Rcpp::List lmc_mgp_mcmc(
   
   RAMAdapt adaptivemc(param.n_elem, metropolis_sd, param.n_elem == 1 ? .45 : .25);
   
-  
-  
   bool interrupted = false;
-  
   Rcpp::Rcout << "Running MCMC for " << mcmc << " iterations.\n\n";
-  
-  bool needs_update = true;
-  
-  //Rcpp::List recovered;
-  
-  //arma::vec predict_theta = arma::vectorise( mesh.param_data.theta );
   
   start_all = std::chrono::steady_clock::now();
   int m=0; int mx=0; int num_chol_fails=0;
@@ -182,8 +173,12 @@ Rcpp::List lmc_mgp_mcmc(
 
         bool out_unif_bounds = unif_bounds(new_param, set_unif_bounds);
         
-        arma::mat theta_proposal = arma::trans(arma::mat(new_param.memptr(), k, new_param.n_elem/k));
-
+        arma::mat theta_proposal = //arma::trans(
+          arma::mat(new_param.memptr(), new_param.n_elem/k, k);
+        
+        //Rcpp::Rcout << "theta proposal"<< endl;
+        //Rcpp::Rcout << theta_proposal << endl;
+        
         mesh.theta_update(mesh.alter_data, theta_proposal);
         acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
         
@@ -220,18 +215,19 @@ Rcpp::List lmc_mgp_mcmc(
         }
       
         if(accepted){
+          
           adaptivemc.count_accepted();
           
           current_loglik = new_loglik;
           mesh.accept_make_change();
           param = new_param;
-          needs_update = true;
-      
+          if(verbose_mcmc & sample_theta & debug & verbose){
+            Rcpp::Rcout << "[theta] accepted (log accept. " << logaccept << ")\n";;
+          }
         } else {
           if(verbose_mcmc & sample_theta & debug & verbose){
             Rcpp::Rcout << "[theta] rejected (log accept. " << logaccept << ")\n";;
           }
-          needs_update = false;
         }
         
         adaptivemc.update_ratios();
@@ -250,21 +246,20 @@ Rcpp::List lmc_mgp_mcmc(
       // --------- GIBBS STEPS ---------
       if(sample_w){
         start = std::chrono::steady_clock::now();
-        mesh.gibbs_sample_w();
+        mesh.gibbs_sample_w(true);
         end = std::chrono::steady_clock::now();
         if(verbose_mcmc & verbose){
           Rcpp::Rcout << "[w] "
                       << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
         }
-      }
-      
-      if(mesh.predicting){
-        start = std::chrono::steady_clock::now();
-        mesh.predict(); 
-        end = std::chrono::steady_clock::now();
-        if(verbose_mcmc & verbose){
-          Rcpp::Rcout << "[predict] "
-                      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
+        if(mesh.predicting){
+          start = std::chrono::steady_clock::now();
+          mesh.predict(); 
+          end = std::chrono::steady_clock::now();
+          if(verbose_mcmc & verbose){
+            Rcpp::Rcout << "[predict] "
+                        << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
+          }
         }
       }
       
@@ -308,8 +303,6 @@ Rcpp::List lmc_mgp_mcmc(
         }
       }
       
-      
-      
       if((m>0) & (mcmc > 100)){
         if(!(m % print_every)){
           interrupted = checkInterrupt();
@@ -333,7 +326,6 @@ Rcpp::List lmc_mgp_mcmc(
             printf("%.3f ", 1.0/mesh.tausq_inv(pp));
           }
           printf("\n\n");
-        
         } 
       } else {
         tick_mcmc = std::chrono::steady_clock::now();
@@ -342,8 +334,17 @@ Rcpp::List lmc_mgp_mcmc(
       if(mx >= 0){
         tausq_mcmc.col(w_saved) = 1.0 / mesh.tausq_inv;
         b_mcmc.slice(w_saved) = mesh.Bcoeff;
-        theta_mcmc.col(w_saved) = arma::vectorise( mesh.param_data.theta );
-        lambda_mcmc.slice(w_saved) = mesh.Lambda;
+        theta_mcmc.slice(w_saved) = mesh.param_data.theta;
+        // lambda here reconstructs based on 1/phi Matern reparametrization
+        arma::mat reparametrizer;
+        if(d==3){
+          reparametrizer = arma::diagmat(pow(
+            mesh.param_data.theta.row(1), -.5)); 
+        } else {
+          reparametrizer = arma::diagmat(pow(
+            mesh.param_data.theta.row(0), -.5)); 
+        }
+        lambda_mcmc.slice(w_saved) = mesh.Lambda * reparametrizer;
         llsave(w_saved) = mesh.logpost;
         wllsave(w_saved) = mesh.param_data.loglik_w;
         w_saved++;

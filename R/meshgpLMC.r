@@ -15,6 +15,23 @@ meshedgp <- function(y, X, coords, k=NULL,
                                       verbose=F, debug=F, print_every=100)
                    ){
 
+  if(F){
+    y <- ylmc
+    X <- Xlmc 
+    coords <- coordslmc
+    n_samples <- 5
+    n_burnin <- 1
+    n_thin <- 1
+    n_threads <- 10
+    settings    = list(adapting=T, mcmcsd=.05, forced_grid=NULL)
+    prior       = list(beta=NULL, tausq=NULL,
+                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL)
+    starting    = list(beta=NULL, tausq=NULL, theta=NULL, w=NULL)
+    debug       = list(sample_beta=T, sample_tausq=T, 
+                       sample_theta=T, sample_w=T, sample_lambda=T,
+                       verbose=F, debug=F, print_every=1)
+  }
+  
   # init
   cat("Bayesian Meshed GP regression model\n
     o --> o --> o
@@ -84,7 +101,8 @@ meshedgp <- function(y, X, coords, k=NULL,
   
     q              <- ncol(y)
     k              <- ifelse(is.null(k), q, k)
-    n_par_each_process <- 1 # for spatial data and independent processes
+    # for spatial data: matern, for spacetime: gneiting 2002 
+    n_par_each_process <- ifelse(dd==2, 1, 3) 
     
     nr             <- nrow(X)
     
@@ -158,6 +176,17 @@ meshedgp <- function(y, X, coords, k=NULL,
         set_unif_bounds <- matrix(0, nrow=k, ncol=2)
         set_unif_bounds[,1] <- btmlim
         set_unif_bounds[,2] <- toplim
+      } else {
+        start_theta <- matrix(2, ncol=k, nrow=3) 
+        start_theta[3,] <- .5 # separability parameter
+        
+        set_unif_bounds <- matrix(0, nrow=3*k, ncol=2)
+        set_unif_bounds[,1] <- btmlim
+        set_unif_bounds[,2] <- toplim
+        set_unif_bounds[3*(1:k),] <- matrix(c(btmlim, 1-btmlim),nrow=1) %x% matrix(1, nrow=k)
+        
+        #print(start_theta)
+        #print(set_unif_bounds)
       }
       
     } else {
@@ -243,6 +272,9 @@ meshedgp <- function(y, X, coords, k=NULL,
       
       absize <- round(nrow(gridcoords_lmc)/prod(axis_partition))
     } else {
+      if(length(axis_partition) < ncol(coords)){
+        stop("Error: axis_partition not specified for all axes.")
+      }
       simdata %<>% mutate(thegrid = 0)
       absize <- round(nrow(simdata)/prod(axis_partition))
     }
@@ -350,8 +382,16 @@ meshedgp <- function(y, X, coords, k=NULL,
   coords <- simdata_in %>% dplyr::select(dplyr::contains("Var")) %>% as.matrix()
   
   cat("Sending to MCMC > ")
+  
+  method <- "accel"
+  if(is.null(debug$method) || (debug$method != "accel")){
+    method <- "standard"
+  }
+  
+  mcmc_run <- spmeshed:::lmc_mgp_mcmc
+  
   comp_time <- system.time({
-      results <- spmeshed:::lmc_mgp_mcmc(y, X, coords, k,
+      results <- mcmc_run(y, X, coords, k,
                               
                               parents, children, 
                               block_names, block_groups,

@@ -133,8 +133,8 @@ inline double calc_prior_logratio(const arma::vec& new_param,
   double plr=0;
   for(int j=0; j<param.n_elem; j++){
     plr += 
-      invgamma_logdens(new_param(0), 2.01, 1.0) -
-      invgamma_logdens(param(0), 2.01, 1.0);
+      invgamma_logdens(new_param(0), 2.0, 2.0) -
+      invgamma_logdens(param(0), 2.0, 2.0);
   }
   return plr;
 }
