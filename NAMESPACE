@@ -1,5 +1,8 @@
 useDynLib(spmeshed, .registration=TRUE)
 importFrom(Rcpp, evalCpp)
+importFrom(rlang, .data)
+importFrom(magrittr, "%>%")
+importFrom(magrittr, "%<>%")
+importFrom(magrittr, "%$%")
 
-#exportPattern("^[[:alpha:]]+")
-export("meshedgp")
+export("meshedgp", "summary_list_mean", "summary_list_q")

@@ -194,7 +194,7 @@ Rcpp::List lmc_mgp_mcmc(
           prior_logratio = calc_prior_logratio(new_param, param);
           jacobian  = calc_jacobian(new_param, param, set_unif_bounds);
           logaccept = new_loglik - current_loglik + 
-            prior_logratio +
+            //prior_logratio +
             jacobian;
 
           if(std::isnan(logaccept)){
@@ -310,22 +310,22 @@ Rcpp::List lmc_mgp_mcmc(
             Rcpp::stop("Interrupted by the user.");
           }
           end_mcmc = std::chrono::steady_clock::now();
-        
+          
           int time_tick = std::chrono::duration_cast<std::chrono::milliseconds>(end_mcmc - tick_mcmc).count();
           int time_mcmc = std::chrono::duration_cast<std::chrono::milliseconds>(end_mcmc - start_mcmc).count();
           adaptivemc.print_summary(time_tick, time_mcmc, m, mcmc);
           
           tick_mcmc = std::chrono::steady_clock::now();
           
-          printf("  p(w|theta) = %.2f    p(y|...) = %.2f  \n  phi = ", mesh.param_data.loglik_w, mesh.logpost);
+          Rprintf("  p(w|theta) = %.2f    p(y|...) = %.2f  \n  phi = ", mesh.param_data.loglik_w, mesh.logpost);
           for(int pp=0; pp<mesh.param_data.theta.n_elem; pp++){
-            printf("%.3f ", mesh.param_data.theta(pp));
+            Rprintf("%.3f ", mesh.param_data.theta(pp));
           }
-          printf("\n  tsq = ");
+          Rprintf("\n  tsq = ");
           for(int pp=0; pp<q; pp++){
-            printf("%.3f ", 1.0/mesh.tausq_inv(pp));
+            Rprintf("%.3f ", 1.0/mesh.tausq_inv(pp));
           }
-          printf("\n\n");
+          Rprintf("\n\n");
         } 
       } else {
         tick_mcmc = std::chrono::steady_clock::now();
@@ -344,7 +344,7 @@ Rcpp::List lmc_mgp_mcmc(
           reparametrizer = arma::diagmat(pow(
             mesh.param_data.theta.row(0), -.5)); 
         }
-        lambda_mcmc.slice(w_saved) = mesh.Lambda * reparametrizer;
+        lambda_mcmc.slice(w_saved) = mesh.Lambda;// * reparametrizer;
         llsave(w_saved) = mesh.logpost;
         wllsave(w_saved) = mesh.param_data.loglik_w;
         w_saved++;
@@ -364,16 +364,17 @@ Rcpp::List lmc_mgp_mcmc(
     Rcpp::Rcout << "MCMC done [" << mcmc_time/1000.0 <<  "s]\n";
     
     return Rcpp::List::create(
-      Rcpp::Named("w_mcmc") = w_mcmc,
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
+      Rcpp::Named("w_mcmc") = w_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
       Rcpp::Named("paramsd") = adaptivemc.paramsd,
       Rcpp::Named("logpost") = llsave,
-      Rcpp::Named("w_loglik") = wllsave,
-      Rcpp::Named("mcmc_time") = mcmc_time/1000.0
+      Rcpp::Named("w_logdens") = wllsave,
+      Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
+      Rcpp::Named("proposal_failures") = num_chol_fails
     );
     
   } catch (...) {
@@ -383,18 +384,17 @@ Rcpp::List lmc_mgp_mcmc(
     Rcpp::Rcout << "MCMC has been interrupted. Returning partial saved results if any.\n";
     
     return Rcpp::List::create(
-      Rcpp::Named("w_mcmc") = w_mcmc,
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
+      Rcpp::Named("w_mcmc") = w_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
-      Rcpp::Named("parents_indexing") = mesh.parents_indexing,
       Rcpp::Named("paramsd") = adaptivemc.paramsd,
-      Rcpp::Named("whoswho") = mesh.u_is_which_col_f,
       Rcpp::Named("logpost") = llsave,
-      Rcpp::Named("w_loglik") = wllsave,
-      Rcpp::Named("mcmc_time") = mcmc_time/1000.0
+      Rcpp::Named("w_logdens") = wllsave,
+      Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
+      Rcpp::Named("proposal_failures") = num_chol_fails
     );
   }
 }

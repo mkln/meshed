@@ -1,24 +1,25 @@
-meshedgp <- function(y, X, coords, k=NULL,
-                     block_size = 30,
+meshedgp <- function(y, x, coords, k=NULL,
                      axis_partition = NULL, 
+                     block_size = 30,
                      grid_size=NULL,
                    n_samples = 1000,
                    n_burnin = 100,
                    n_thin = 1,
                    n_threads = 4,
+                   print_every = NULL,
                    settings    = list(adapting=T, mcmcsd=.05, forced_grid=NULL),
                    prior       = list(beta=NULL, tausq=NULL,
                                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
                    starting    = list(beta=NULL, tausq=NULL, theta=NULL, w=NULL),
                    debug       = list(sample_beta=T, sample_tausq=T, 
                                       sample_theta=T, sample_w=T, sample_lambda=T,
-                                      verbose=F, debug=F, print_every=100)
+                                      verbose=F, debug=F)
                    ){
 
   if(F){
-    y <- ylmc
-    X <- Xlmc 
-    coords <- coordslmc
+    #y <- ylmc
+    #X <- Xlmc 
+    #coords <- coordslmc
     n_samples <- 5
     n_burnin <- 1
     n_thin <- 1
@@ -60,7 +61,7 @@ meshedgp <- function(y, X, coords, k=NULL,
     mcmc_debug       <- debug$debug %>% set_default(F)
     
     dd             <- ncol(coords)
-    p              <- ncol(X)
+    p              <- ncol(x)
     
     # data management part 0 - reshape/rename
     if(is.null(dim(y))){
@@ -76,7 +77,7 @@ meshedgp <- function(y, X, coords, k=NULL,
     }
     
     effective_dimension <- prod(dim(y))
-    if(is.null(debug$print_every)){
+    if(is.null(print_every)){
       if(effective_dimension > 1e6){
         mcmc_print_every <- 5
       } else {
@@ -87,24 +88,29 @@ meshedgp <- function(y, X, coords, k=NULL,
         }
       }
     } else {
-      mcmc_print_every <- debug$print_every
+      mcmc_print_every <- print_every
     }
     
-    if(is.null(colnames(X))){
-      orig_X_colnames <- colnames(X) <- paste0('X_', 1:ncol(X))
+    if(is.null(colnames(x))){
+      orig_X_colnames <- colnames(x) <- paste0('X_', 1:ncol(x))
     } else {
-      orig_X_colnames <- colnames(X)
-      colnames(X)     <- paste0('X_', 1:ncol(X))
+      orig_X_colnames <- colnames(x)
+      colnames(x)     <- paste0('X_', 1:ncol(x))
     }
     
-    colnames(coords)  <- paste0('Var', 1:dd)
-  
+    if(is.null(colnames(coords))){
+      orig_coords_colnames <- colnames(coords) <- paste0('Var', 1:dd)
+    } else {
+      orig_coords_colnames <- colnames(coords)
+      colnames(coords)     <- paste0('Var', 1:dd)
+    }
+    
     q              <- ncol(y)
     k              <- ifelse(is.null(k), q, k)
     # for spatial data: matern, for spacetime: gneiting 2002 
     n_par_each_process <- ifelse(dd==2, 1, 3) 
     
-    nr             <- nrow(X)
+    nr             <- nrow(x)
     
     if(length(axis_partition) == 1){
       axis_partition <- rep(axis_partition, dd)
@@ -116,11 +122,12 @@ meshedgp <- function(y, X, coords, k=NULL,
     # -- heuristics for gridded data --
     # if we observed all unique combinations of coordinates, this is how many rows we'd have
     heuristic_gridded <- prod( coords %>% apply(2, function(x) length(unique(x))) )
+    # if data are not gridded, then the above should be MUCH larger than the number of rows
     # if we're not too far off maybe the dataset is actually gridded
-    if((nrow(coords) < .5*heuristic_gridded) & (heuristic_gridded*1.5 < nrow(coords))){
-      data_likely_gridded <- F
-    } else {
+    if(heuristic_gridded*0.5 < nrow(coords)){
       data_likely_gridded <- T
+    } else {
+      data_likely_gridded <- F
     }
     if(ncol(coords) == 3){
       # with time, check if there's equal spacing
@@ -131,10 +138,14 @@ meshedgp <- function(y, X, coords, k=NULL,
       }
     }
     
+    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
+    
     if(is.null(settings$forced_grid)){
       if(data_likely_gridded){
+        cat("I think the data look gridded so I'm setting forced_grid=F.\n")
         use_forced_grid <- F
       } else {
+        cat("I think the data don't look gridded so I'm setting forced_grid=T.\n")
         use_forced_grid <- T
       }
     } else {
@@ -144,12 +155,11 @@ meshedgp <- function(y, X, coords, k=NULL,
       }
     }
     
+    sample_w       <- debug$sample_w
     sample_beta    <- debug$sample_beta
     sample_tausq   <- debug$sample_tausq
-    
     sample_theta   <- debug$sample_theta
-    sample_w       <- debug$sample_w
-    sample_lambda <- debug$sample_lambda
+    sample_lambda  <- debug$sample_lambda
     
     if(is.null(starting$beta)){
       start_beta   <- rep(0, p)
@@ -185,8 +195,6 @@ meshedgp <- function(y, X, coords, k=NULL,
         set_unif_bounds[,2] <- toplim
         set_unif_bounds[3*(1:k),] <- matrix(c(btmlim, 1-btmlim),nrow=1) %x% matrix(1, nrow=k)
         
-        #print(start_theta)
-        #print(set_unif_bounds)
       }
       
     } else {
@@ -198,7 +206,7 @@ meshedgp <- function(y, X, coords, k=NULL,
     }
     
     if(is.null(prior$beta)){
-      beta_Vi <- diag(ncol(X)) * 1/100
+      beta_Vi <- diag(ncol(x)) * 1/100
     } else {
       beta_Vi <- prior$beta
     }
@@ -236,28 +244,21 @@ meshedgp <- function(y, X, coords, k=NULL,
 
   # data management pt 2
   if(1){
-    
     yrownas <- apply(y, 1, function(i) ifelse(sum(is.na(i))==q, NA, 1))
     na_which <- ifelse(!is.na(yrownas), 1, NA)
     simdata <- data.frame(ix=1:nrow(coords)) %>% 
-      cbind(coords, y, na_which, X) %>% 
+      cbind(coords, y, na_which, x) %>% 
       as.data.frame()
     
     #####
-   
-    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
+    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     cat("{q} outcome variables on {nrow(unique(coords))} unique locations." %>% glue::glue())
     cat("\n")
-    if(use_forced_grid){ #if(!is.null(grid_size)){
+    if(use_forced_grid){ 
       # user showed intention to use fixed grid
-      #mean_rows_by_var <- simdata %>% group_by(mv_id) %>% summarise(size=n()) %$% size %>% mean()
-      
       gs <- round(nrow(coords)^(1/ncol(coords)))
       gsize <- if(is.null(grid_size)){ rep(gs, ncol(coords)) } else { grid_size }
-      #mv_uniques <- unique(simdata$mv_id)
-      
-      #print(gsize)
-      
+
       xgrids <- list()
       for(j in 1:dd){
         xgrids[[j]] <- seq(min(coords[,j]), max(coords[,j]), length.out=gsize[j])
@@ -267,46 +268,48 @@ meshedgp <- function(y, X, coords, k=NULL,
       
       cat("Forced grid built with {nrow(gridcoords_lmc)} locations." %>% glue::glue())
       cat("\n")
-      simdata <- dplyr::bind_rows(simdata %>% mutate(thegrid=0), 
-                           gridcoords_lmc %>% mutate(thegrid=1))
+      simdata <- dplyr::bind_rows(simdata %>% dplyr::mutate(thegrid=0), 
+                           gridcoords_lmc %>% dplyr::mutate(thegrid=1))
       
       absize <- round(nrow(gridcoords_lmc)/prod(axis_partition))
     } else {
       if(length(axis_partition) < ncol(coords)){
         stop("Error: axis_partition not specified for all axes.")
       }
-      simdata %<>% mutate(thegrid = 0)
+      simdata %<>% 
+        dplyr::mutate(thegrid = 0)
       absize <- round(nrow(simdata)/prod(axis_partition))
     }
     cat("Partitioning grid axes into {paste0(axis_partition, collapse=', ')} intervals. Approx block size {absize}" %>% glue::glue())
     cat("\n")
     
-    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
+    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     
-    simdata %<>% dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
-    #colnames(simdata)[dd + (2:4)] <- c("mv_id", "y", "na_which")
+    simdata %<>% 
+      dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
     
-    coords <- simdata %>% dplyr::select(dplyr::contains("Var")) %>% as.matrix()
-    #simdata %<>% mutate(type="obs")
+    coords <- simdata %>% 
+      dplyr::select(dplyr::contains("Var")) %>% 
+      as.matrix()
     sort_ix     <- simdata$ix
     
     # Domain partitioning and gibbs groups
     if(use_forced_grid){
-      gridded_coords <- simdata %>% filter(thegrid==1) %>% dplyr::select(dplyr::contains("Var")) %>% as.matrix()
-      fixed_thresholds <- 1:dd %>% lapply(function(i) spmeshed:::kthresholdscp(gridded_coords[,i], axis_partition[i])) 
+      gridded_coords <- simdata %>% dplyr::filter(.data$thegrid==1) %>% dplyr::select(dplyr::contains("Var")) %>% as.matrix()
+      fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(gridded_coords[,i], axis_partition[i])) 
     } else {
-      fixed_thresholds <- 1:dd %>% lapply(function(i) spmeshed:::kthresholdscp(coords[,i], axis_partition[i])) 
+      fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], axis_partition[i])) 
     }
     
     # guaranteed to produce blocks using Mv
     system.time(fake_coords_blocking <- coords %>% 
                   as.matrix() %>% 
-                  spmeshed:::gen_fake_coords(fixed_thresholds, 1) )
+                  gen_fake_coords(fixed_thresholds, 1) )
     
     # Domain partitioning and gibbs groups
     system.time(coords_blocking <- coords %>% 
                   as.matrix() %>%
-                  spmeshed:::tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% 
+                  tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% 
                   dplyr::mutate(na_which = simdata$na_which, sort_ix=sort_ix) )
     
     coords_blocking %<>% dplyr::rename(ix=sort_ix)
@@ -322,17 +325,16 @@ meshedgp <- function(y, X, coords, k=NULL,
                          dplyr::left_join(fake_coords_blocking))
       coords_blocking <- dplyr::bind_rows(coords_blocking, adding_blocks)
       
-      coords_blocking %<>% dplyr::arrange(!!!syms(paste0("Var", 1:dd)))
+      coords_blocking %<>% dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
     }
   }
   nr_full <- nrow(coords_blocking)
   
   # DAG
-  
   if(dd < 4){
-    suppressMessages(parents_children <- spmeshed:::mesh_graph_build(coords_blocking %>% dplyr::select(-ix), axis_partition, F))
+    suppressMessages(parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), axis_partition, F))
   } else {
-    suppressMessages(parents_children <- spmeshed:::mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-ix)))
+    suppressMessages(parents_children <- mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-.data$ix)))
   }
   parents                      <- parents_children[["parents"]] 
   children                     <- parents_children[["children"]] 
@@ -343,15 +345,14 @@ meshedgp <- function(y, X, coords, k=NULL,
     dplyr::select(-na_which) %>% dplyr::left_join(simdata))
   #simdata[is.na(simdata$ix), "ix"] <- seq(nr_start+1, nr_full)
   
-  simdata_in %<>% dplyr::arrange(!!!syms(paste0("Var", 1:dd)))
-  blocking <- simdata_in$block %>% factor() %>% as.integer()
-  indexing <- (1:nrow(simdata_in)-1) %>% split(blocking)
+  simdata_in %<>% 
+    dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
+  blocking <- simdata_in$block %>% 
+    factor() %>% as.integer()
+  indexing <- (1:nrow(simdata_in)-1) %>% 
+    split(blocking)
   
   if(use_forced_grid){
-    #predictable_blocks <- simdata_in %>% mutate(thegrid = ifelse(is.na(thegrid), 0, 1)) %>%
-    #  group_by(block) %>% summarise(thegrid=mean(thegrid, na.rm=T), perc_availab=mean(!is.na(y))) %>%
-    #  mutate(predict_here = ifelse(thegrid==1, perc_availab>0, 1)) %>% arrange(block) %$% predict_here
-    
     indexing_grid_ids <- simdata_in$thegrid %>% split(blocking)
     indexing_grid <- list()
     indexing_obs <- list()
@@ -362,36 +363,36 @@ meshedgp <- function(y, X, coords, k=NULL,
   } else {
     indexing_grid <- indexing
     indexing_obs <- indexing_grid
-    #predictable_blocks <- rep(0, 1)
   }
   
   start_w <- rep(0, nrow(simdata_in))
   
   # finally prepare data
-  sort_ix     <- simdata_in$ix
+  sort_ix <- simdata_in$ix
   
-  y           <- simdata_in %>% dplyr::select(dplyr::contains("Y_")) %>% as.matrix()
+  y <- simdata_in %>% 
+    dplyr::select(dplyr::contains("Y_")) %>% 
+    as.matrix()
   colnames(y) <- orig_y_colnames
   
-  X           <- simdata_in %>% dplyr::select(dplyr::contains("X_")) %>% as.matrix()
-  colnames(X) <- orig_X_colnames
-  X[is.na(X)] <- 0 # NAs if added coords due to empty blocks
+  x <- simdata_in %>% 
+    dplyr::select(dplyr::contains("X_")) %>% 
+    as.matrix()
+  colnames(x) <- orig_X_colnames
+  x[is.na(x)] <- 0 # NAs if added coords due to empty blocks
   
-  na_which    <- simdata_in$na_which
+  na_which <- simdata_in$na_which
 
-  coords <- simdata_in %>% dplyr::select(dplyr::contains("Var")) %>% as.matrix()
+  coords <- simdata_in %>% 
+    dplyr::select(dplyr::contains("Var")) %>% 
+    as.matrix()
   
   cat("Sending to MCMC > ")
   
-  method <- "accel"
-  if(is.null(debug$method) || (debug$method != "accel")){
-    method <- "standard"
-  }
-  
-  mcmc_run <- spmeshed:::lmc_mgp_mcmc
+  mcmc_run <- lmc_mgp_mcmc
   
   comp_time <- system.time({
-      results <- mcmc_run(y, X, coords, k,
+      results <- mcmc_run(y, x, coords, k,
                               
                               parents, children, 
                               block_names, block_groups,
@@ -428,93 +429,14 @@ meshedgp <- function(y, X, coords, k=NULL,
                               sample_theta, sample_w) 
     })
   
-  returning <- list(coords = coords,
-                  sort_ix = sort_ix,
-                  data = simdata_in) %>% 
+  coords_renamer <- colnames(coords)
+  names(coords_renamer) <- orig_coords_colnames
+  
+  returning <- list(coordsdata = simdata_in %>% 
+                      dplyr::select(1:dd, .data$thegrid) %>%
+                      dplyr::rename(!!!coords_renamer,
+                        forced_grid=.data$thegrid)) %>% 
     c(results)
-  
-  return(returning) #***
+  return(returning) 
     
-}
-
-mvmesh_predict_by_block <- function(meshout, newx, newcoords, new_mv_id, n_threads=10){
-  dd <- ncol(newcoords)
-  pp <- length(unique(meshout$mv_id))
-  k <- pp * (pp-1) / 2
-  npars <- nrow(meshout$theta_mcmc) - k
-  sort_ix <- 1:nrow(newcoords)
-  
-  # for each predicting coordinate, find which block it belongs to
-  # (instead of using original partitioning (convoluted), 
-  # use NN since the main algorithm is adding coordinates in empty areas so NN will pick those up)
-  in_coords <- meshout$coords#$meshdata$data %>% dplyr::select(contains("Var"))
-  nn_of_preds <- in_coords %>% FNN::get.knnx(newcoords, k=1, algorithm="kd_tree") %$% nn.index
-  
-  block_ref <- meshout$meshdata$data$block[nn_of_preds]
-  
-  ## by block (same block = same parents)
-  newcx_by_block     <- newcoords %>% as.data.frame() %>% split(block_ref) %>% lapply(as.matrix)
-  new_mv_id_by_block <- new_mv_id %>% split(block_ref) %>% lapply(as.numeric)
-  newx_by_block      <- newx %>% as.data.frame() %>% split(block_ref) %>% lapply(as.matrix)
-  names_by_block     <- names(newcx_by_block) %>% as.numeric()
-  
-  sort_ix_by_block   <- sort_ix %>% split(block_ref)
-  
-  result <- mvmesh_predict_by_block_base(newcx_by_block, new_mv_id_by_block, newx_by_block, 
-                                    names_by_block,
-                                    meshout$w_mcmc,
-                                    meshout$theta_mcmc, 
-                                meshout$beta_mcmc,
-                                meshout$tausq_mcmc,
-                                meshout$meshdata$indexing,
-                                meshout$meshdata$parents_indexing,
-                                meshout$meshdata$parents_children$parents,
-                                meshout$coords,
-                                meshout$mv_id,
-                                npars, dd, pp, n_threads)
-  
-  sort_ix_result <- do.call(c, sort_ix_by_block)
-  coords_reconstruct <- do.call(rbind, newcx_by_block)
-  mv_id_reconstruct <- do.call(c, new_mv_id_by_block)
-  coords_df <- cbind(coords_reconstruct, mv_id_reconstruct, block_ref) %>% as.data.frame() %>%
-    rename(mv_id = mv_id_reconstruct)
-  
-  #coords_df <- coords_df[order(sort_ix_result),]
-  w_preds <- do.call(rbind, result$w_pred)#[order(sort_ix_result),]
-  y_preds <- do.call(rbind, result$y_pred)#[order(sort_ix_result),]
-  
-
-  return(list("coords_pred" = coords_df,
-              "w_pred" = w_preds,
-              "y_pred" = y_preds))
-}
-
-
-mvmesh_predict <- function(meshout, newx, newcoords, new_mv_id, n_threads=10){
-  #meshdata <- meshout$meshdata
-  in_coords <- meshout$coords#meshdata$data %>% dplyr::select(contains("Var"))
-  dd <- ncol(in_coords)
-  pp <- length(unique(meshout$mv_id))
-  k <- pp * (pp-1) / 2
-  npars <- nrow(meshout$theta_mcmc) - 1
-  mcmc <- meshout$w_mcmc %>% length()
-  
-  nn_of_preds <- in_coords %>% FNN::get.knnx(newcoords, k=1, algorithm="kd_tree") %$% nn.index
-  
-  #coords_ref <- meshout$meshdata$blocking[nn_of_preds] #%>% arrange(!!!syms(paste0("L", 1:dd)), block) 
-  block_ref <- meshout$meshdata$blocking[nn_of_preds]
-  
-  newcx <- newcoords %>% as.matrix()
-  
-  result <- meshgp:::mvmesh_predict_base(newcx, new_mv_id, newx, 
-                                meshout$beta_mcmc,
-                                meshout$theta_mcmc, meshout$w_mcmc,
-                                meshout$tausq_mcmc,
-                                meshout$meshdata$indexing,
-                                meshout$meshdata$parents_indexing,
-                                meshout$meshdata$parents_children$parents,
-                                meshout$coords,
-                                block_ref, meshout$meshdata$data$mv_id,
-                                npars, dd, pp, n_threads)
-  return(result)
 }

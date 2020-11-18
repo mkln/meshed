@@ -31,6 +31,32 @@ arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& p
   }
 }
 
+
+// matern covariance with nu = p + 1/2, and p=0,1,2
+arma::mat squaredexp(const arma::mat& x, const arma::mat& y, const double& phi, bool same){
+  // 0 based indexing
+  arma::mat D;
+  if(same){
+    arma::mat pmag = arma::sum(x % x, 1);
+    int np = x.n_rows;
+    D = abs(arma::repmat(pmag.t(), np, 1) + arma::repmat(pmag, 1, np) - 2 * x * x.t());
+  } else {
+    arma::mat pmag = arma::sum(x % x, 1);
+    arma::mat qmag = arma::sum(y % y, 1);
+    int np = x.n_rows;
+    int nq = y.n_rows;
+    D = abs(arma::repmat(qmag.t(), np, 1) + arma::repmat(pmag, 1, nq) - 2 * x * y.t());
+  }
+  if(same){
+    D = exp(-phi * D);
+    D.diag() += 1e-6;
+    return D;
+  } else {
+    return exp(-phi * D); 
+  }
+}
+
+
 // gneiting 2002 eq. 15 with a,c,beta left unknown
 arma::mat gneiting2002(const arma::mat& x, const arma::mat& y, 
                        const double& a, const double& c, const double& beta, bool same){
@@ -76,7 +102,8 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y, const arma::vec& 
     if(numinushalf == 2){ // nu = 5/2
       reparam = pow(theta(0), 5.0);
     }
-    return matern_halfint(x, y, theta(0), same, 0)/reparam;
+    //return matern_halfint(x, y, theta(0), same, 0)/reparam;
+    return squaredexp(x, y, theta(0), same);///theta(0);
   } else {
     // theta 0: temporal decay, 
     // theta 1: spatial decay,
@@ -102,16 +129,13 @@ arma::mat CviaKron(const arma::mat& coords,
 }
 
 
-arma::mat CviaKron_invsympd(const arma::mat& coords, const arma::uvec& indx, 
+void CviaKron_invsympd_(arma::cube& CCi, 
+                        const arma::mat& coords, const arma::uvec& indx, 
                             int k, const arma::mat& theta){
-  arma::mat res = arma::zeros(indx.n_rows * k, indx.n_rows * k);
-  arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   for(int j=0; j<k; j++){
-    arma::mat CCi = arma::inv_sympd( Correlationf(coordsx, coordsx, theta.col(j), true) );
-    res += arma::kron(arma::diagmat(Iselect.col(j)), CCi);
+    CCi.slice(j) = arma::inv_sympd( Correlationf(coordsx, coordsx, theta.col(j), true) );
   }
-  return res;
 }
 
 
@@ -218,7 +242,8 @@ void CviaKron_HRj_bdiag(
 
 
 void CviaKron_HRj_chol_bdiag(
-    arma::cube& Hj, arma::mat& Rjchol, const arma::uvec& naix,
+    arma::cube& Hj, arma::mat& Rjchol, arma::cube& Kxxi,
+    const arma::uvec& naix,
     const arma::mat& coords, const arma::uvec& indx, const arma::uvec& indy, 
     int k, const arma::mat& theta){
   
@@ -226,13 +251,14 @@ void CviaKron_HRj_chol_bdiag(
   arma::mat coordsx = coords.rows(indx);
   arma::mat coordsy = coords.rows(indy);
   
+  Kxxi = arma::zeros(indy.n_elem, indy.n_elem, k);
   for(int j=0; j<k; j++){
-    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), true) );
+    Kxxi.slice(j) = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), true) );
     for(int ix=0; ix<indx.n_rows; ix++){
       if(naix(ix) == 0){ // otherwise it's not missing
         arma::mat Cxx = Correlationf(coordsx.row(ix), coordsx.row(ix), theta.col(j), true);
         arma::mat Cxy = Correlationf(coordsx.row(ix), coordsy, theta.col(j), false);
-        arma::mat Hloc = Cxy * Cyy_i;
+        arma::mat Hloc = Cxy * Kxxi.slice(j);
         
         Hj.slice(ix).row(j) = Hloc;//+=arma::kron(arma::diagmat(Iselect.col(j)), Hloc);
         double Rcholtemp = arma::conv_to<double>::from(

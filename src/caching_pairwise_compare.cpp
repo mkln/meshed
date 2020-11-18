@@ -15,7 +15,9 @@ arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks,
   arma::field<arma::mat> sorted(blocks.n_elem);
   
   // remodel blocks so they are all relative to the first row (which is assumed sorted V1-V2-V3 from R)
+#ifdef _OPENMP
 #pragma omp parallel for
+#endif
   for(int i=0; i<blocks.n_elem; i++){
     sorted(i) = blocks(i);
     //Rcpp::Rcout << "i: " << i << endl;
@@ -27,7 +29,9 @@ arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks,
   }
   
   // now find if the blocks are relatively the same
+#ifdef _OPENMP
 #pragma omp parallel for
+#endif
   for(int j=0; j<blocks.n_elem; j++){
     int u_target = names(j)-1;
     if(block_ct_obs(u_target) > 0){
@@ -58,7 +62,7 @@ arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks,
 }
 
 
-arma::vec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
+arma::uvec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
                                      const arma::vec& names,
                                      const arma::vec& ct_obs){
   
@@ -68,11 +72,13 @@ arma::vec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
   
   // if ct_obs == 0 then don't search for cache and assign own
   
-  arma::vec result = arma::zeros(blocks.n_elem)-1;
+  arma::uvec result = arma::zeros<arma::uvec>(blocks.n_elem)-1;
   arma::field<arma::mat> sorted(blocks.n_elem);
   
   // remodel blocks so they are all relative to the first row (which is assumed sorted V1-V2-V3 from R)
+#ifdef _OPENMP
 #pragma omp parallel for
+#endif
   for(int i=0; i<blocks.n_elem; i++){
     sorted(i) = blocks(i);
     //Rcpp::Rcout << "i: " << i << endl;
@@ -84,7 +90,9 @@ arma::vec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
   }
   
   // now find if the blocks are relatively the same
+#ifdef _OPENMP
 #pragma omp parallel for
+#endif
   for(int j=0; j<blocks.n_elem; j++){
     int u_target = names(j)-1;
     if(ct_obs(u_target) == 0){
@@ -122,8 +130,7 @@ arma::vec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
 }
 
 
-//[[Rcpp::export]]
-arma::vec caching_pairwise_compare_uci(const arma::mat& coords,
+arma::uvec caching_pairwise_compare_uci(const arma::mat& coords,
                                       const arma::field<arma::uvec>& indexing,
                                       const arma::vec& names,
                                       const arma::vec& ct_obs){
@@ -134,11 +141,13 @@ arma::vec caching_pairwise_compare_uci(const arma::mat& coords,
   
   // if ct_obs == 0 then don't search for cache and assign own
   
-  arma::vec result = arma::zeros(indexing.n_elem)-1;
+  arma::uvec result = arma::zeros<arma::uvec>(indexing.n_elem)-1;
   arma::field<arma::mat> sorted(indexing.n_elem);
   
   // remodel blocks so they are all relative to the first row (which is assumed sorted V1-V2-V3 from R)
+#ifdef _OPENMP
 #pragma omp parallel for
+#endif
   for(int i=0; i<indexing.n_elem; i++){
     sorted(i) = coords.rows(indexing(i));
     //Rcpp::Rcout << "i: " << i << endl;
@@ -151,7 +160,9 @@ arma::vec caching_pairwise_compare_uci(const arma::mat& coords,
   }
   
   // now find if the blocks are relatively the same
+#ifdef _OPENMP
 #pragma omp parallel for
+#endif
   for(int j=0; j<indexing.n_elem; j++){
     int u_target = names(j)-1;
     if(ct_obs(u_target) == 0){

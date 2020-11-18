@@ -1,3 +1,5 @@
+#define ARMA_DONT_PRINT_ERRORS
+
 #include <RcppArmadillo.h>
 
 #ifdef _OPENMP
@@ -84,7 +86,6 @@ inline void add_AK_AKu_multiply_(arma::mat& result,
                     x.slice(i) * y.slice(i);
   }
 }
-
 
 inline arma::mat AK_vec_multiply(const arma::cube& x, const arma::mat& y){ 
   arma::mat result = arma::zeros(x.n_rows, y.n_cols);
@@ -265,12 +266,14 @@ public:
   void init_cache();
   
   // caching
-  arma::vec coords_caching; 
-  arma::vec coords_caching_ix;
-  arma::vec parents_caching;
-  arma::vec parents_caching_ix;
-  arma::vec kr_caching;
-  arma::vec kr_caching_ix;
+  arma::uvec coords_caching; 
+  arma::uvec coords_caching_ix;
+  //arma::uvec parents_caching;
+  //arma::uvec parents_caching_ix;
+  arma::uvec kr_caching;
+  arma::uvec kr_caching_ix;
+  arma::uvec cx_and_kr_caching; // merge of coords and kr
+  int starting_kr;
   
   // caching some matrices // ***
   arma::field<arma::cube> H_cache;
@@ -748,8 +751,8 @@ void LMCMeshGP::init_cache(){
   coords_caching = arma::unique(coords_caching_ix);
   
   //parents_caching_ix = caching_pairwise_compare_uc(parents_coords, block_names, block_ct_obs);
-  parents_caching_ix = caching_pairwise_compare_uci(coords, parents_indexing, block_names, block_ct_obs);
-  parents_caching = arma::unique(parents_caching_ix);
+  //parents_caching_ix = caching_pairwise_compare_uci(coords, parents_indexing, block_names, block_ct_obs);
+  //parents_caching = arma::unique(parents_caching_ix);
   
   arma::field<arma::mat> kr_pairing(n_blocks);
 #ifdef _OPENMP
@@ -769,8 +772,16 @@ void LMCMeshGP::init_cache(){
   }
   
   kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
-
   kr_caching = arma::unique(kr_caching_ix);
+  
+  starting_kr = 0;
+  if(forced_grid){
+    cx_and_kr_caching = arma::join_vert(coords_caching,
+                                        kr_caching);
+    starting_kr = coords_caching.n_elem;
+  } else {
+    cx_and_kr_caching = kr_caching;
+  }
   
   if(verbose & debug){
     Rcpp::Rcout << "Caching stats c: " << coords_caching.n_elem 
@@ -918,13 +929,71 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
   start_overall = std::chrono::steady_clock::now();
   message("[refresh_cache] start.");
   
-  //Rcpp::Rcout << "Trying with theta: " << endl 
-  //            << data.theta;
-  
   Ri_chol_logdet = arma::zeros(kr_caching.n_elem);
-  //arma::vec timings = arma::zeros(10);
+  
+  arma::vec timings = arma::zeros(2);
   int errtype = -1;
   
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+  for(int it=0; it<cx_and_kr_caching.n_elem; it++){
+    int i = 0;
+    if(it < starting_kr){
+      // this means we are caching coords
+      i = it;
+      int u = coords_caching(i); // block name of ith representative
+      try {
+        CviaKron_invsympd_(data.Kxxi_cache(i),
+                           coords, indexing(u), k, data.theta);
+      } catch (...) {
+        errtype = 1;
+      }
+    } else {
+      // this means we are caching kr
+      i = it - starting_kr;
+      int u = kr_caching(i);
+      try {
+        if(block_ct_obs(u) > 0){
+          Ri_chol_logdet(i) = CviaKron_HRi_(H_cache(i), Ri_cache(i),
+                         coords, indexing(u), parents_indexing(u), k, data.theta);
+        }
+      } catch (...) {
+        errtype = 2;
+      }
+    }
+  }
+  
+  if(errtype > 0){
+    if(verbose & debug){
+      Rcpp::Rcout << "Cholesky failed at some point. Here's the value of theta that caused this" << "\n";
+      Rcpp::Rcout << "theta: " << data.theta.t() << "\n";
+      Rcpp::Rcout << " -- auto rejected and proceeding." << "\n";
+    }
+    return false;
+  }
+  
+  if(verbose & debug){
+    end_overall = std::chrono::steady_clock::now();
+    Rcpp::Rcout << "[refresh_cache] "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()
+                << "us.\n";
+  }
+  
+  return true;
+}
+
+/*
+bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
+  start_overall = std::chrono::steady_clock::now();
+  message("[refresh_cache] start.");
+  
+  Ri_chol_logdet = arma::zeros(kr_caching.n_elem);
+  
+  arma::vec timings = arma::zeros(2);
+  int errtype = -1;
+  
+  start = std::chrono::steady_clock::now();
   if(forced_grid){
     // for forced grids we compute the cached inverse of each blocks
 #ifdef _OPENMP
@@ -948,11 +1017,12 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
   if(errtype > 0){
     return false;
   }
-  //end = std::chrono::steady_clock::now();
-  //timings(0) = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+  end = std::chrono::steady_clock::now();
+  timings(0) = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   
+  start = std::chrono::steady_clock::now();
 #ifdef _OPENMP
-  #pragma omp parallel for 
+//***#pragma omp parallel for 
 #endif
   for(int i=0; i<kr_caching.n_elem; i++){
     int u = kr_caching(i);
@@ -965,6 +1035,8 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
       errtype = 2;
     }
   }
+  end = std::chrono::steady_clock::now();
+  timings(1) = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
   
   if(errtype > 0){
     if(verbose & debug){
@@ -975,6 +1047,8 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
     return false;
   }
   
+  Rcpp::Rcout << "timings: " << endl << timings.t() << endl;
+  
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
     Rcpp::Rcout << "[refresh_cache] "
@@ -984,7 +1058,7 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
   
   return true;
 }
-
+*/
 void LMCMeshGP::update_block_covpars(int u, MeshDataLMC& data){
   // given block u as input, this function updates H and R
   // which will be used later to compute logp(w | theta)
@@ -1142,7 +1216,7 @@ void LMCMeshGP::gibbs_sample_Lambda(){
     arma::mat WWj = w.submat(ix_by_q_a(j), subcols); // acts as X
     arma::mat Wcrossprod = WWj.t() * WWj;
     arma::mat Lprior_inv = tausq_inv(j) * 
-      arma::eye(subcols.n_elem, subcols.n_elem) * .1;
+        arma::eye(WWj.n_cols, WWj.n_cols) * 1; 
     
     arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * Wcrossprod + Lprior_inv), "lower");
     arma::mat Sigma_chol_L = arma::inv(arma::trimatl(Si_chol));
@@ -1154,7 +1228,8 @@ void LMCMeshGP::gibbs_sample_Lambda(){
       (Sigma_chol_L * Simean_L + rLambdasample.submat(subcols, oneuv*j));
     
     // update lambda 
-    Lambda.submat(oneuv*j, subcols) = Lambdarowj_new.t();    
+    Lambda.submat(oneuv*j, subcols) = 
+      Lambdarowj_new.t();    
   
     
   }
@@ -1565,7 +1640,7 @@ void LMCMeshGP::predict(){
   //arma::vec timings = arma::zeros(5);
   if(predict_group_exists == 1){
     start_overall = std::chrono::steady_clock::now();
-    arma::vec timer = arma::zeros(2);
+    arma::vec timer = arma::zeros(3);
   
     message("[predict] start ");
   #ifdef _OPENMP
@@ -1576,7 +1651,7 @@ void LMCMeshGP::predict(){
       // only predictions at this block. 
       arma::uvec predict_parent_indexing, cx;
       
-      //Rcpp::Rcout << "u: " << u << " step 1 " << block_ct_obs(u) << "\n";
+      arma::cube Kxxi_parents;
       start = std::chrono::steady_clock::now();
       if((block_ct_obs(u) > 0) & forced_grid){
         // this is a reference set with some observed locations
@@ -1589,7 +1664,8 @@ void LMCMeshGP::predict(){
       } else {
         // no observed locations, use line of sight
         predict_parent_indexing = parents_indexing(u);
-        CviaKron_HRj_chol_bdiag(Hpred(i), Rcholpred(i), na_1_blocks(u),
+        CviaKron_HRj_chol_bdiag(Hpred(i), Rcholpred(i), Kxxi_parents,
+                                na_1_blocks(u),
                                 coords, indexing_obs(u), predict_parent_indexing, k, param_data.theta);
       }
       end = std::chrono::steady_clock::now();
@@ -1602,8 +1678,7 @@ void LMCMeshGP::predict(){
           //Rcpp::Rcout << indexing_obs(u)(ix) << "\n";
           //Rcpp::Rcout << "substep 1" << "\n";
           // if == 1 this has already been sampled.
-          arma::mat wpars = w.rows(predict_parent_indexing);//arma::vectorise(w.rows(predict_parent_indexing));
-          //Rcpp::Rcout << "substep 2 " << arma::size(rand_norm_mat) << "\n";
+          arma::mat wpars = w.rows(predict_parent_indexing);
          
           arma::rowvec wtemp = arma::sum(arma::trans(Hpred(i).slice(ix)) % wpars, 0) + 
             arma::trans(Rcholpred(i).col(ix)) % rand_norm_mat.row(indexing_obs(u)(ix));
@@ -1615,9 +1690,30 @@ void LMCMeshGP::predict(){
       }
       end = std::chrono::steady_clock::now();
       timer(1) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-      //Rcpp::Rcout << "step 3" << "\n";
       
+      if(false){
+        // this makes the prediction at grid points underlying non-observed areas
+        // ONLY useful to make a full raster map at the end
+        start = std::chrono::steady_clock::now();
+        if((block_ct_obs(u) == 0) & forced_grid){
+          arma::cube Hpredx = arma::zeros(k, predict_parent_indexing.n_elem, indexing(u).n_elem);
+          arma::mat Rcholpredx = arma::zeros(k, indexing(u).n_elem);
+          arma::uvec all_na = arma::zeros<arma::uvec>(indexing(u).n_elem);
+          CviaKron_HRj_chol_bdiag_wcache(Hpredx, Rcholpredx, Kxxi_parents, all_na, 
+                                         coords, indexing(u), predict_parent_indexing, k, param_data.theta);
+          for(int ix=0; ix<indexing(u).n_elem; ix++){
+            arma::mat wpars = w.rows(predict_parent_indexing);
+            arma::rowvec wtemp = arma::sum(arma::trans(Hpredx.slice(ix)) % wpars, 0) + 
+              arma::trans(Rcholpredx.col(ix)) % rand_norm_mat.row(indexing(u)(ix));
+            w.row(indexing(u)(ix)) = wtemp;
+            LambdaHw.row(indexing(u)(ix)) = w.row(indexing(u)(ix)) * Lambda.t();
+          }
+        }
+        end = std::chrono::steady_clock::now();
+        timer(2) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+      }
     }
+    
     if(verbose & debug){
       end_overall = std::chrono::steady_clock::now();
       Rcpp::Rcout << "[predict] "

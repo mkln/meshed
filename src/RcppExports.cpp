@@ -6,20 +6,6 @@
 
 using namespace Rcpp;
 
-// caching_pairwise_compare_uci
-arma::vec caching_pairwise_compare_uci(const arma::mat& coords, const arma::field<arma::uvec>& indexing, const arma::vec& names, const arma::vec& ct_obs);
-RcppExport SEXP _spmeshed_caching_pairwise_compare_uci(SEXP coordsSEXP, SEXP indexingSEXP, SEXP namesSEXP, SEXP ct_obsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
-    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type names(namesSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type ct_obs(ct_obsSEXP);
-    rcpp_result_gen = Rcpp::wrap(caching_pairwise_compare_uci(coords, indexing, names, ct_obs));
-    return rcpp_result_gen;
-END_RCPP
-}
 // matern_halfint
 arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int numinushalf);
 RcppExport SEXP _spmeshed_matern_halfint(SEXP xSEXP, SEXP ySEXP, SEXP phiSEXP, SEXP sameSEXP, SEXP numinushalfSEXP) {
@@ -214,9 +200,31 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// summary_list_mean
+arma::mat summary_list_mean(const arma::field<arma::mat>& x);
+RcppExport SEXP _spmeshed_summary_list_mean(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(summary_list_mean(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// summary_list_q
+arma::mat summary_list_q(const arma::field<arma::mat>& x, double q);
+RcppExport SEXP _spmeshed_summary_list_q(SEXP xSEXP, SEXP qSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type q(qSEXP);
+    rcpp_result_gen = Rcpp::wrap(summary_list_q(x, q));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_spmeshed_caching_pairwise_compare_uci", (DL_FUNC) &_spmeshed_caching_pairwise_compare_uci, 4},
     {"_spmeshed_matern_halfint", (DL_FUNC) &_spmeshed_matern_halfint, 5},
     {"_spmeshed_gneiting2002", (DL_FUNC) &_spmeshed_gneiting2002, 6},
     {"_spmeshed_blanket", (DL_FUNC) &_spmeshed_blanket, 4},
@@ -229,6 +237,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spmeshed_mesh_graph_hyper", (DL_FUNC) &_spmeshed_mesh_graph_hyper, 7},
     {"_spmeshed_lmc_mgp_mcmc", (DL_FUNC) &_spmeshed_lmc_mgp_mcmc, 33},
     {"_spmeshed_cube_tcrossprod", (DL_FUNC) &_spmeshed_cube_tcrossprod, 1},
+    {"_spmeshed_summary_list_mean", (DL_FUNC) &_spmeshed_summary_list_mean, 1},
+    {"_spmeshed_summary_list_q", (DL_FUNC) &_spmeshed_summary_list_q, 2},
     {NULL, NULL, 0}
 };
 

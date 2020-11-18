@@ -133,8 +133,8 @@ inline double calc_prior_logratio(const arma::vec& new_param,
   double plr=0;
   for(int j=0; j<param.n_elem; j++){
     plr += 
-      invgamma_logdens(new_param(0), 2.0, 2.0) -
-      invgamma_logdens(param(0), 2.0, 2.0);
+      invgamma_logdens(new_param(0), 2.01, 1.0) -
+      invgamma_logdens(param(0), 2.01, 1.0);
   }
   return plr;
 }
@@ -239,14 +239,23 @@ inline void RAMAdapt::adapt(const arma::vec& U, double alpha, int mc){
 }
 
 inline void RAMAdapt::print(int itertime, int mc){
-  printf("%5d-th iteration [ %dms ] ~ MCMC acceptance %.2f%%, average %.2f%% \n", 
+  Rprintf("%5d-th iteration [ %dms ] ~ MCMC acceptance %.2f%%, average %.2f%% \n", 
          mc+1, itertime, arma::mean(acceptreject_history)*100, accept_ratio*100);
 }
 
 inline void RAMAdapt::print_summary(int time_tick, int time_mcmc, int m, int mcmc){
-  printf("%.1f%% elapsed: %5dms (+%5dms). MCMC acceptance %.2f%%, average %.2f%% \n",
-         floor(100.0*(m+0.0)/mcmc),
+  double time_iter = (.0 + time_mcmc)/(m+1);
+  
+  double etr = (mcmc-m-1) * time_iter * 1.1 / 1000;  // seconds
+  const char* unit = etr>60 ? "min" : "s";
+  
+  etr = etr > 60 ? etr/60 : etr;
+  
+  //Rcpp::Rcout << m+1 << " " << mcmc << " " << time_iter << " " << mcmc-m-1 << " " << (mcmc-m-1) * time_iter << "\n";
+  Rprintf("%.1f%% elapsed: %5dms (+%5dms). ETR: %.2f%s. MCMC acceptance %.2f%%, average %.2f%% \n",
+         100.0*(m+1.0)/mcmc,
          time_mcmc,
          time_tick,
+         etr, unit,
          arma::mean(acceptreject_history)*100, accept_ratio*100);
 }

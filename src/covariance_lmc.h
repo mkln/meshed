@@ -16,53 +16,12 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y, const arma::vec& 
 arma::mat CviaKron(const arma::mat& coords, 
                    const arma::uvec& indx, const arma::uvec& indy,
                    int k, const arma::mat& theta, bool same=false);
-  
-arma::mat CviaKron_invsympd(const arma::mat& coords, const arma::uvec& indx, 
-                            int k, const arma::mat& theta);
 
-arma::mat CviaKron_chol(const arma::mat& coords, const arma::uvec& indx, 
-                        int k, const arma::mat& theta);
-
-arma::mat CviaKron_H(const arma::mat& coords, 
-                     const arma::uvec& indx, const arma::uvec& indy, 
-                     int k, const arma::mat& theta);
-
-arma::mat CviaKron_R(const arma::mat& coords, 
-                     const arma::uvec& indx, const arma::uvec& indy, 
-                     int k, const arma::mat& theta);
-
-void CviaKron_HRj_bdiag(
-    arma::field<arma::mat>& Hj, arma::field<arma::mat>& Rj, 
-    const arma::field<arma::mat>& Kxxi_cache,
-    const arma::mat& coords, const arma::uvec& indx, 
-    const arma::uvec& naix, const arma::uvec& indy, 
-    int k, const arma::mat& theta);
-  
-double CviaKron_invchol(arma::mat& res,
+// inplace functions
+void CviaKron_invsympd_(arma::cube& CCi, 
                         const arma::mat& coords, const arma::uvec& indx, 
                         int k, const arma::mat& theta);
   
-double CviaKron_HRi(arma::mat& H, arma::mat& R,
-                 const arma::mat& coords, 
-                 const arma::uvec& indx, const arma::uvec& indy, 
-                 int k, const arma::mat& theta);
-
-arma::mat CviaKron_Ri(const arma::mat& coords, 
-                      const arma::uvec& indx, const arma::uvec& indy,  
-                      int k, const arma::mat& theta);
-
-
-
-arma::mat CviaKron_Rchol(const arma::mat& coords, 
-                         const arma::uvec& indx, const arma::uvec& indy,  
-                         int k, const arma::mat& theta);
-
-
-arma::mat CviaKron_Rcholinv(const arma::mat& coords, 
-                            const arma::uvec& indx, const arma::uvec& indy,  
-                            int k, const arma::mat& theta);
-
-// inplace functions
 double CviaKron_HRi_(arma::cube& H, arma::cube& Ri,
                      const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
@@ -88,6 +47,7 @@ void CviaKron_HRj_chol_bdiag_wcache(
     int k, const arma::mat& theta);
 
 void CviaKron_HRj_chol_bdiag(
-    arma::cube& Hj, arma::mat& Rjchol, const arma::uvec& naix,
+    arma::cube& Hj, arma::mat& Rjchol, arma::cube& Kxxi_parents,
+    const arma::uvec& naix,
     const arma::mat& coords, const arma::uvec& indx, const arma::uvec& indy, 
     int k, const arma::mat& theta);
