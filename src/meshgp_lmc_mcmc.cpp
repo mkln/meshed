@@ -206,10 +206,12 @@ Rcpp::List lmc_mgp_mcmc(
   
   // field avoids limit in size of objects -- ideally this should be a cube
   arma::field<arma::mat> w_mcmc(mcmc_keep);
+  arma::field<arma::mat> wgen_mcmc(mcmc_keep); // remove me
   arma::field<arma::mat> yhat_mcmc(mcmc_keep);
   
   for(int i=0; i<mcmc_keep; i++){
     w_mcmc(i) = arma::zeros(mesh.w.n_rows, k);
+    wgen_mcmc(i) = arma::zeros(mesh.w.n_rows, k); // remove me
     yhat_mcmc(i) = arma::zeros(mesh.y.n_rows, q);
   }
   
@@ -439,6 +441,7 @@ Rcpp::List lmc_mgp_mcmc(
         
         if(mx % mcmc_thin == 0){
           w_mcmc(mcmc_saved) = mesh.w;
+          wgen_mcmc(mcmc_saved) = mesh.wgen; // remove me
           Rcpp::RNGScope scope;
           yhat_mcmc(mcmc_saved) = mesh.XB + mesh.LambdaHw + 
             arma::kron(arma::trans(pow(1.0/mesh.tausq_inv, .5)), arma::ones(n,1)) % arma::randn(n, q);
@@ -454,6 +457,7 @@ Rcpp::List lmc_mgp_mcmc(
     return Rcpp::List::create(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("w_mcmc") = w_mcmc,
+      Rcpp::Named("wgen_mcmc") = wgen_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,

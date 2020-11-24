@@ -4,6 +4,11 @@
 
 using namespace std;
 
+arma::mat CmaternInv(const arma::mat& x,
+                     const double& sigmasq,
+                     const double& effrange, const double& nu, 
+                     const double& tausq);
+
 // matern
 arma::mat matern(const arma::mat& x, const arma::mat& y, const double& phi, const double& nu, double * bessel_ws, bool same);
 

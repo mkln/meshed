@@ -227,9 +227,11 @@ public:
   
   // params
   arma::mat w;
+  bool recover_generator;
+  arma::mat wgen;
   arma::mat Bcoeff; // sampled
   arma::mat rand_norm_mat;
-  int parts;
+  
   
   arma::mat Lambda;
   arma::umat Lambda_mask; // 1 where we want lambda to be nonzero
@@ -463,7 +465,6 @@ LMCMeshGP::LMCMeshGP(
   q = y.n_cols;//mv_id_uniques.n_elem;
   k = k_in;
   
-  parts = 1; 
   
   if(forced_grid){
     tausq_adapt = RAMAdapt(q, arma::eye(q,q)*.1, q==1? .45 : .25);
@@ -498,7 +499,13 @@ LMCMeshGP::LMCMeshGP(
   
   
   // initial values
-  w = w_in; //arma::zeros(w_in.n_rows, k); 
+  w = w_in; 
+  
+  recover_generator = true;
+  if(recover_generator){
+    wgen = arma::zeros(arma::size(w)); // *** remove
+  }
+  
   LambdaHw = arma::zeros(coords.n_rows, q); 
   
   Lambda = lambda_in; 
@@ -1613,6 +1620,17 @@ void LMCMeshGP::gibbs_sample_w(bool needs_update=true){
   rand_norm_mat = arma::randn(coords.n_rows, k);
   start_overall = std::chrono::steady_clock::now();
   
+  arma::field<arma::mat> LCi_cache(coords_caching.n_elem);
+  if(recover_generator){
+    for(int i=0; i<coords_caching.n_elem; i++){
+      int u = coords_caching(i); // block name of ith representative
+      arma::mat cx = coords.rows(indexing(u));
+      arma::mat CCu = CmaternInv(cx, pow(Lambda(0,0), 2.0),
+                                 param_data.theta(0,0), param_data.theta(1, 0), 1.0/tausq_inv(0));
+      LCi_cache(i) = arma::inv(arma::trimatl(arma::chol(CCu, "lower")));
+    }
+  }
+  
   double timing=0;
   
   for(int g=0; g<n_gibbs_groups; g++){
@@ -1674,7 +1692,7 @@ void LMCMeshGP::gibbs_sample_w(bool needs_update=true){
         
         w.rows(indexing(u)) = //arma::trans(arma::mat(wtemp.memptr(), k, wtemp.n_elem/k)); 
             arma::mat(wtemp.memptr(), wtemp.n_elem/k, k); 
-        
+      
         if(forced_grid){
           for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
             if(na_1_blocks(u)(ix) == 1){
@@ -1690,10 +1708,21 @@ void LMCMeshGP::gibbs_sample_w(bool needs_update=true){
         
         end = std::chrono::steady_clock::now();
         //timings(6) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        
+        
+        // *** kaust
+        if(recover_generator){
+          int u_cached_ix = coords_caching_ix(u);
+          arma::uvec cx = arma::find( coords_caching == u_cached_ix, 1, "first" );
+          wgen.rows(indexing(u)) = LCi_cache(cx(0)) * w.rows(indexing(u));
+        }
+        
       } 
     }
   }
   //Zw = armarowsum(Z % w);
+  
+  
   
   //Rcpp::Rcout << "timing for refresh: " << timing << endl;
   if(verbose & debug){

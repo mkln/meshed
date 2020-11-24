@@ -2,6 +2,32 @@
 
 using namespace std;
 
+arma::mat CmaternInv(const arma::mat& x,
+                     const double& sigmasq,
+                     const double& effrange, const double& nu, 
+                     const double& tausq){
+
+  double phi = 2*sqrt(nu)/effrange;
+  double pow2_nu1_gammanu = pow(2.0, 1.0-nu) / R::gammafn(nu);
+  arma::mat res = arma::zeros(x.n_rows, x.n_rows);
+  for(int i = 0; i < x.n_rows; i++){
+    arma::rowvec cri = x.row(i);
+    for(int j = i; j < x.n_rows; j++){
+      arma::rowvec delta = cri - x.row(j);
+      double hphi = arma::norm(delta) * phi;
+      if(hphi > 0.0){
+        res(i, j) = sigmasq * pow(hphi, nu) * pow2_nu1_gammanu *
+          R::bessel_k(hphi, nu, 1.0);
+      } else {
+        res(i, j) = sigmasq + tausq;
+      }
+    }
+  }
+  res = arma::symmatu(res);
+  return res;
+}
+
+
 // matern
 arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& phi, const double& nu, 
                  double * bessel_ws,  bool same){
