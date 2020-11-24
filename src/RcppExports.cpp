@@ -37,6 +37,39 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Cov_matern
+arma::mat Cov_matern(const arma::mat& x, const arma::mat& y, const double& sigmasq, const double& phi, const double& nu, const double& tausq, bool same, int nThreads);
+RcppExport SEXP _spmeshed_Cov_matern(SEXP xSEXP, SEXP ySEXP, SEXP sigmasqSEXP, SEXP phiSEXP, SEXP nuSEXP, SEXP tausqSEXP, SEXP sameSEXP, SEXP nThreadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const double& >::type sigmasq(sigmasqSEXP);
+    Rcpp::traits::input_parameter< const double& >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< const double& >::type nu(nuSEXP);
+    Rcpp::traits::input_parameter< const double& >::type tausq(tausqSEXP);
+    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
+    Rcpp::traits::input_parameter< int >::type nThreads(nThreadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(Cov_matern(x, y, sigmasq, phi, nu, tausq, same, nThreads));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Cov_matern_h
+double Cov_matern_h(const double& h, const double& sigmasq, const double& phi, const double& nu, const double& tausq);
+RcppExport SEXP _spmeshed_Cov_matern_h(SEXP hSEXP, SEXP sigmasqSEXP, SEXP phiSEXP, SEXP nuSEXP, SEXP tausqSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const double& >::type h(hSEXP);
+    Rcpp::traits::input_parameter< const double& >::type sigmasq(sigmasqSEXP);
+    Rcpp::traits::input_parameter< const double& >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< const double& >::type nu(nuSEXP);
+    Rcpp::traits::input_parameter< const double& >::type tausq(tausqSEXP);
+    rcpp_result_gen = Rcpp::wrap(Cov_matern_h(h, sigmasq, phi, nu, tausq));
+    return rcpp_result_gen;
+END_RCPP
+}
 // blanket
 arma::field<arma::uvec> blanket(const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::uvec& names, const arma::uvec& block_ct_obs);
 RcppExport SEXP _spmeshed_blanket(SEXP parentsSEXP, SEXP childrenSEXP, SEXP namesSEXP, SEXP block_ct_obsSEXP) {
@@ -147,8 +180,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // lmc_mgp_mcmc
-Rcpp::List lmc_mgp_mcmc(const arma::mat& y, const arma::mat& X, const arma::mat& coords, int k, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& indexing_obs, const arma::mat& set_unif_bounds_in, const arma::mat& beta_Vi, const arma::vec& tausq_ab, const arma::vec& start_w, const double& sigmasq, const arma::mat& theta, const arma::vec& beta, const double& tausq, const arma::mat& mcmcsd, int mcmc_keep, int mcmc_burn, int mcmc_thin, int num_threads, bool adapting, bool forced_grid, bool verbose, bool debug, int print_every, bool sample_beta, bool sample_tausq, bool sample_lambda, bool sample_theta, bool sample_w);
-RcppExport SEXP _spmeshed_lmc_mgp_mcmc(SEXP ySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP kSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP tausq_abSEXP, SEXP start_wSEXP, SEXP sigmasqSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP mcmcsdSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP num_threadsSEXP, SEXP adaptingSEXP, SEXP forced_gridSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP print_everySEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_lambdaSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
+Rcpp::List lmc_mgp_mcmc(const arma::mat& y, const arma::mat& X, const arma::mat& coords, int k, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& indexing_obs, const arma::mat& set_unif_bounds_in, const arma::mat& beta_Vi, const arma::vec& tausq_ab, const arma::mat& start_w, const arma::mat& lambda, const arma::umat& lambda_mask, const arma::mat& theta, const arma::mat& beta, const arma::vec& tausq, const arma::mat& mcmcsd, int mcmc_keep, int mcmc_burn, int mcmc_thin, int mcmc_startfrom, int num_threads, bool adapting, bool forced_grid, bool verbose, bool debug, int print_every, bool sample_beta, bool sample_tausq, bool sample_lambda, bool sample_theta, bool sample_w);
+RcppExport SEXP _spmeshed_lmc_mgp_mcmc(SEXP ySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP kSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP tausq_abSEXP, SEXP start_wSEXP, SEXP lambdaSEXP, SEXP lambda_maskSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP mcmcsdSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP mcmc_startfromSEXP, SEXP num_threadsSEXP, SEXP adaptingSEXP, SEXP forced_gridSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP print_everySEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_lambdaSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -165,15 +198,17 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type set_unif_bounds_in(set_unif_bounds_inSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type beta_Vi(beta_ViSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type tausq_ab(tausq_abSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type start_w(start_wSEXP);
-    Rcpp::traits::input_parameter< const double& >::type sigmasq(sigmasqSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type start_w(start_wSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type lambda(lambdaSEXP);
+    Rcpp::traits::input_parameter< const arma::umat& >::type lambda_mask(lambda_maskSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type theta(thetaSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type beta(betaSEXP);
-    Rcpp::traits::input_parameter< const double& >::type tausq(tausqSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type tausq(tausqSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type mcmcsd(mcmcsdSEXP);
     Rcpp::traits::input_parameter< int >::type mcmc_keep(mcmc_keepSEXP);
     Rcpp::traits::input_parameter< int >::type mcmc_burn(mcmc_burnSEXP);
     Rcpp::traits::input_parameter< int >::type mcmc_thin(mcmc_thinSEXP);
+    Rcpp::traits::input_parameter< int >::type mcmc_startfrom(mcmc_startfromSEXP);
     Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
     Rcpp::traits::input_parameter< bool >::type adapting(adaptingSEXP);
     Rcpp::traits::input_parameter< bool >::type forced_grid(forced_gridSEXP);
@@ -185,7 +220,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type sample_lambda(sample_lambdaSEXP);
     Rcpp::traits::input_parameter< bool >::type sample_theta(sample_thetaSEXP);
     Rcpp::traits::input_parameter< bool >::type sample_w(sample_wSEXP);
-    rcpp_result_gen = Rcpp::wrap(lmc_mgp_mcmc(y, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, sigmasq, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, num_threads, adapting, forced_grid, verbose, debug, print_every, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w));
+    rcpp_result_gen = Rcpp::wrap(lmc_mgp_mcmc(y, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, adapting, forced_grid, verbose, debug, print_every, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -227,6 +262,8 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_spmeshed_matern_halfint", (DL_FUNC) &_spmeshed_matern_halfint, 5},
     {"_spmeshed_gneiting2002", (DL_FUNC) &_spmeshed_gneiting2002, 6},
+    {"_spmeshed_Cov_matern", (DL_FUNC) &_spmeshed_Cov_matern, 8},
+    {"_spmeshed_Cov_matern_h", (DL_FUNC) &_spmeshed_Cov_matern_h, 5},
     {"_spmeshed_blanket", (DL_FUNC) &_spmeshed_blanket, 4},
     {"_spmeshed_coloring", (DL_FUNC) &_spmeshed_coloring, 3},
     {"_spmeshed_kthresholdscp", (DL_FUNC) &_spmeshed_kthresholdscp, 2},
@@ -235,7 +272,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spmeshed_mesh_graph_cpp", (DL_FUNC) &_spmeshed_mesh_graph_cpp, 3},
     {"_spmeshed_knn_naive", (DL_FUNC) &_spmeshed_knn_naive, 3},
     {"_spmeshed_mesh_graph_hyper", (DL_FUNC) &_spmeshed_mesh_graph_hyper, 7},
-    {"_spmeshed_lmc_mgp_mcmc", (DL_FUNC) &_spmeshed_lmc_mgp_mcmc, 33},
+    {"_spmeshed_lmc_mgp_mcmc", (DL_FUNC) &_spmeshed_lmc_mgp_mcmc, 35},
     {"_spmeshed_cube_tcrossprod", (DL_FUNC) &_spmeshed_cube_tcrossprod, 1},
     {"_spmeshed_summary_list_mean", (DL_FUNC) &_spmeshed_summary_list_mean, 1},
     {"_spmeshed_summary_list_q", (DL_FUNC) &_spmeshed_summary_list_q, 2},

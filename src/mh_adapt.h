@@ -185,9 +185,13 @@ inline RAMAdapt::RAMAdapt(int npars, const arma::mat& metropolis_sd, double targ
   gamma = 0.5 + 1e-6;
   Ip = arma::eye(p,p);
   g0 = 100;
-  S = metropolis_sd;
+  S = metropolis_sd * metropolis_sd.t();
   
   paramsd = arma::chol(S, "lower");
+  
+  //Rcpp::Rcout << "starting paramsd: " << endl;
+  //Rcpp::Rcout << paramsd << endl;
+  
   prodparam = paramsd / (g0 + 1.0);
   started = false;
   
@@ -222,7 +226,9 @@ inline void RAMAdapt::adapt(const arma::vec& U, double alpha, int mc){
   if(mc < g0){
     prodparam += U * U.t() / (mc + 1.0);
   } else {
-    if(!started){
+    if(!started & (mc < 2*g0)){
+      // if mc > 2*g0 this is being called from a restarted mcmc
+      // (and if not, it would make no difference since g0 is small)
       paramsd = prodparam;
       started = true;
     }
@@ -235,6 +241,9 @@ inline void RAMAdapt::adapt(const arma::vec& U, double alpha, int mc){
     S = paramsd * Sigma * paramsd.t();
     //Rcpp::Rcout << "S: " << endl << S;
     paramsd = arma::chol(S, "lower");
+    
+    //Rcpp::Rcout << "mc: " << mc << " paramsd: " << endl;
+    //Rcpp::Rcout << paramsd << endl;
   }
 }
 

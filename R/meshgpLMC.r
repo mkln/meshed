@@ -7,10 +7,13 @@ meshedgp <- function(y, x, coords, k=NULL,
                    n_thin = 1,
                    n_threads = 4,
                    print_every = NULL,
-                   settings    = list(adapting=T, mcmcsd=.05, forced_grid=NULL),
+                   settings    = list(adapting=T, forced_grid=NULL, saving=F),
                    prior       = list(beta=NULL, tausq=NULL,
-                                      toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
-                   starting    = list(beta=NULL, tausq=NULL, theta=NULL, w=NULL),
+                                      toplim = NULL, btmlim = NULL, set_unif_bounds=NULL,
+                                      matern_nu=F),
+                   starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, w=NULL, 
+                                      mcmcsd=.05, 
+                                      mcmc_startfrom=0),
                    debug       = list(sample_beta=T, sample_tausq=T, 
                                       sample_theta=T, sample_w=T, sample_lambda=T,
                                       verbose=F, debug=F)
@@ -24,10 +27,10 @@ meshedgp <- function(y, x, coords, k=NULL,
     n_burnin <- 1
     n_thin <- 1
     n_threads <- 10
-    settings    = list(adapting=T, mcmcsd=.05, forced_grid=NULL)
+    settings    = list(adapting=T, forced_grid=NULL, saving=F)
     prior       = list(beta=NULL, tausq=NULL,
                        toplim = NULL, btmlim = NULL, set_unif_bounds=NULL)
-    starting    = list(beta=NULL, tausq=NULL, theta=NULL, w=NULL)
+    starting    = list(beta=NULL, tausq=NULL, theta=NULL, w=NULL, mcmc_startfrom=0, mcmcsd=.05)
     debug       = list(sample_beta=T, sample_tausq=T, 
                        sample_theta=T, sample_w=T, sample_lambda=T,
                        verbose=F, debug=F, print_every=1)
@@ -56,9 +59,9 @@ meshedgp <- function(y, x, coords, k=NULL,
     mcmc_thin <- n_thin
     
     mcmc_adaptive    <- settings$adapting %>% set_default(T)
-    
     mcmc_verbose     <- debug$verbose %>% set_default(F)
     mcmc_debug       <- debug$debug %>% set_default(F)
+    saving <- settings$saving %>% set_default(F)
     
     dd             <- ncol(coords)
     p              <- ncol(x)
@@ -78,10 +81,10 @@ meshedgp <- function(y, x, coords, k=NULL,
     
     effective_dimension <- prod(dim(y))
     if(is.null(print_every)){
-      if(effective_dimension > 1e6){
+      if(effective_dimension > 1e6-1){
         mcmc_print_every <- 5
       } else {
-        if(effective_dimension > 1e5){
+        if(effective_dimension > 1e5-1){
           mcmc_print_every <- 50
         } else {
           mcmc_print_every <- 500
@@ -107,8 +110,8 @@ meshedgp <- function(y, x, coords, k=NULL,
     
     q              <- ncol(y)
     k              <- ifelse(is.null(k), q, k)
-    # for spatial data: matern, for spacetime: gneiting 2002 
-    n_par_each_process <- ifelse(dd==2, 1, 3) 
+    # for spatial data: matern or expon, for spacetime: gneiting 2002 
+    #n_par_each_process <- ifelse(dd==2, 1, 3) 
     
     nr             <- nrow(x)
     
@@ -155,91 +158,13 @@ meshedgp <- function(y, x, coords, k=NULL,
       }
     }
     
-    sample_w       <- debug$sample_w
-    sample_beta    <- debug$sample_beta
-    sample_tausq   <- debug$sample_tausq
-    sample_theta   <- debug$sample_theta
-    sample_lambda  <- debug$sample_lambda
-    
-    if(is.null(starting$beta)){
-      start_beta   <- rep(0, p)
-    } else {
-      start_beta   <- starting$beta
-    }
-    
-    if(is.null(prior$btmlim)){
-      btmlim <- 1e-2
-    } else {
-      btmlim <- prior$btmlim
-    }
-    
-    if(is.null(prior$toplim)){
-      toplim <- 1e2
-    } else {
-      toplim <- prior$toplim
-    }
-    
-    if(is.null(prior$set_unif_bounds)){
-      if(dd == 2){
-        start_theta <- matrix(2, ncol=k, nrow=1) 
-        
-        set_unif_bounds <- matrix(0, nrow=k, ncol=2)
-        set_unif_bounds[,1] <- btmlim
-        set_unif_bounds[,2] <- toplim
-      } else {
-        start_theta <- matrix(2, ncol=k, nrow=3) 
-        start_theta[3,] <- .5 # separability parameter
-        
-        set_unif_bounds <- matrix(0, nrow=3*k, ncol=2)
-        set_unif_bounds[,1] <- btmlim
-        set_unif_bounds[,2] <- toplim
-        set_unif_bounds[3*(1:k),] <- matrix(c(btmlim, 1-btmlim),nrow=1) %x% matrix(1, nrow=k)
-        
-      }
-      
-    } else {
-      set_unif_bounds <- prior$set_unif_bounds
-    }
-    
-    if(!is.null(starting$theta)){
-      start_theta <- starting$theta
-    }
-    
-    if(is.null(prior$beta)){
-      beta_Vi <- diag(ncol(x)) * 1/100
-    } else {
-      beta_Vi <- prior$beta
-    }
-    
-    if(is.null(prior$tausq)){
-      tausq_ab <- c(2.01, 1)
-    } else {
-      tausq_ab <- prior$tausq
-    }
-    
-    if(length(settings$mcmcsd) == 1){
-      mcmc_mh_sd <- diag(k * n_par_each_process) * settings$mcmcsd
-    } else {
-      mcmc_mh_sd <- settings$mcmcsd
-    }
-    
-    if(is.null(starting$tausq)){
-      start_tausq  <- .1
-    } else {
-      start_tausq    <- starting$tausq
-    }
-    
-    if(is.null(starting$sigmasq)){
-      start_sigmasq <- 10
-    } else {
-      start_sigmasq  <- starting$sigmasq
-    }
-    
-    if(is.null(starting$w)){
-      start_w <- rep(0, nrow(coords))
-    } else {
-      start_w <- starting$w #%>% matrix(ncol=q)
-    }
+    # what are we sampling
+    sample_w       <- debug$sample_w %>% set_default(T)
+    sample_beta    <- debug$sample_beta %>% set_default(T)
+    sample_tausq   <- debug$sample_tausq %>% set_default(T)
+    sample_theta   <- debug$sample_theta %>% set_default(T)
+    sample_lambda  <- debug$sample_lambda %>% set_default(T)
+
   }
 
   # data management pt 2
@@ -327,6 +252,7 @@ meshedgp <- function(y, x, coords, k=NULL,
       
       coords_blocking %<>% dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
     }
+    
   }
   nr_full <- nrow(coords_blocking)
   
@@ -365,7 +291,124 @@ meshedgp <- function(y, x, coords, k=NULL,
     indexing_obs <- indexing_grid
   }
   
-  start_w <- rep(0, nrow(simdata_in))
+  
+  if(T){
+    # prior and starting values for mcmc
+    matern_nu <- prior$matern_nu %>% set_default(F)
+    
+    if(is.null(prior$beta)){
+      beta_Vi <- diag(ncol(x)) * 1/100
+    } else {
+      beta_Vi <- prior$beta
+    }
+    
+    if(is.null(prior$tausq)){
+      tausq_ab <- c(2.01, 1)
+    } else {
+      tausq_ab <- prior$tausq
+    }
+    
+    if(is.null(prior$btmlim)){
+      btmlim <- 1e-2
+    } else {
+      btmlim <- prior$btmlim
+    }
+    
+    if(is.null(prior$toplim)){
+      toplim <- 1e2
+    } else {
+      toplim <- prior$toplim
+    }
+    
+    # starting values
+    if(is.null(starting$beta)){
+      start_beta   <- matrix(0, nrow=p, ncol=q)
+    } else {
+      start_beta   <- starting$beta
+    }
+    
+    if(is.null(prior$set_unif_bounds)){
+      if(dd == 2){
+        if(matern_nu){
+          start_theta <- matrix(2, ncol=k, nrow=2) 
+          start_theta[2,] <- 0.5
+          
+          set_unif_bounds <- matrix(0, nrow=2*k, ncol=2)
+          set_unif_bounds[1,1] <- btmlim
+          set_unif_bounds[1,2] <- toplim
+          set_unif_bounds[2*(1:k),] <- matrix(c(0.1, 5-1e-3),nrow=1) %x% matrix(1, nrow=k)
+          
+        } else {
+          start_theta <- matrix(2, ncol=k, nrow=1) 
+          
+          set_unif_bounds <- matrix(0, nrow=k, ncol=2)
+          set_unif_bounds[,1] <- btmlim
+          set_unif_bounds[,2] <- toplim
+        }
+        
+      } else {
+        start_theta <- matrix(2, ncol=k, nrow=3) 
+        start_theta[3,] <- .5 # separability parameter
+        
+        set_unif_bounds <- matrix(0, nrow=3*k, ncol=2)
+        set_unif_bounds[,1] <- btmlim
+        set_unif_bounds[,2] <- toplim
+        set_unif_bounds[3*(1:k),] <- matrix(c(btmlim, 1-btmlim),nrow=1) %x% matrix(1, nrow=k)
+        
+      }
+      
+    } else {
+      set_unif_bounds <- prior$set_unif_bounds
+    }
+    
+    # override defaults if starting values are provided
+    if(!is.null(starting$theta)){
+      start_theta <- starting$theta
+    }
+    
+    n_par_each_process <- nrow(start_theta)
+    if(length(starting$mcmcsd) == 1){
+      mcmc_mh_sd <- diag(k * n_par_each_process) * starting$mcmcsd
+    } else {
+      mcmc_mh_sd <- starting$mcmcsd
+    }
+    
+    if(is.null(starting$tausq)){
+      start_tausq  <- rep(.1, q)
+    } else {
+      start_tausq  <- starting$tausq
+    }
+    
+    if(is.null(starting$lambda)){
+      start_lambda <- matrix(0, nrow=q, ncol=k)
+      diag(start_lambda) <- 10
+    } else {
+      start_lambda <- starting$lambda
+    }
+    
+    if(is.null(starting$lambda_mask)){
+      lambda_mask <- matrix(0, nrow=q, ncol=k)
+      lambda_mask[lower.tri(lambda_mask)] <- 1
+      diag(lambda_mask) <- 1
+    } else {
+      lambda_mask <- starting$lambda_mask
+    }
+    
+    if(is.null(starting$mcmc_startfrom)){
+      mcmc_startfrom <- 0
+    } else {
+      mcmc_startfrom <- starting$mcmc_startfrom
+    }
+    
+    if(is.null(starting$w)){
+      start_w <- matrix(0, nrow = nrow(simdata_in), ncol = k)
+    } else {
+      # this is used to restart MCMC
+      # assumes the ordering and the sizing is correct, 
+      # so no change is necessary and will be input directly to mcmc
+      start_w <- starting$w #%>% matrix(ncol=q)
+    }
+  }
   
   # finally prepare data
   sort_ix <- simdata_in$ix
@@ -405,7 +448,10 @@ meshedgp <- function(y, x, coords, k=NULL,
                               tausq_ab,
                               
                               start_w, 
-                              start_sigmasq,
+                          
+                              start_lambda,
+                              lambda_mask,
+                          
                               start_theta,
                               start_beta,
                               start_tausq,
@@ -413,6 +459,8 @@ meshedgp <- function(y, x, coords, k=NULL,
                               mcmc_mh_sd,
                               
                               mcmc_keep, mcmc_burn, mcmc_thin,
+                          
+                              mcmc_startfrom,
                               
                               n_threads,
                               
@@ -429,14 +477,189 @@ meshedgp <- function(y, x, coords, k=NULL,
                               sample_theta, sample_w) 
     })
   
+  if(saving){
+    
+    listN <- function(...){
+      anonList <- list(...)
+      names(anonList) <- as.character(substitute(list(...)))[-1]
+      anonList
+    }
+    
+    saved <- listN(y, x, coords, k,
+      
+      parents, children, 
+      block_names, block_groups,
+      
+      indexing_grid, indexing_obs,
+      
+      set_unif_bounds,
+      beta_Vi, 
+      
+      tausq_ab,
+      
+      start_w, 
+      
+      start_lambda,
+      lambda_mask,
+      
+      start_theta,
+      start_beta,
+      start_tausq,
+      
+      mcmc_mh_sd,
+      
+      mcmc_keep, mcmc_burn, mcmc_thin,
+      
+      mcmc_startfrom,
+      
+      n_threads,
+      
+      mcmc_adaptive, # adapting
+      
+      use_forced_grid,
+      
+      mcmc_verbose, mcmc_debug, # verbose, debug
+      mcmc_print_every, # print all iter
+      # sampling of:
+      # beta tausq sigmasq theta w
+      sample_beta, sample_tausq, 
+      sample_lambda,
+      sample_theta, sample_w)
+  } else {
+    saved <- "Model data not saved."
+  }
+  
   coords_renamer <- colnames(coords)
   names(coords_renamer) <- orig_coords_colnames
   
   returning <- list(coordsdata = simdata_in %>% 
                       dplyr::select(1:dd, .data$thegrid) %>%
                       dplyr::rename(!!!coords_renamer,
-                        forced_grid=.data$thegrid)) %>% 
+                        forced_grid=.data$thegrid),
+                    savedata = saved) %>% 
     c(results)
   return(returning) 
     
+}
+
+
+meshedgp_restart <- function(meshedgp_output, 
+                             n_samples = 1000,
+                             n_thin = NULL,
+                             print_every = NULL){
+  
+  # assumes no burnin -- isnt that the whole point?
+  
+  list2env(meshedgp_output, env = environment())
+  list2env(meshedgp_output$savedata, env = environment())
+
+  # update starting values based on previous chain
+  n_tot_mcmc <- dim(beta_mcmc)[3]
+  
+  p <- ncol(x)
+  q <- ncol(y)
+  
+  start_beta <- beta_mcmc[,, n_tot_mcmc] %>% matrix(ncol=q)
+  start_tausq <- tausq_mcmc[, n_tot_mcmc] %>% matrix(ncol=q)
+  start_theta <- theta_mcmc[,, n_tot_mcmc] %>% matrix(ncol=k)
+  start_w <- w_mcmc[[mcmc_keep]] %>% matrix(ncol=k)   
+  start_lambda <- lambda_mcmc[,, n_tot_mcmc] %>% matrix(ncol=k)
+  
+  mcmc_startfrom <- n_tot_mcmc
+  mcmc_mh_sd <- paramsd
+  
+  # new mcmc setup
+  if(!is.null(print_every)){
+    mcmc_print_every <- print_every
+  }
+  if(!is.null(n_thin)){
+    mcmc_thin <- n_thin
+  }
+  
+  mcmc_burn <- 0
+  mcmc_keep <- n_samples
+  
+  cat("Sending to MCMC > ")
+  
+  mcmc_run <- lmc_mgp_mcmc
+  comp_time <- system.time({
+    results <- mcmc_run(y, x, coords, k,
+                        
+                        parents, children, 
+                        block_names, block_groups,
+                        
+                        indexing_grid, indexing_obs,
+                        
+                        set_unif_bounds,
+                        beta_Vi, 
+                        
+                        tausq_ab,
+                        
+                        start_w, 
+                        
+                        start_lambda,
+                        lambda_mask,
+                        
+                        start_theta,
+                        start_beta,
+                        start_tausq,
+                        
+                        mcmc_mh_sd,
+                        
+                        mcmc_keep, mcmc_burn, mcmc_thin,
+                        
+                        mcmc_startfrom,
+                        
+                        n_threads,
+                        
+                        mcmc_adaptive, # adapting
+                        
+                        use_forced_grid,
+                        
+                        mcmc_verbose, mcmc_debug, # verbose, debug
+                        mcmc_print_every, # print all iter
+                        # sampling of:
+                        # beta tausq sigmasq theta w
+                        sample_beta, sample_tausq, 
+                        sample_lambda,
+                        sample_theta, sample_w) 
+  })
+
+  listN <- function(...){
+    anonList <- list(...)
+    names(anonList) <- as.character(substitute(list(...)))[-1]
+    anonList
+  }
+  
+  saved <- listN(y, x, coords, k,
+                 parents, children, 
+                 block_names, block_groups,
+                 indexing_grid, indexing_obs,
+                 set_unif_bounds,
+                 beta_Vi, 
+                 tausq_ab,
+                 start_w, 
+                 start_lambda,
+                 lambda_mask,
+                 start_theta,
+                 start_beta,
+                 start_tausq,
+                 mcmc_mh_sd,
+                 mcmc_keep, mcmc_burn, mcmc_thin,
+                 mcmc_startfrom,
+                 n_threads,
+                 mcmc_adaptive, # adapting
+                 use_forced_grid,
+                 mcmc_verbose, mcmc_debug, # verbose, debug
+                 mcmc_print_every, # print all iter
+                 # sampling of:
+                 # beta tausq sigmasq theta w
+                 sample_beta, sample_tausq, 
+                 sample_lambda,
+                 sample_theta, sample_w)
+
+  returning <- list(coordsdata = coordsdata,
+                    savedata = saved) %>% 
+    c(results)
+  return(returning) 
 }

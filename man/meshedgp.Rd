@@ -14,13 +14,16 @@ meshedgp(y, x, coords, k=NULL,
   n_thin = 1,
   n_threads = 4,
   print_every = NULL,
-  settings    = list(adapting=T, mcmcsd=.05, forced_grid=NULL),
+  settings    = list(adapting=T, forced_grid=NULL, saving=F),
   prior       = list(beta=NULL, tausq=NULL,
-                     toplim=NULL, btmlim=NULL, set_unif_bounds=NULL),
-  starting    = list(beta=NULL, tausq=NULL, theta=NULL, w=NULL),
+                      toplim = NULL, btmlim = NULL, set_unif_bounds=NULL,
+                      matern_nu=F),
+  starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, w=NULL, 
+                      mcmcsd=.05, 
+                      mcmc_startfrom=0),
   debug       = list(sample_beta=T, sample_tausq=T, 
-                     sample_theta=T, sample_w=T, sample_lambda=T,
-                     verbose=F, debug=F)
+                      sample_theta=T, sample_w=T, sample_lambda=T,
+                      verbose=F, debug=F)
 )
 }
 \arguments{
@@ -47,20 +50,21 @@ This parameter is ignored if \code{settings$forced_grid = F} in which case the d
 
 \item{n_thin}{integer thinning parameter for the MCMC chain. Only the chain of latent effects is thinned to save memory in big data problems. Chains for other unknowns are not thinned and thus will be longer.}
 
-\item{n_threads}{integer number of OpenMP threads.}
+\item{n_threads}{integer number of OpenMP threads. This is ineffective if \code{spmeshed} was not compiled with OpenMP support.}
 
 \item{print_every}{integer number of MCMC iterations separating each info message. The info message includes percentage completion, timing, estimated time remaining, MCMC acceptance, and current values of some unknowns.}
 
-\item{settings}{list: \code{settings$adapting} turns the adaptation of MCMC on/off, \code{settings$mcmcsd} is the initial standard deviation of proposals, \code{settings$forced_grid} determines whether or not to use the data grid or a forced grid; if unspecified, the function will try to see what the data look like. Note: if \code{forced_grid=F} and \eqn{n} is very large and \eqn{coords} are irregularly spaced, then expect slowdowns in preprocessing and consider using \code{forced_grid=T} instead.}
+\item{settings}{list: \code{settings$adapting} turns the adaptation of MCMC on/off, \code{settings$forced_grid} determines whether or not to use the data grid or a forced grid; if unspecified, the function will try to see what the data look like. Note: if \code{forced_grid=F} and \eqn{n} is very large and \eqn{coords} are irregularly spaced, then expect slowdowns in preprocessing and consider using \code{forced_grid=T} instead. \code{settings$saving} will save model data if set to \code{T} and MCMC can be automatically restarted using \code{meshedgp_restart}.}
 
 \item{prior}{list: setup for priors of unknown parameters. There is currently limited functionality here and some parameters are currently ignored. Defaults are: a vague Gaussian for \eqn{\beta}, \eqn{\Lambda_{i,j} \sim N(0,1)}, \eqn{\tau^2_i \sim IG(2,1)}, \eqn{\theta_j \sim IG(2,2)}, all subject to change.}
 
-\item{starting}{list: setup for starting values of unknown parameters. There is currently limited functionality here and some parameters (\code{w}) are currently ignored.}
+\item{starting}{list: setup for starting values of unknown parameters. \code{starting$mcmcsd} is the initial standard deviation of proposals. \code{starting$mcmc_startfrom} is input to the adaptive MCMC and can be used to manually restart MCMC without \code{meshedgp_restart}. There is currently limited functionality here and some parameters may be ignored.}
 
 \item{debug}{list: setup for debugging things. Some parts of MCMC can be turned off here.}
 }
 \value{
 \item{coordsdata}{A \code{data.frame} including the original \eqn{n} coordinates plus the \eqn{n_g} knot coordinates if the model was run on a forced grid. The additional column \code{forced_grid} has value 1 if the corresponding coordinate is a knot in the forced grid.}
+\item{savedata}{If \code{settings$saving==T}, this stores all model data for use in \code{meshedgp_restart}.}
 \item{yhat_mcmc}{A list of length \code{n_samples} whose elements are matrices of size \eqn{(n + n_g) \times q}. Each matrix in the list is a posterior sample of the latent spatial process. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{w}.}
 \item{w_mcmc}{A list of length \code{n_samples} whose elements are matrices of size \eqn{(n + n_g) \times k}. Each matrix in the list is a posterior sample of the latent spatial process. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{w}.}
 \item{beta_mcmc}{An array of size \code{(p, q, n_thin*n_samples)} with the posterior sample for the static regression coefficients \eqn{\beta}. The \eqn{j}th column of each \eqn{p \times q} matrix corresponds to the \eqn{p} linear effects on the \eqn{j}th outcome. The full chain minus burn-in is returned NOT thinned since \code{p} and \code{q} are relatively small.}
@@ -68,9 +72,11 @@ This parameter is ignored if \code{settings$forced_grid = F} in which case the d
 \item{theta_mcmc}{An array of size \code{(h, k, n_thin*n_samples)} with the posterior sample for the correlation function parameters \eqn{\theta}. \code{h} is 1 for spatial data (corresponding to the spatial decay of the exponential covariance), 3 for spacetime data (corresponding to temporal decay, spatial decay, and separability -- these are referred to as \eqn{a}, \eqn{c}, and \eqn{\beta} in Gneiting (2002), see \url{https://doi.org/10.1198/016214502760047113}). The full chain minus burn-in is returned NOT thinned since \code{h} and \code{k} are relatively small.}
 \item{lambda_mcmc}{An array of size \code{(q, k, n_thin*n_samples)}. Each \eqn{q\times k} matrix is a posterior sample for \eqn{\Lambda} in the coregionalization/factor model. In univariate models, this is usually called \eqn{\sigma}. The full chain minus burn-in is returned NOT thinned since \code{q} and \code{k} are relatively small.}
 \item{paramsd}{Cholesky factorization of the proposal covariance for adaptive MCMC, after adaptation.}
+\item{mcmc}{Total number of MCMC iterations performed.}
 \item{logpost}{Vector of size \code{n_thin*n_samples} storing \eqn{p(y | x, \beta, w, \tau^2)}.}
 \item{w_logdens}{Vector of size \code{n_thin*n_samples} storing \eqn{p(w | \theta)}.}
 \item{mcmc_time}{Time in seconds taken for MCMC (not including preprocessing).}
+\item{proposal_failures}{Number of proposals for \eqn{\theta} that resulted in numerical failures and were automatically rejected. This number should be small.}
 }
 
 \references{
