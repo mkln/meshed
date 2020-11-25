@@ -260,12 +260,6 @@ Rcpp::List lmc_mgp_mcmc(
         double prior_logratio = 0;
         double jacobian = 0;
         
-        if((mesh.param_data.theta.n_rows > 1) & (d == 2) & (q==1) & false){
-          // nu prior : gamma 5, 5
-          prior_logratio += gamma_logdens(theta_proposal(1, 0), 5.0, 5.0) -
-            gamma_logdens(param(1, 0), 5.0, 5.0);
-        }
-        
         if(acceptable){
           new_loglik = tempr*mesh.alter_data.loglik_w;
           current_loglik = tempr*mesh.param_data.loglik_w;

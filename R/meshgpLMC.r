@@ -2,6 +2,7 @@ meshedgp <- function(y, x, coords, k=NULL,
                      axis_partition = NULL, 
                      block_size = 30,
                      grid_size=NULL,
+                     grid = NULL,
                    n_samples = 1000,
                    n_burnin = 100,
                    n_thin = 1,
@@ -181,15 +182,19 @@ meshedgp <- function(y, x, coords, k=NULL,
     cat("\n")
     if(use_forced_grid){ 
       # user showed intention to use fixed grid
-      gs <- round(nrow(coords)^(1/ncol(coords)))
-      gsize <- if(is.null(grid_size)){ rep(gs, ncol(coords)) } else { grid_size }
-
-      xgrids <- list()
-      for(j in 1:dd){
-        xgrids[[j]] <- seq(min(coords[,j]), max(coords[,j]), length.out=gsize[j])
+      if(!is.null(grid)){
+        gridcoords_lmc <- grid
+      } else {
+        gs <- round(nrow(coords)^(1/ncol(coords)))
+        gsize <- if(is.null(grid_size)){ rep(gs, ncol(coords)) } else { grid_size }
+        
+        xgrids <- list()
+        for(j in 1:dd){
+          xgrids[[j]] <- seq(min(coords[,j]), max(coords[,j]), length.out=gsize[j])
+        }
+        
+        gridcoords_lmc <- expand.grid(xgrids)
       }
-      
-      gridcoords_lmc <- expand.grid(xgrids)
       
       cat("Forced grid built with {nrow(gridcoords_lmc)} locations." %>% glue::glue())
       cat("\n")

@@ -36,7 +36,7 @@ arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& 
   threadid = omp_get_thread_num();
 #endif
   
-  int bessel_ws_inc = 5; // nu+1 // increase?
+  int bessel_ws_inc = 10; // nu+1 // increase?
   double pow2_nu1_gammanu = pow(2.0, 1.0-nu) / R::gammafn(nu);
   
   arma::mat res = arma::zeros(x.n_rows, y.n_rows);
@@ -55,7 +55,7 @@ arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& 
       }
     }
     res = arma::symmatu(res);
-    res.diag() += 1e-10;
+    res.diag() += 1e-9;
   } else {
     for(int i=0; i<x.n_rows; i++){
       arma::rowvec cri = x.row(i);

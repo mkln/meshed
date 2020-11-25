@@ -5,10 +5,12 @@
 \deqn{ y(s) = x(s)^\top \beta + \Lambda w(s) + \epsilon(s), }
 where \eqn{y(s)} is a \eqn{q\times 1} vector of outcomes at spatial location \eqn{s}, \eqn{x(s)} is a \eqn{p\times 1} vector of covariates with static coefficients \eqn{\beta}, \eqn{\Lambda} is a \eqn{q \times k} matrix of factor loadings, \eqn{w(s)} is a \eqn{k \times 1} vector which collects the realization of independent Gaussian processes \eqn{w_j \sim MeshedGP(0, C_j)} for \eqn{j=1, \dots, k} and where \eqn{C_j(s, s')} is a correlation function. \eqn{s} is a coordinate in space (\eqn{d=2}) or space plus time (\eqn{d=3}). The Meshed GP implemented here associates an axis-parallel tessellation of the domain to a cubic directed acyclic graph (mesh).}
 \usage{
-meshedgp(y, x, coords, k=NULL,
+meshedgp(y, x, coords, 
+  k = NULL,
   axis_partition = NULL, 
   block_size = 30,
-  grid_size=NULL,
+  grid_size = NULL,
+  grid = NULL,
   n_samples = 1000,
   n_burnin = 100,
   n_thin = 1,
@@ -42,6 +44,9 @@ meshedgp(y, x, coords, k=NULL,
 \item{grid_size}{integer vector of size \eqn{d}: number of 'knots' of the reference grid along each axis. 
 This grid is then partitioned using either \code{axis_partition} or \code{block_size}.
 If unspecified, this is set so that the eventual grid size is close to \eqn{n}.
+This parameter is ignored if \code{settings$forced_grid = F} in which case the data are assumed to be on a grid.}
+
+\item{grid}{data.frame with user supplied grid of knots. No checks are made on the validity of this grid.
 This parameter is ignored if \code{settings$forced_grid = F} in which case the data are assumed to be on a grid.}
 
 \item{n_samples}{integer number of MCMC samples at which all the unknowns are stored (including the latent effects).}

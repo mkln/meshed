@@ -567,7 +567,7 @@ LMCMeshGP::LMCMeshGP(
   
   nThreads = num_threads;
 
-  int bessel_ws_inc = 5;
+  int bessel_ws_inc = 10;
   bessel_ws = (double *) R_alloc(nThreads*bessel_ws_inc, sizeof(double));
   
   // predict_initialize
