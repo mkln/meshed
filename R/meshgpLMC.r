@@ -336,7 +336,7 @@ meshedgp <- function(y, x, coords, k=NULL,
           set_unif_bounds <- matrix(0, nrow=2*k, ncol=2)
           set_unif_bounds[1,1] <- btmlim
           set_unif_bounds[1,2] <- toplim
-          set_unif_bounds[2*(1:k),] <- matrix(c(0.1, 5-1e-3),nrow=1) %x% matrix(1, nrow=k)
+          set_unif_bounds[2*(1:k),] <- matrix(c(0.1, 3-1e-3),nrow=1) %x% matrix(1, nrow=k)
           
         } else {
           start_theta <- matrix(2, ncol=k, nrow=1) 

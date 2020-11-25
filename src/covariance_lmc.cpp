@@ -4,10 +4,9 @@ using namespace std;
 
 arma::mat CmaternInv(const arma::mat& x,
                      const double& sigmasq,
-                     const double& effrange, const double& nu, 
+                     const double& phi, const double& nu, 
                      const double& tausq){
 
-  double phi = 2*sqrt(nu)/effrange;
   double pow2_nu1_gammanu = pow(2.0, 1.0-nu) / R::gammafn(nu);
   arma::mat res = arma::zeros(x.n_rows, x.n_rows);
   for(int i = 0; i < x.n_rows; i++){
@@ -63,58 +62,6 @@ arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& 
       for(int j=0; j<y.n_rows; j++){
         arma::rowvec delta = cri - y.row(j);
         double hphi = arma::norm(delta) * phi;
-        if(hphi > 0.0){
-          res(i, j) = pow(hphi, nu) * pow2_nu1_gammanu *
-            R::bessel_k_ex(hphi, nu, 1.0, &bessel_ws[threadid*bessel_ws_inc]);
-        } else {
-          res(i, j) = 1.0;
-        }
-      }
-    }
-  }
-  return res;
-}
-
-
-
-// matern
-arma::mat matern_effrange(const arma::mat& x, const arma::mat& y, const double& effrange, const double& nu, 
-                          double * bessel_ws,  bool same){
-  
-  int threadid;
-#ifdef _OPENMP
-  threadid = omp_get_thread_num();
-#endif
-  
-  int bessel_ws_inc = 5; // nu+1 // increase?
-  double pow2_nu1_gammanu = pow(2.0, 1.0-nu) / R::gammafn(nu);
-  double range_rescale = 2*sqrt(nu)/effrange;
-  
-  arma::mat res = arma::zeros(x.n_rows, y.n_rows);
-  if(same){
-    for(int i=0; i<x.n_rows; i++){
-      arma::rowvec cri = x.row(i);
-      for(int j=i; j<y.n_rows; j++){
-        arma::rowvec delta = cri - y.row(j);
-        double hphi = arma::norm(delta) * //phi *  // phi = 2 sqrt(nu) / effrange
-          range_rescale;
-        if(hphi > 0.0){
-          res(i, j) = pow(hphi, nu) * pow2_nu1_gammanu *
-            R::bessel_k_ex(hphi, nu, 1.0, &bessel_ws[threadid*bessel_ws_inc]);
-        } else {
-          res(i, j) = 1.0;
-        }
-      }
-    }
-    res = arma::symmatu(res);
-    res.diag() += 1e-6;
-  } else {
-    for(int i=0; i<x.n_rows; i++){
-      arma::rowvec cri = x.row(i);
-      for(int j=0; j<y.n_rows; j++){
-        arma::rowvec delta = cri - y.row(j);
-        double hphi = arma::norm(delta) * //phi *  // phi = 2 sqrt(nu) / effrange
-          range_rescale;
         if(hphi > 0.0){
           res(i, j) = pow(hphi, nu) * pow2_nu1_gammanu *
             R::bessel_k_ex(hphi, nu, 1.0, &bessel_ws[threadid*bessel_ws_inc]);
@@ -266,12 +213,10 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y,
       return matern_halfint(x, y, theta(0), same, 1)/theta(0);
     } else {
       //double reparam = theta(0); // without effective range
-      double phi = (2 * sqrt(theta(1)))/theta(0); // theta(0) is effective range, here we need phi;
-        //theta(0);
+      double phi = theta(0);
       // we divide by phi given the equivalence in 
       // zhang 2004, corrollary to Thm.2: 
-      //return matern_internal(x, y, theta(0), theta(1), bessel_ws, same)/phi;
-      return matern_effrange(x, y, theta(0), theta(1), bessel_ws, same)/phi;
+      return matern_internal(x, y, theta(0), theta(1), bessel_ws, same)/phi;
     }
     //return squaredexp(x, y, theta(0), same)/theta(0);
   } else {

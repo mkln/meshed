@@ -5,28 +5,11 @@
 #include "mgp_utils.h"
 
 arma::mat reparametrize_theta_back(const arma::mat& theta_in, int d){
-  if((theta_in.n_rows > 1) & true){
-    // using dave hale's range scaling so let's go back
-    arma::mat phi_nu = theta_in;
-    // theta(0) is effective range; phi = 2*sqrt(nu) / effective range
-    phi_nu.row(0) = 2.0 * sqrt(phi_nu.row(1)) / phi_nu.row(0);
-    return phi_nu;
-  } else {
-    // exponential covariance, no change
-    return theta_in;
-  }
+  return theta_in;
 }
 
-arma::mat reparametrize_theta_forward(const arma::mat& phi_nu, int d){
-  if((phi_nu.n_rows > 1) & true){
-    arma::mat theta = phi_nu;
-    // theta(0) is effective range; effective range  = 2*sqrt(nu) / phi
-    theta.row(0) = 2*sqrt(theta.row(1)) / theta.row(0);
-    return theta;
-  } else {
-    // exponential covariance, no change
-    return phi_nu;
-  }
+arma::mat reparametrize_theta_forward(const arma::mat& theta_in, int d){
+  return theta_in;
 }
 
 arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arma::mat& theta, int d){
@@ -48,9 +31,6 @@ arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arma::mat&
       reparametrizer = arma::diagmat(rdiag); 
     } else {*/
       // zhang 2004 corollary to theorem 2.
-      // plus dave hale's  2013 scaling
-      // theta(0) is effective range; phi = 2*sqrt(nu) / effective range
-      //arma::vec phi = 2 * sqrt(theta.row(1)) / theta.row(0);
       reparametrizer = arma::diagmat(pow(
         theta.row(0), - 1.0 / 2.0)); 
     //}
@@ -280,6 +260,12 @@ Rcpp::List lmc_mgp_mcmc(
         double prior_logratio = 0;
         double jacobian = 0;
         
+        if((mesh.param_data.theta.n_rows > 1) & (d == 2) & (q==1) & false){
+          // nu prior : gamma 5, 5
+          prior_logratio += gamma_logdens(theta_proposal(1, 0), 5.0, 5.0) -
+            gamma_logdens(param(1, 0), 5.0, 5.0);
+        }
+        
         if(acceptable){
           new_loglik = tempr*mesh.alter_data.loglik_w;
           current_loglik = tempr*mesh.param_data.loglik_w;
@@ -287,7 +273,7 @@ Rcpp::List lmc_mgp_mcmc(
           prior_logratio = calc_prior_logratio(new_param, param);
           jacobian  = calc_jacobian(new_param, param, set_unif_bounds);
           logaccept = new_loglik - current_loglik + 
-            //prior_logratio +
+            prior_logratio +
             jacobian;
 
           if(std::isnan(logaccept)){
@@ -429,8 +415,6 @@ Rcpp::List lmc_mgp_mcmc(
         tausq_mcmc.col(w_saved) = 1.0 / mesh.tausq_inv;
         b_mcmc.slice(w_saved) = mesh.Bcoeff;
         
-        // save parameters as they are meant
-        // dave hale's rescaling
         theta_mcmc.slice(w_saved) = reparametrize_theta_back(mesh.param_data.theta, d);
         // lambda here reconstructs based on 1/phi Matern reparametrization
         lambda_mcmc.slice(w_saved) = reparametrize_lambda_back(mesh.Lambda, theta_mcmc.slice(w_saved), d);
