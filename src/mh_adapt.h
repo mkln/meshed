@@ -10,6 +10,9 @@ const double rho_min = 5;
 
 
 inline bool do_I_accept(double logaccept){ //, string name_accept, string name_count, List mcmc_pars){
+  double u = R::runif(0,1);//arma::randu();
+  return exp(logaccept) > u;// 
+  /*
   double acceptj = 1.0;
   if(!arma::is_finite(logaccept)){
     acceptj = 0.0;
@@ -24,7 +27,7 @@ inline bool do_I_accept(double logaccept){ //, string name_accept, string name_c
     return true;
   } else {
     return false;
-  }
+  }*/
 }
 
 inline double logistic(double x, double l=0, double u=1){
@@ -79,11 +82,11 @@ inline bool unif_bounds(arma::vec& par, const arma::mat& bounds){
     arma::rowvec ibounds = bounds.row(i);
     if( par(i) < ibounds(0) ){
       out_of_bounds = true;
-      par(i) = ibounds(0) + 1e-10;
+      par(i) = ibounds(0) + 1e-1;
     }
     if( par(i) > ibounds(1) ){
       out_of_bounds = true;
-      par(i) = ibounds(1) - 1e-10;
+      par(i) = ibounds(1) - 1e-1;
     }
   }
   return out_of_bounds;
@@ -128,13 +131,13 @@ inline double calc_jacobian(const arma::vec& new_param, const arma::vec& param,
 
 
 inline double calc_prior_logratio(const arma::vec& new_param, 
-                            const arma::vec& param){
+                            const arma::vec& param, double a=2.01, double b=1){
   
   double plr=0;
   for(int j=0; j<param.n_elem; j++){
     plr += 
-      invgamma_logdens(new_param(0), 2.01, 1.0) -
-      invgamma_logdens(param(0), 2.01, 1.0);
+      invgamma_logdens(new_param(0), a, b) -
+      invgamma_logdens(param(0), a, b);
   }
   return plr;
 }
@@ -143,6 +146,8 @@ inline double calc_prior_logratio(const arma::vec& new_param,
 
 class RAMAdapt {
 public:
+  
+  arma::mat starting_sd;
   
   // Robust adaptive MCMC Vihala 2012
   int p;
@@ -171,6 +176,7 @@ public:
   void count_proposal();
   void count_accepted();
   void update_ratios();
+  void reset();
   void adapt(const arma::vec&, double, int);
   void print(int itertime, int mc);
   void print_summary(int time_tick, int time_mcmc, int m, int mcmc);
@@ -180,6 +186,8 @@ public:
 };
 
 inline RAMAdapt::RAMAdapt(int npars, const arma::mat& metropolis_sd, double target_accept=.234){
+  starting_sd = metropolis_sd;
+  
   p = npars;
   alpha_star = target_accept;
   gamma = 0.5 + 1e-6;
@@ -191,6 +199,21 @@ inline RAMAdapt::RAMAdapt(int npars, const arma::mat& metropolis_sd, double targ
   
   //Rcpp::Rcout << "starting paramsd: " << endl;
   //Rcpp::Rcout << paramsd << endl;
+  
+  prodparam = paramsd / (g0 + 1.0);
+  started = false;
+  
+  propos_count = 0;
+  accept_count = 0;
+  accept_ratio = 0;
+  history_length = 200;
+  acceptreject_history = arma::zeros(history_length);
+  c = 0;
+}
+
+inline void RAMAdapt::reset(){
+  S = starting_sd * starting_sd.t();
+  paramsd = arma::chol(S, "lower");
   
   prodparam = paramsd / (g0 + 1.0);
   started = false;
@@ -223,16 +246,16 @@ inline void RAMAdapt::update_ratios(){
 }
 
 inline void RAMAdapt::adapt(const arma::vec& U, double alpha, int mc){
-  if(mc < g0){
+  if(c < g0){
     prodparam += U * U.t() / (mc + 1.0);
   } else {
-    if(!started & (mc < 2*g0)){
+    if(!started & (c < 2*g0)){
       // if mc > 2*g0 this is being called from a restarted mcmc
       // (and if not, it would make no difference since g0 is small)
       paramsd = prodparam;
       started = true;
     }
-    i = mc-g0;
+    i = c-g0;
     eta = min(1.0, (p+.0) * pow(i+1.0, -gamma));
     alpha = std::min(1.0, alpha);
     

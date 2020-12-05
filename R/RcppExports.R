@@ -49,8 +49,8 @@ mesh_graph_hyper <- function(bucbl, bavail, na_which, centroids, avcentroids, av
     .Call(`_spmeshed_mesh_graph_hyper`, bucbl, bavail, na_which, centroids, avcentroids, avblocks, k)
 }
 
-lmc_mgp_mcmc <- function(y, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, mcmc_startfrom = 0L, num_threads = 1L, adapting = FALSE, forced_grid = TRUE, verbose = FALSE, debug = FALSE, print_every = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_lambda = TRUE, sample_theta = TRUE, sample_w = TRUE) {
-    .Call(`_spmeshed_lmc_mgp_mcmc`, y, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, tausq_ab, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, adapting, forced_grid, verbose, debug, print_every, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w)
+lmc_mgp_mcmc <- function(y, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, mcmc_startfrom = 0L, num_threads = 1L, adapting = FALSE, forced_grid = TRUE, verbose = FALSE, debug = FALSE, print_every = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_lambda = TRUE, sample_theta = TRUE, sample_w = TRUE) {
+    .Call(`_spmeshed_lmc_mgp_mcmc`, y, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, adapting, forced_grid, verbose, debug, print_every, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w)
 }
 
 cube_tcrossprod <- function(x) {

@@ -8,9 +8,10 @@ meshedgp <- function(y, x, coords, k=NULL,
                    n_thin = 1,
                    n_threads = 4,
                    print_every = NULL,
-                   settings    = list(adapting=T, forced_grid=NULL, saving=F),
+                   settings    = list(adapting=T, forced_grid=NULL, saving=F, nu=0.5),
                    prior       = list(beta=NULL, tausq=NULL,
                                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL,
+                                      nu = NULL,
                                       matern_nu=F),
                    starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, w=NULL, 
                                       mcmcsd=.05, 
@@ -29,7 +30,7 @@ meshedgp <- function(y, x, coords, k=NULL,
     n_thin <- 1
     n_threads <- 10
     settings    = list(adapting=T, forced_grid=NULL, saving=F)
-    prior       = list(beta=NULL, tausq=NULL,
+    prior       = list(beta=NULL, tausq=NULL, nu=NULL,
                        toplim = NULL, btmlim = NULL, set_unif_bounds=NULL)
     starting    = list(beta=NULL, tausq=NULL, theta=NULL, w=NULL, mcmc_startfrom=0, mcmcsd=.05)
     debug       = list(sample_beta=T, sample_tausq=T, 
@@ -63,6 +64,12 @@ meshedgp <- function(y, x, coords, k=NULL,
     mcmc_verbose     <- debug$verbose %>% set_default(F)
     mcmc_debug       <- debug$debug %>% set_default(F)
     saving <- settings$saving %>% set_default(F)
+    
+    if(is.null(settings$nu)){
+      matern_fix_twonu <- 0.5
+    } else {
+      matern_fix_twonu <- round(settings$nu * 2)
+    }
     
     dd             <- ncol(coords)
     p              <- ncol(x)
@@ -336,15 +343,21 @@ meshedgp <- function(y, x, coords, k=NULL,
       if(dd == 2){
         if(matern_nu){
           start_theta <- matrix(2, ncol=k, nrow=2) 
-          start_theta[2,] <- 0.5
+          
+          if(is.null(prior$nu)){
+            nu_limits <- c(0.1, 3-1e-3)
+          } else {
+            nu_limits <- prior$nu
+          }
           
           set_unif_bounds <- matrix(0, nrow=2*k, ncol=2)
           set_unif_bounds[1,1] <- btmlim
           set_unif_bounds[1,2] <- toplim
-          set_unif_bounds[2*(1:k),] <- matrix(c(0.1, 3-1e-3),nrow=1) %x% matrix(1, nrow=k)
+          set_unif_bounds[2*(1:k),] <- matrix(nu_limits,nrow=1) %x% matrix(1, nrow=k)
           
+          start_theta[2,] <- mean(nu_limits)
         } else {
-          start_theta <- matrix(2, ncol=k, nrow=1) 
+          start_theta <- matrix(mean(c(btmlim, toplim)), ncol=k, nrow=1) 
           
           set_unif_bounds <- matrix(0, nrow=k, ncol=2)
           set_unif_bounds[,1] <- btmlim
@@ -451,6 +464,8 @@ meshedgp <- function(y, x, coords, k=NULL,
                               beta_Vi, 
                               
                               tausq_ab,
+                          
+                              matern_fix_twonu,
                               
                               start_w, 
                           
@@ -541,7 +556,8 @@ meshedgp <- function(y, x, coords, k=NULL,
                       dplyr::select(1:dd, .data$thegrid) %>%
                       dplyr::rename(!!!coords_renamer,
                         forced_grid=.data$thegrid),
-                    savedata = saved) %>% 
+                    savedata = saved,
+                    coordsblocking = coords_blocking) %>% 
     c(results)
   return(returning) 
     

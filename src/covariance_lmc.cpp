@@ -29,14 +29,14 @@ arma::mat CmaternInv(const arma::mat& x,
 
 // matern
 arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& phi, const double& nu, 
-                 double * bessel_ws,  bool same){
+                 double * bessel_ws, const double& nugginside=1e-7,  bool same=false){
   
   int threadid;
 #ifdef _OPENMP
   threadid = omp_get_thread_num();
 #endif
   
-  int bessel_ws_inc = 10; // nu+1 // increase?
+  int bessel_ws_inc = 3; // nu+1 // increase?
   double pow2_nu1_gammanu = pow(2.0, 1.0-nu) / R::gammafn(nu);
   
   arma::mat res = arma::zeros(x.n_rows, y.n_rows);
@@ -50,12 +50,11 @@ arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& 
           res(i, j) = pow(hphi, nu) * pow2_nu1_gammanu *
             R::bessel_k_ex(hphi, nu, 1.0, &bessel_ws[threadid*bessel_ws_inc]);
         } else {
-          res(i, j) = 1.0;
+          res(i, j) = 1.0 + nugginside;
         }
       }
     }
     res = arma::symmatu(res);
-    res.diag() += 1e-9;
   } else {
     for(int i=0; i<x.n_rows; i++){
       arma::rowvec cri = x.row(i);
@@ -66,14 +65,13 @@ arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& 
           res(i, j) = pow(hphi, nu) * pow2_nu1_gammanu *
             R::bessel_k_ex(hphi, nu, 1.0, &bessel_ws[threadid*bessel_ws_inc]);
         } else {
-          res(i, j) = 1.0;
+          res(i, j) = 1.0 + nugginside;
         }
       }
     }
   }
   return res;
 }
-
 
 /*
 // matern
@@ -116,7 +114,6 @@ arma::mat matern(const arma::mat& x, const arma::mat& y, const double& phi, cons
   return R;
 }*/
 
-
 // matern covariance with nu = p + 1/2, and p=0,1,2
 arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int twonu){
   // 0 based indexing
@@ -137,12 +134,20 @@ arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& p
     return exp(-phi * D);
   }
   if(twonu == 3){ // nu = 3/2
-    arma::mat Dstar = phi * sqrt(3.0) * D;
-    return (1 + Dstar) % exp(-Dstar);
+    arma::mat Dstar = phi * D;
+    Dstar = (1 + Dstar) % exp(-Dstar);
+    if(same){
+      Dstar.diag() += 1e-7;
+    }
+    return Dstar;
   }
   if(twonu == 5){ // nu = 5/2
-    arma::mat Dstar = phi * sqrt(5.0) * D;
-    return (1 + Dstar + pow(Dstar,2.0) / 3.0) % exp(-Dstar);
+    arma::mat Dstar = phi * D;
+    Dstar = (1 + Dstar + pow(Dstar,2.0) / 3.0) % exp(-Dstar);
+    if(same){
+      Dstar.diag() += 1e-7;
+    }
+    return Dstar;
   }
 }
 
@@ -202,7 +207,7 @@ arma::mat gneiting2002(const arma::mat& x, const arma::mat& y,
 
 arma::mat Correlationf(const arma::mat& x, const arma::mat& y, 
                        const arma::vec& theta,
-                       double* bessel_ws, bool same){
+                       MaternParams& matern, bool same){
   // these are not actually correlation functions because they are reparametrized to have 
   // C(0) = 1/spatial decay
   if(x.n_cols == 2){
@@ -210,13 +215,23 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y,
     // reparametrized here
     if(theta.n_rows == 1){
       // exponential
-      return matern_halfint(x, y, theta(0), same, 1)/theta(0);
-    } else {
-      //double reparam = theta(0); // without effective range
       double phi = theta(0);
+      int nutimes2 = matern.twonu;
+      double reparam = //phi; //
+        pow(theta(0), .0 + nutimes2);
+      
+      return matern_halfint(x, y, phi, same, nutimes2)/reparam;
+    } else {
+      double phi = theta(0);
+      double nu = theta(1);
+      double reparam = pow(phi, 2*nu);
+      
+      //double reparam = phi;
+      double nugginside = 1e-7;
+      
       // we divide by phi given the equivalence in 
       // zhang 2004, corrollary to Thm.2: 
-      return matern_internal(x, y, theta(0), theta(1), bessel_ws, same)/phi;
+      return matern_internal(x, y, phi, nu, matern.bessel_ws, nugginside, same)/reparam;
     }
     //return squaredexp(x, y, theta(0), same)/theta(0);
   } else {
@@ -231,13 +246,13 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y,
 
 arma::mat CviaKron(const arma::mat& coords, 
                    const arma::uvec& indx, const arma::uvec& indy,
-                   int k, const arma::mat& theta, double * bessel_ws, bool same){
+                   int k, const arma::mat& theta, MaternParams& matern, bool same){
   arma::mat res = arma::zeros(indx.n_rows * k, indy.n_rows * k);
   arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   arma::mat coordsy = coords.rows(indy);
   for(int j=0; j<k; j++){
-    arma::mat CC = Correlationf(coordsx, coordsy, theta.col(j), bessel_ws, same);
+    arma::mat CC = Correlationf(coordsx, coordsy, theta.col(j), matern, same);
     res += arma::kron(arma::diagmat(Iselect.col(j)), CC);
   }
   return res;
@@ -246,23 +261,23 @@ arma::mat CviaKron(const arma::mat& coords,
 
 void CviaKron_invsympd_(arma::cube& CCi, 
                         const arma::mat& coords, const arma::uvec& indx, 
-                        int k, const arma::mat& theta, double * bessel_ws){
+                        int k, const arma::mat& theta, MaternParams& matern){
   arma::mat coordsx = coords.rows(indx);
   for(int j=0; j<k; j++){
-    CCi.slice(j) = arma::inv_sympd( Correlationf(coordsx, coordsx, theta.col(j), bessel_ws, true) );
+    CCi.slice(j) = arma::inv_sympd( Correlationf(coordsx, coordsx, theta.col(j), matern, true) );
   }
 }
 
 
 arma::mat CviaKron_chol(const arma::mat& coords, const arma::uvec& indx, 
-                        int k, const arma::mat& theta, double * bessel_ws){
+                        int k, const arma::mat& theta, MaternParams& matern){
   arma::mat res = arma::zeros(indx.n_rows * k, indx.n_rows * k);
   arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   
   for(int j=0; j<k; j++){
     arma::mat CC_chol = arma::chol( arma::symmatu( 
-      Correlationf(coordsx, coordsx, theta.col(j), bessel_ws, true) ), "lower");
+      Correlationf(coordsx, coordsx, theta.col(j), matern, true) ), "lower");
     res += arma::kron(arma::diagmat(Iselect.col(j)), CC_chol);
   }
   return res;
@@ -271,14 +286,14 @@ arma::mat CviaKron_chol(const arma::mat& coords, const arma::uvec& indx,
 
 double CviaKron_invchol(arma::mat& res,
                         const arma::mat& coords, const arma::uvec& indx, 
-                        int k, const arma::mat& theta, double * bessel_ws){
+                        int k, const arma::mat& theta, MaternParams& matern){
   res = arma::zeros(indx.n_rows * k, indx.n_rows * k);
   arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   double logdet = 0;
   for(int j=0; j<k; j++){
     arma::mat CC_chol = arma::inv(arma::trimatl(arma::chol( arma::symmatu( 
-      Correlationf(coordsx, coordsx, theta.col(j), bessel_ws, true) ), "lower")));
+      Correlationf(coordsx, coordsx, theta.col(j), matern, true) ), "lower")));
     res += arma::kron(arma::diagmat(Iselect.col(j)), CC_chol);
     logdet += arma::accu(log(CC_chol.diag()));
   }
@@ -289,15 +304,15 @@ double CviaKron_invchol(arma::mat& res,
 
 arma::mat CviaKron_H(const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
-                     int k, const arma::mat& theta, double * bessel_ws){
+                     int k, const arma::mat& theta, MaternParams& matern){
   arma::mat res = arma::zeros(indx.n_rows * k, indy.n_rows * k);
   arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   arma::mat coordsy = coords.rows(indy);
   for(int j=0; j<k; j++){
-    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), bessel_ws, false);
+    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), matern, false);
     arma::mat Cyy_i = arma::inv_sympd( arma::symmatu(
-      Correlationf(coordsy, coordsy, theta.col(j), bessel_ws, true)) );
+      Correlationf(coordsy, coordsy, theta.col(j), matern, true)) );
     arma::mat H = Cxy * Cyy_i;
     res += arma::kron(arma::diagmat(Iselect.col(j)), H);
   }
@@ -307,15 +322,15 @@ arma::mat CviaKron_H(const arma::mat& coords,
 
 arma::mat CviaKron_R(const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
-                     int k, const arma::mat& theta, double * bessel_ws){
+                     int k, const arma::mat& theta, MaternParams& matern){
   arma::mat res = arma::zeros(indx.n_rows * k, indx.n_rows * k);
   arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   arma::mat coordsy = coords.rows(indy);
   for(int j=0; j<k; j++){
-    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), bessel_ws, true);
-    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), bessel_ws, false);
-    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), bessel_ws, true) );
+    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), matern, true);
+    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), matern, false);
+    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), matern, true) );
     arma::mat R = Cxx - Cxy * Cyy_i * Cxy.t();
     res += arma::kron(arma::diagmat(Iselect.col(j)), R);
   }
@@ -327,7 +342,7 @@ void CviaKron_HRj_bdiag(
     const arma::field<arma::mat>& Kxxi_cache,
     const arma::mat& coords, const arma::uvec& indx, 
     const arma::uvec& naix, const arma::uvec& indy, 
-    int k, const arma::mat& theta, double * bessel_ws){
+    int k, const arma::mat& theta, MaternParams& matern){
   
   Rj = arma::field<arma::mat> (indx.n_elem);
   Hj = arma::field<arma::mat> (indx.n_elem);
@@ -343,8 +358,8 @@ void CviaKron_HRj_bdiag(
     arma::mat Cyy_i = Kxxi_cache(j);// arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), true) );
     for(int ix=0; ix<indx.n_rows; ix++){
       if(naix(ix) == 1){
-        arma::mat Cxx = Correlationf(coordsx.row(ix), coordsx.row(ix), theta.col(j), bessel_ws, true);
-        arma::mat Cxy = Correlationf(coordsx.row(ix), coordsy, theta.col(j), bessel_ws, false);
+        arma::mat Cxx = Correlationf(coordsx.row(ix), coordsx.row(ix), theta.col(j), matern, true);
+        arma::mat Cxy = Correlationf(coordsx.row(ix), coordsy, theta.col(j), matern, false);
         arma::mat Hloc = Cxy * Cyy_i;
         Hj(ix) += arma::kron(arma::diagmat(Iselect.col(j)), Hloc);
         arma::mat R = Cxx - Hloc * Cxy.t();
@@ -360,7 +375,7 @@ void CviaKron_HRj_chol_bdiag(
     arma::cube& Hj, arma::mat& Rjchol, arma::cube& Kxxi,
     const arma::uvec& naix,
     const arma::mat& coords, const arma::uvec& indx, const arma::uvec& indy, 
-    int k, const arma::mat& theta, double * bessel_ws){
+    int k, const arma::mat& theta, MaternParams& matern){
   
   //arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
@@ -368,11 +383,11 @@ void CviaKron_HRj_chol_bdiag(
   
   Kxxi = arma::zeros(indy.n_elem, indy.n_elem, k);
   for(int j=0; j<k; j++){
-    Kxxi.slice(j) = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), bessel_ws, true) );
+    Kxxi.slice(j) = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), matern, true) );
     for(int ix=0; ix<indx.n_rows; ix++){
       if(naix(ix) == 0){ // otherwise it's not missing
-        arma::mat Cxx = Correlationf(coordsx.row(ix), coordsx.row(ix), theta.col(j), bessel_ws, true);
-        arma::mat Cxy = Correlationf(coordsx.row(ix), coordsy, theta.col(j), bessel_ws, false);
+        arma::mat Cxx = Correlationf(coordsx.row(ix), coordsx.row(ix), theta.col(j), matern, true);
+        arma::mat Cxy = Correlationf(coordsx.row(ix), coordsy, theta.col(j), matern, false);
         arma::mat Hloc = Cxy * Kxxi.slice(j);
         
         Hj.slice(ix).row(j) = Hloc;//+=arma::kron(arma::diagmat(Iselect.col(j)), Hloc);
@@ -389,7 +404,7 @@ void CviaKron_HRj_chol_bdiag_wcache(
     arma::cube& Hj, arma::mat& Rjchol, 
     const arma::cube& Kxxi_cache, const arma::uvec& naix,
     const arma::mat& coords, const arma::uvec& indx, const arma::uvec& indy, 
-    int k, const arma::mat& theta, double * bessel_ws){
+    int k, const arma::mat& theta, MaternParams& matern){
   
   //arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
@@ -405,8 +420,8 @@ void CviaKron_HRj_chol_bdiag_wcache(
     
     for(int ix=0; ix<indx.n_rows; ix++){
       if(naix(ix) == 0){ // otherwise it's not missing
-        arma::mat Cxx = Correlationf(coordsx.row(ix), coordsx.row(ix), theta.col(j), bessel_ws, true);
-        arma::mat Cxy = Correlationf(coordsx.row(ix), coordsy, theta.col(j), bessel_ws, false);
+        arma::mat Cxx = Correlationf(coordsx.row(ix), coordsx.row(ix), theta.col(j), matern, true);
+        arma::mat Cxy = Correlationf(coordsx.row(ix), coordsy, theta.col(j), matern, false);
         arma::mat Hloc = Cxy * Cyy_i;
         
         Hj.slice(ix).row(j) = Hloc;//+=arma::kron(arma::diagmat(Iselect.col(j)), Hloc);
@@ -421,7 +436,7 @@ void CviaKron_HRj_chol_bdiag_wcache(
 double CviaKron_HRi(arma::mat& H, arma::mat& Ri,
                     const arma::mat& coords, 
                     const arma::uvec& indx, const arma::uvec& indy, 
-                    int k, const arma::mat& theta, double * bessel_ws){
+                    int k, const arma::mat& theta, MaternParams& matern){
   H = arma::zeros(indx.n_rows * k, indy.n_rows * k);
   Ri = arma::zeros(indx.n_rows * k, indx.n_rows * k);
   arma::mat Iselect = arma::eye(k, k);
@@ -429,9 +444,9 @@ double CviaKron_HRi(arma::mat& H, arma::mat& Ri,
   arma::mat coordsy = coords.rows(indy);
   double logdet=0;
   for(int j=0; j<k; j++){
-    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), bessel_ws, true);
-    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), bessel_ws, false);
-    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), bessel_ws, true) );
+    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), matern, true);
+    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), matern, false);
+    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), matern, true) );
     arma::mat Hloc = Cxy * Cyy_i;
     arma::mat Rloc_ichol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
       Cxx - Hloc * Cxy.t()) , "lower")));
@@ -445,15 +460,15 @@ double CviaKron_HRi(arma::mat& H, arma::mat& Ri,
 
 arma::mat CviaKron_Ri(const arma::mat& coords, 
                       const arma::uvec& indx, const arma::uvec& indy,  
-                      int k, const arma::mat& theta, double * bessel_ws){
+                      int k, const arma::mat& theta, MaternParams& matern){
   arma::mat res = arma::zeros(indx.n_rows * k, indy.n_rows * k);
   arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   arma::mat coordsy = coords.rows(indy);
   for(int j=0; j<k; j++){
-    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), bessel_ws, true);
-    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), bessel_ws, false);
-    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), bessel_ws, true) );
+    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), matern, true);
+    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), matern, false);
+    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), matern, true) );
     arma::mat Ri = arma::inv_sympd( Cxx - Cxy * Cyy_i * Cxy.t() );
     res += arma::kron(arma::diagmat(Iselect.col(j)), Ri);
   }
@@ -463,15 +478,15 @@ arma::mat CviaKron_Ri(const arma::mat& coords,
 
 arma::mat CviaKron_Rchol(const arma::mat& coords, 
                          const arma::uvec& indx, const arma::uvec& indy,  
-                         int k, const arma::mat& theta, double * bessel_ws){
+                         int k, const arma::mat& theta, MaternParams& matern){
   arma::mat res = arma::zeros(indx.n_rows * k, indx.n_rows * k);
   arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   arma::mat coordsy = coords.rows(indy);
   for(int j=0; j<k; j++){
-    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), bessel_ws, true);
-    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), bessel_ws, false);
-    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), bessel_ws, true) );
+    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), matern, true);
+    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), matern, false);
+    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), matern, true) );
     arma::mat Rchol = arma::chol(arma::symmatu( Cxx - Cxy * Cyy_i * Cxy.t() ), "lower");
     res += arma::kron(arma::diagmat(Iselect.col(j)), Rchol);
   }
@@ -481,15 +496,15 @@ arma::mat CviaKron_Rchol(const arma::mat& coords,
 
 arma::mat CviaKron_Rcholinv(const arma::mat& coords, 
                             const arma::uvec& indx, const arma::uvec& indy,  
-                            int k, const arma::mat& theta, double * bessel_ws){
+                            int k, const arma::mat& theta, MaternParams& matern){
   arma::mat res = arma::zeros(indx.n_rows * k, indx.n_rows * k);
   arma::mat Iselect = arma::eye(k, k);
   arma::mat coordsx = coords.rows(indx);
   arma::mat coordsy = coords.rows(indy);
   for(int j=0; j<k; j++){
-    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), bessel_ws, true);
-    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), bessel_ws, false);
-    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), bessel_ws, true) );
+    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), matern, true);
+    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), matern, false);
+    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), matern, true) );
     arma::mat Rcholinv = arma::inv(arma::trimatl(
       arma::chol(arma::symmatu( Cxx - Cxy * Cyy_i * Cxy.t() ), "lower")));
     res += arma::kron(arma::diagmat(Iselect.col(j)), Rcholinv);
@@ -504,7 +519,7 @@ arma::mat CviaKron_Rcholinv(const arma::mat& coords,
 double CviaKron_HRi_(arma::cube& H, arma::cube& Ri,
                      const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
-                     int k, const arma::mat& theta, double * bessel_ws){
+                     int k, const arma::mat& theta, MaternParams& matern){
   // inplace version of CviaKron_HRi
   int dimx = indx.n_elem;
   int dimy = indy.n_elem;
@@ -513,9 +528,9 @@ double CviaKron_HRi_(arma::cube& H, arma::cube& Ri,
   arma::mat coordsy = coords.rows(indy);
   double logdet=0;
   for(int j=0; j<k; j++){
-    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), bessel_ws, true);
-    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), bessel_ws, false);
-    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), bessel_ws, true) );
+    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), matern, true);
+    arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), matern, false);
+    arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), matern, true) );
     arma::mat Hloc = Cxy * Cyy_i;
     arma::mat Rloc_ichol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
       Cxx - Hloc * Cxy.t()) , "lower")));
@@ -535,14 +550,14 @@ double CviaKron_HRi_(arma::cube& H, arma::cube& Ri,
 
 double CviaKron_invsympd_wdet_(arma::cube& res,
                                const arma::mat& coords, const arma::uvec& indx, 
-                               int k, const arma::mat& theta, double * bessel_ws){
+                               int k, const arma::mat& theta, MaternParams& matern){
   // inplace
   int dimx = indx.n_elem;
   arma::mat coordsx = coords.rows(indx);
   double logdet = 0;
   for(int j=0; j<k; j++){
     arma::mat CC_chol = arma::inv(arma::trimatl(arma::chol( arma::symmatu( 
-      Correlationf(coordsx, coordsx, theta.col(j), bessel_ws, true) ), "lower")));
+      Correlationf(coordsx, coordsx, theta.col(j), matern, true) ), "lower")));
     int firstrow = j*dimx;
     int lastrow = (j+1)*dimx-1;
     res.slice(j) = CC_chol.t()*CC_chol;//res.submat(firstrow, firstrow, lastrow, lastrow) = CC_chol.t()*CC_chol;
@@ -556,7 +571,7 @@ void CviaKron_HRj_bdiag_(
     const arma::cube& Kxxi_cache,
     const arma::mat& coords, const arma::uvec& indx, 
     const arma::uvec& naix, const arma::uvec& indy, 
-    int k, const arma::mat& theta, double * bessel_ws){
+    int k, const arma::mat& theta, MaternParams& matern){
   //Rcpp::Rcout << "CviaKron_HRj_bdiag_ " << endl;
   //Rcpp::Rcout << indx.n_elem << " " << indy.n_elem << " k=" << k << endl;
   // inplace version of CviaKron_HRj_bdiag
@@ -566,16 +581,23 @@ void CviaKron_HRj_bdiag_(
   int dimy = indy.n_elem;
   for(int j=0; j<k; j++){
     arma::mat Cyy_i = Kxxi_cache.slice(j);// 
-    //arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), true) );
+      //arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), matern, true) );
     
     int firstcol = j*dimy;
     int lastcol = (j+1)*dimy-1;
     for(int ix=0; ix<indx.n_rows; ix++){
       if(naix(ix) == 1){
-        arma::mat Cxx = Correlationf(coordsx.row(ix), coordsx.row(ix), theta.col(j), bessel_ws, true);
-        arma::mat Cxy = Correlationf(coordsx.row(ix), coordsy, theta.col(j), bessel_ws, false);
+        arma::mat Cxx = Correlationf(coordsx.row(ix), coordsx.row(ix), theta.col(j), matern, true);
+        arma::mat Cxy = Correlationf(coordsx.row(ix), coordsy, theta.col(j), matern, false);
         arma::mat Hloc = Cxy * Cyy_i;
         arma::mat R = Cxx - Hloc * Cxy.t();
+        
+        
+        //for(int s=0; s<Hloc.n_elem; s++){
+        //  if(abs(Hloc(s)) < 1e-5){
+        //    Hloc(s) = 0;
+        //  }
+        //}
         
         
         //Rcpp::Rcout << "Hj: " << arma::size(Hj(ix)) << " Rj: " << arma::size(Rj(ix)) << endl;

@@ -226,6 +226,7 @@ public:
   arma::uvec oneuv;
   
   // params
+  bool matern_estim;
   arma::mat w;
   bool recover_generator;
   arma::mat wgen;
@@ -241,9 +242,18 @@ public:
   arma::vec tausq_inv; // tausq for the l=q variables
   
   // ModifiedPP-like updates for tausq -- used if not forced_grid
+  int tausq_mcmc_counter;
+  int lambda_mcmc_counter;
+  
   RAMAdapt tausq_adapt;
-  int mcmc_counter;
   arma::mat tausq_unif_bounds;
+  
+  int n_lambda_pars;
+  arma::uvec lambda_sampling;
+  arma::mat lambda_unif_bounds; // 1x2: lower and upper for off-diagonal
+  RAMAdapt lambda_adapt;
+  // ----------------
+  
   
   // params with mh step
   MeshDataLMC param_data; 
@@ -252,7 +262,7 @@ public:
   
   // Matern
   int nThreads;
-  double * bessel_ws;
+  MaternParams matern;
   
   // setup
   bool predicting;
@@ -307,20 +317,25 @@ public:
   
   // update_block_wpars used for sampling and proposing w
   // calculates all conditional means and variances
-  void update_block_w_cache(int, MeshDataLMC& data);
+  void update_block_w_cache(int, MeshDataLMC& data, arma::vec& );
   void refresh_w_cache(MeshDataLMC& data);
-  void gibbs_sample_w(bool needs_update);
+  void gibbs_sample_w(MeshDataLMC& data, bool needs_update);
   
   //
   void gibbs_sample_beta();
   
-  void deal_with_Lambda();
-  void gibbs_sample_Lambda();
+  void deal_with_Lambda(MeshDataLMC& data);
+  void sample_nc_Lambda_std(); // noncentered
+  void sample_nc_Lambda_std2(); // noncentered modded
+  void sample_c_Lambda_std(); // centered
+  void sample_Lambda_fgrid(MeshDataLMC& data);
   
-  void deal_with_tausq();
-  void gibbs_sample_tausq();
   
-  void logpost_refresh_after_gibbs(); //***
+  void deal_with_tausq(MeshDataLMC& data, double, double);
+  void gibbs_sample_tausq_std(double, double);
+  void gibbs_sample_tausq_fgrid(MeshDataLMC& data, double, double);
+  
+  void logpost_refresh_after_gibbs(MeshDataLMC& data); //***
   
   void predict();
   
@@ -360,6 +375,8 @@ public:
     
     const arma::field<arma::uvec>& indexing_in,
     const arma::field<arma::uvec>& indexing_obs_in,
+    
+    int matern_twonu_in,
     
     const arma::mat& w_in,
     const arma::mat& beta_in,
@@ -406,6 +423,8 @@ LMCMeshGP::LMCMeshGP(
   
   const arma::field<arma::uvec>& indexing_in,
   const arma::field<arma::uvec>& indexing_obs_in,
+  
+  int matern_twonu_in,
   
   const arma::mat& w_in,
   const arma::mat& beta_in,
@@ -466,10 +485,32 @@ LMCMeshGP::LMCMeshGP(
   k = k_in;
   
   
+  Lambda = lambda_in; 
+  Lambda_mask = lambda_mask_in;
+  
+  
   if(forced_grid){
-    tausq_adapt = RAMAdapt(q, arma::eye(q,q)*.1, q==1? .45 : .25);
-    mcmc_counter = 0;
-    tausq_unif_bounds = arma::join_horiz(1e-5 * arma::ones(q), 1 * arma::ones(q));
+    tausq_mcmc_counter = 0;
+    lambda_mcmc_counter = 0;
+    
+    tausq_adapt = RAMAdapt(q, arma::eye(q,q)*.1, .25);
+    tausq_unif_bounds = arma::join_horiz(1e-6 * arma::ones(q), 1e3 * arma::ones(q));
+    
+    // lambda prepare
+    lambda_adapt = RAMAdapt(q, arma::eye(q,q)*.01, .25);
+    n_lambda_pars = arma::accu(Lambda_mask);
+    lambda_sampling = arma::find(Lambda_mask == 1);
+    lambda_unif_bounds = arma::zeros(n_lambda_pars, 2);
+    for(int i=0; i<n_lambda_pars; i++){
+      arma::uvec rc = arma::ind2sub( arma::size(Lambda), lambda_sampling(i) );
+      if(rc(0) == rc(1)){
+        lambda_unif_bounds(i, 0) = 0;
+        lambda_unif_bounds(i, 1) = 1e6;
+      } else {
+        lambda_unif_bounds(i, 0) = -1e6;
+        lambda_unif_bounds(i, 1) = 1e6;
+      }
+    }
   }
   
   // NAs at blocks of outcome variables 
@@ -501,15 +542,11 @@ LMCMeshGP::LMCMeshGP(
   // initial values
   w = w_in; 
   
-  recover_generator = true;
+  matern_estim = (dd == 2) & (theta_in.n_rows == 2);
+  recover_generator = matern_estim;
   if(recover_generator){
     wgen = arma::zeros(arma::size(w)); // *** remove
   }
-  
-  LambdaHw = arma::zeros(coords.n_rows, q); 
-  
-  Lambda = lambda_in; 
-  Lambda_mask = lambda_mask_in;
   
   Rcpp::Rcout << "Lambda size: " << arma::size(Lambda) << "\n";
   
@@ -567,9 +604,10 @@ LMCMeshGP::LMCMeshGP(
   
   nThreads = num_threads;
 
-  int bessel_ws_inc = 10;
-  bessel_ws = (double *) R_alloc(nThreads*bessel_ws_inc, sizeof(double));
-  
+  int bessel_ws_inc = 3;
+  matern.bessel_ws = (double *) R_alloc(nThreads*bessel_ws_inc, sizeof(double));
+  matern.twonu = matern_twonu_in;
+   
   // predict_initialize
   if(predict_group_exists == 1){
     Hpred = arma::field<arma::cube>(u_predicts.n_elem);
@@ -584,6 +622,13 @@ LMCMeshGP::LMCMeshGP(
       }
       Rcholpred(i) = arma::zeros(k,indexing_obs(u).n_elem);
     }
+  }
+  
+  LambdaHw = arma::zeros(coords.n_rows, q); 
+  for(int i=0; i<n_blocks; i++){
+    int u = block_names(i) - 1;
+    LambdaHw.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * 
+      Lambda.t();
   }
   
   if(verbose & debug){
@@ -669,7 +714,7 @@ void LMCMeshGP::make_gibbs_groups(){
     }
   }
   
-  if(pblocks > 1){
+  if(pblocks > 0){
     u_predicts = arma::zeros<arma::uvec>(pblocks);
     predict_group_exists = 1;
   } else {
@@ -690,10 +735,13 @@ void LMCMeshGP::make_gibbs_groups(){
         // original grid, then predict blocks are the empty ones
         if(block_ct_obs(u) == 0){
           u_predicts(p) = u;
+          
           p ++;
         }
       }
     }
+  } else {
+    Rcpp::Rcout << "No prediction group " << endl;
   }
   
   message("[make_gibbs_groups] done.");
@@ -973,7 +1021,7 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
       int u = coords_caching(i); // block name of ith representative
       try {
         CviaKron_invsympd_(data.Kxxi_cache(i),
-                           coords, indexing(u), k, data.theta, bessel_ws);
+                           coords, indexing(u), k, data.theta, matern);
       } catch (...) {
         errtype = 1;
       }
@@ -984,7 +1032,7 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
       try {
         if(block_ct_obs(u) > 0){
           Ri_chol_logdet(i) = CviaKron_HRi_(H_cache(i), Ri_cache(i),
-                         coords, indexing(u), parents_indexing(u), k, data.theta, bessel_ws);
+                         coords, indexing(u), parents_indexing(u), k, data.theta, matern);
         }
       } catch (...) {
         errtype = 2;
@@ -1050,7 +1098,7 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
   
   start = std::chrono::steady_clock::now();
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i=0; i<kr_caching.n_elem; i++){
     int u = kr_caching(i);
@@ -1116,7 +1164,7 @@ void LMCMeshGP::update_block_covpars(int u, MeshDataLMC& data){
     
     data.logdetCi_comps(u) = Ri_chol_logdet(cpx(0));
   } else {
-    data.logdetCi_comps(u) = CviaKron_invsympd_wdet_(data.w_cond_prec(u), coords, indexing(u), k, data.theta, bessel_ws);
+    data.logdetCi_comps(u) = CviaKron_invsympd_wdet_(data.w_cond_prec(u), coords, indexing(u), k, data.theta, matern);
   }
   //message("[update_block_covpars] done.");
 }
@@ -1149,7 +1197,7 @@ void LMCMeshGP::update_block_logdens(int u, MeshDataLMC& data){
                         data.Kxxi_cache(cx(0)),
                         coords, indexing_obs(u), 
                         na_1_blocks(u), indexing(u), 
-                        k, data.theta, bessel_ws);
+                        k, data.theta, matern);
     
     update_lly(u, data);
   }  
@@ -1226,102 +1274,180 @@ void LMCMeshGP::gibbs_sample_beta(){
   }
 }
 
-void LMCMeshGP::deal_with_Lambda(){
-  gibbs_sample_Lambda();
+void LMCMeshGP::deal_with_Lambda(MeshDataLMC& data){
+  if(forced_grid){
+    //sample_nc_Lambda_std();
+    sample_Lambda_fgrid(data);
+  } else {
+    sample_nc_Lambda_std();
+    sample_c_Lambda_std();
+  }
 }
 
-void LMCMeshGP::gibbs_sample_Lambda(){
+void LMCMeshGP::sample_Lambda_fgrid(MeshDataLMC& data){
+  message("[gibbs_sample_Lambda_fgrid] start (sampling via Robust adaptive Metropolis)");
+  start = std::chrono::steady_clock::now();
+  
+  //arma::mat Lambda_true = Lambda;
+  //Lambda_true.fill(21.2132);
+  
+  lambda_adapt.count_proposal();
+  Rcpp::RNGScope scope;
+  
+  arma::vec U_update = arma::randn(n_lambda_pars);
+  arma::vec lambda_vec_current = Lambda.elem(lambda_sampling);
+  
+  arma::vec lambda_vec_proposal = par_huvtransf_back(par_huvtransf_fwd(lambda_vec_current, lambda_unif_bounds) + 
+     lambda_adapt.paramsd * U_update, lambda_unif_bounds);
+  arma::mat Lambda_proposal = Lambda;
+  Lambda_proposal.elem(lambda_sampling) = lambda_vec_proposal;
+  
+  arma::mat Ddiag_current  = arma::zeros(arma::size(w));
+  arma::mat Ddiag_proposal = arma::zeros(arma::size(w));
+  arma::mat LambdaHw_proposal = arma::zeros(w.n_rows, 1);
+  
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+  for(int i=0; i<n_blocks; i++){
+    int u = block_names(i)-1;
+    for(int j=0; j<q; j++){
+      for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+        if(na_mat(indexing_obs(u)(ix), j) == 1){
+          arma::rowvec Lambda_r_prop = Lambda_proposal.row(j);
+          double Rix = arma::conv_to<double>::from(
+            Lambda_r_prop * data.Rproject(u).slice(ix) * Lambda_r_prop.t());
+          Ddiag_proposal(indexing_obs(u)(ix), j) = std::max(Rix, 0.0); 
+          
+          //arma::rowvec Lambda_r_curr = Lambda.row(j);
+          //Rix = arma::conv_to<double>::from(
+          //  Lambda_r_curr * data.Rproject(u).slice(ix) * Lambda_r_curr.t());
+          //Ddiag_current(indexing_obs(u)(ix), j) = std::max(Rix, 0.0); 
+        }
+      }
+    }
+    LambdaHw_proposal.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * 
+      Lambda_proposal.t();
+    //LambdaHw.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * 
+    //  Lambda.t();
+  }
+  
+  double start_logpost = 0;
+  for(int j=0; j<q; j++){
+    arma::vec regprecis = 
+      1.0/(data.Ddiag.submat(ix_by_q_a(j), oneuv*j) + 1.0/tausq_inv(j));
+    arma::mat yrr = 
+      (y.submat(ix_by_q_a(j), oneuv*j) - 
+      XB.submat(ix_by_q_a(j), oneuv*j) - 
+      LambdaHw.submat(ix_by_q_a(j), oneuv*j)); // ***
+    double bcore = arma::conv_to<double>::from( yrr.t() * (regprecis%yrr) );
+    start_logpost += 0.5 * arma::accu(log(regprecis)) - 0.5 * bcore;
+  }
+  
+  double new_logpost = 0;
+  // note that at the available locations w already includes Lambda 
+  for(int j=0; j<q; j++){
+    arma::vec regprecis = 1.0/(Ddiag_proposal.submat(ix_by_q_a(j), oneuv*j) + 
+      1.0/tausq_inv(j));
+    arma::mat yrr = 
+      (y.submat(ix_by_q_a(j), oneuv*j) - 
+      XB.submat(ix_by_q_a(j), oneuv*j) - 
+      LambdaHw_proposal.submat(ix_by_q_a(j), oneuv*j)); // ***
+    double bcore = arma::conv_to<double>::from( yrr.t() * (regprecis%yrr) );
+    new_logpost += 0.5 * arma::accu(log(regprecis)) - 0.5 * bcore;
+  }
+    
+  //double prior_logratio = calc_prior_logratio(new_tausq, 1.0/tausq_inv);
+  double jacobian  = calc_jacobian(lambda_vec_proposal, lambda_vec_current, lambda_unif_bounds);
+  double logaccept = new_logpost - start_logpost + jacobian;
+  
+  //double u = R::runif(0,1);//arma::randu();
+  bool accepted = do_I_accept(logaccept);
+  
+  //Rcpp::Rcout << "proposed: " << Lambda_proposal(0,0) << " lp: " << new_logpost
+  //            << "\n original: " << Lambda(0,0) << " lp: " << start_logpost 
+  //            << "\n logaccept: " << logaccept << endl;
+  
+  if(accepted){
+    lambda_adapt.count_accepted();
+    Lambda = Lambda_proposal;
+    LambdaHw = LambdaHw_proposal;
+    data.Ddiag = Ddiag_proposal;
+    //alter_data.Ddiag = Ddiag_proposal;
+    logpost = new_logpost;
+  } else {
+    logpost = start_logpost;
+  }
+  
+  lambda_adapt.update_ratios();
+  lambda_adapt.adapt(U_update, exp(logaccept), lambda_mcmc_counter); 
+  lambda_mcmc_counter ++;
+  if(verbose & debug){
+    end = std::chrono::steady_clock::now();
+    Rcpp::Rcout << "[gibbs_sample_Lambda_fgrid] " << lambda_adapt.accept_ratio << " average acceptance rate, "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() 
+                << "us.\n";
+  }
+}
+
+
+void LMCMeshGP::sample_nc_Lambda_std2(){
   message("[gibbs_sample_Lambda] starting");
   start = std::chrono::steady_clock::now();
   
-  // old with accept/reject if diagonal element is negative
-  if(false){
-    for(int j=0; j<q; j++){
-      // build W
-      int maxwhere = std::min(j, k-1);
-      arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
-      
-      // filter: choose value of spatial processes at locations of Yj that are available
-      arma::mat WWj = w.submat(ix_by_q_a(j), subcols); // acts as X
-      arma::mat Wcrossprod = WWj.t() * WWj;
-      arma::mat Lprior_inv = tausq_inv(j) * 
-          arma::eye(WWj.n_cols, WWj.n_cols) * .0001; 
-      
-      arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * Wcrossprod// + Lprior_inv
-                                                     ), "lower");
-      arma::mat Sigma_chol_L = arma::inv(arma::trimatl(Si_chol));
-      
-      arma::mat Simean_L = tausq_inv(j) * WWj.t() * 
-        (y.submat(ix_by_q_a(j), oneuv*j) - XB.submat(ix_by_q_a(j), oneuv*j));
-      
-      bool looping = true;
-      int ctr = 0;
-      arma::vec Lambdarowj_new;
-      while(looping & (ctr < 10)){
-        ctr ++;
-        Rcpp::RNGScope scope;
-        arma::vec rLambdasample = arma::randn(k);
-        
-        Lambdarowj_new = Sigma_chol_L.t() * 
-          (Sigma_chol_L * Simean_L + rLambdasample.elem(subcols));//, oneuv*j));
-        
-        if((j<k) & (j==maxwhere)){
-          if(Lambdarowj_new(j) > 0){
-            looping = false;
-          }
-        }
-      }
-      if(ctr < 10){
-        // update lambda 
-        Lambda.submat(oneuv*j, subcols) = 
-          Lambdarowj_new.t();    
-      }
-    } 
-  } else {
+  // new with botev's 2017 method to sample from truncated normal
+  for(int j=0; j<q; j++){
+    // build W
+    int maxwhere = std::min(j, k-1);
+    arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
+    
+    // filter: choose value of spatial processes at locations of Yj that are available
+    arma::mat WWj = w.submat(ix_by_q_a(j), subcols); // acts as X
+    
+    
+    // ****  // pretend Ddiag does not have lambda inside....
+    arma::vec regprecis = 
+      1.0/(param_data.Ddiag.submat(ix_by_q_a(j), oneuv*j) + 1.0/tausq_inv(j));
+    
+    arma::mat Wcrossprod = WWj.t() * (regprecis % WWj); // ****
+    
+    
+    arma::mat Lprior_inv = tausq_inv(j) * 
+      arma::eye(WWj.n_cols, WWj.n_cols) * .001; 
+    
+    arma::mat Si_chol = arma::chol(arma::symmatu(//tausq_inv(j) *  // *****
+      Wcrossprod //+ Lprior_inv
+    ), "lower");
+    arma::mat Sigma_chol_L = arma::inv(arma::trimatl(Si_chol));
+    
+    // ***
+    //arma::mat Simean_L = tausq_inv(j) * WWj.t() * 
+    //  (y.submat(ix_by_q_a(j), oneuv*j) - XB.submat(ix_by_q_a(j), oneuv*j));
+    arma::mat Simean_L = WWj.t() * 
+      ((y.submat(ix_by_q_a(j), oneuv*j) - XB.submat(ix_by_q_a(j), oneuv*j))%regprecis);
+    
+    arma::mat Lambdarow_Sig = Sigma_chol_L.t() * Sigma_chol_L;
+    
+    arma::vec Lprior_mean = arma::zeros(subcols.n_elem);// * 50;
+    //if(j < 0){
+    //  Lprior_mean(j) = arma::stddev(arma::vectorise( y.submat(ix_by_q_a(j), oneuv*j) ));
+    //}
+    arma::mat Lambdarow_mu = Lprior_inv * Lprior_mean + 
+      Lambdarow_Sig * Simean_L;
+    
+    // truncation limits: start with (-inf, inf) then replace lower lim at appropriate loc
+    arma::vec upper_lim = arma::zeros(subcols.n_elem);
+    upper_lim.fill(arma::datum::inf);
+    arma::vec lower_lim = arma::zeros(subcols.n_elem);
+    lower_lim.fill(-arma::datum::inf);
+    if(j < q){
+      lower_lim(j) = 0;
+    }
+    arma::rowvec sampled = arma::trans(mvtruncnormal(Lambdarow_mu, lower_lim, upper_lim, Lambdarow_Sig, 1));
+    
+    Lambda.submat(oneuv*j, subcols) = sampled;
+  } 
   
-    // new with botev's 2017 method to sample from truncated normal
-    for(int j=0; j<q; j++){
-      // build W
-      int maxwhere = std::min(j, k-1);
-      arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
-      
-      // filter: choose value of spatial processes at locations of Yj that are available
-      arma::mat WWj = w.submat(ix_by_q_a(j), subcols); // acts as X
-      arma::mat Wcrossprod = WWj.t() * WWj;
-      arma::mat Lprior_inv = tausq_inv(j) * 
-        arma::eye(WWj.n_cols, WWj.n_cols) * .0001; 
-      
-      arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * Wcrossprod // + Lprior_inv
-                                                     ), "lower");
-      arma::mat Sigma_chol_L = arma::inv(arma::trimatl(Si_chol));
-      
-      arma::mat Simean_L = tausq_inv(j) * WWj.t() * 
-        (y.submat(ix_by_q_a(j), oneuv*j) - XB.submat(ix_by_q_a(j), oneuv*j));
-
-      arma::mat Lambdarow_Sig = Sigma_chol_L.t() * Sigma_chol_L;
-      
-      arma::vec Lprior_mean = arma::zeros(subcols.n_elem);
-      //if(j < 0){
-      //  Lprior_mean(j) = arma::stddev(arma::vectorise( y.submat(ix_by_q_a(j), oneuv*j) ));
-      //}
-      arma::mat Lambdarow_mu = Lprior_inv * Lprior_mean + 
-        Lambdarow_Sig * Simean_L;
-      
-      // truncation limits: start with (-inf, inf) then replace lower lim at appropriate loc
-      arma::vec upper_lim = arma::zeros(subcols.n_elem);
-      upper_lim.fill(arma::datum::inf);
-      arma::vec lower_lim = arma::zeros(subcols.n_elem);
-      lower_lim.fill(-arma::datum::inf);
-      if(j < q){
-        lower_lim(j) = 0;
-      }
-      arma::rowvec sampled = arma::trans(mvtruncnormal(Lambdarow_mu, lower_lim, upper_lim, Lambdarow_Sig, 1));
-
-      Lambda.submat(oneuv*j, subcols) = sampled;
-    } 
-  
-  
-  }
   // refreshing density happens in the 'logpost_refresh_after_gibbs' function
   
   if(verbose & debug){
@@ -1332,106 +1458,197 @@ void LMCMeshGP::gibbs_sample_Lambda(){
   }
 }
 
+// BACKUP DONT ERASE
+void LMCMeshGP::sample_nc_Lambda_std(){
+  message("[gibbs_sample_Lambda] starting");
+  start = std::chrono::steady_clock::now();
 
-void LMCMeshGP::deal_with_tausq(){
-  gibbs_sample_tausq();
-}
+  // new with botev's 2017 method to sample from truncated normal
+  for(int j=0; j<q; j++){
+    // build W
+    int maxwhere = std::min(j, k-1);
+    arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
+    
+    // filter: choose value of spatial processes at locations of Yj that are available
+    arma::mat WWj = w.submat(ix_by_q_a(j), subcols); // acts as X
+  
+    arma::mat Wcrossprod = WWj.t() * WWj; 
+    
+    arma::mat Lprior_inv = tausq_inv(j) * 
+      arma::eye(WWj.n_cols, WWj.n_cols) * .001; 
+    
+    arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * Wcrossprod //+ Lprior_inv
+                                                   ), "lower");
+    arma::mat Sigma_chol_L = arma::inv(arma::trimatl(Si_chol));
+    
+    arma::mat Simean_L = tausq_inv(j) * WWj.t() * 
+      (y.submat(ix_by_q_a(j), oneuv*j) - XB.submat(ix_by_q_a(j), oneuv*j));
+    
+    arma::mat Lambdarow_Sig = Sigma_chol_L.t() * Sigma_chol_L;
+    
+    arma::vec Lprior_mean = arma::zeros(subcols.n_elem);// * 50;
+    //if(j < 0){
+    //  Lprior_mean(j) = arma::stddev(arma::vectorise( y.submat(ix_by_q_a(j), oneuv*j) ));
+    //}
+    arma::mat Lambdarow_mu = Lprior_inv * Lprior_mean + 
+      Lambdarow_Sig * Simean_L;
+    
+    // truncation limits: start with (-inf, inf) then replace lower lim at appropriate loc
+    arma::vec upper_lim = arma::zeros(subcols.n_elem);
+    upper_lim.fill(arma::datum::inf);
+    arma::vec lower_lim = arma::zeros(subcols.n_elem);
+    lower_lim.fill(-arma::datum::inf);
+    if(j < q){
+      lower_lim(j) = 0;
+    }
+    arma::rowvec sampled = arma::trans(mvtruncnormal(Lambdarow_mu, lower_lim, upper_lim, Lambdarow_Sig, 1));
 
-void LMCMeshGP::gibbs_sample_tausq(){
-  if(!forced_grid){
-    message("[gibbs_sample_tausq] start");
-    start = std::chrono::steady_clock::now();
-    // note that at the available locations w already includes Lambda 
-    logpost = 0;
-    for(int j=0; j<q; j++){
-      
-      arma::mat yrr = y.submat(ix_by_q_a(j), oneuv*j) - 
-        XB.submat(ix_by_q_a(j), oneuv*j) - 
-        LambdaHw.submat(ix_by_q_a(j), oneuv*j); //***
-      
-      double bcore = arma::conv_to<double>::from( yrr.t() * yrr );
-      
-      double aparam = 2.00001 + ix_by_q_a(j).n_elem/2.0;
-      double bparam = 1.0/( 1 + .5 * bcore );
-      
-      Rcpp::RNGScope scope;
-      tausq_inv(j) = R::rgamma(aparam, bparam);
-      logpost += 0.5 * (ix_by_q_a(j).n_elem + .0) * log(tausq_inv(j)) - 0.5*tausq_inv(j)*bcore;
-      
-      if(verbose & debug){
-        Rcpp::Rcout << "[gibbs_sample_tausq] " << j << " | "
-                    << aparam << " : " << bparam << " " << bcore << " --> " << 1.0/tausq_inv(j)
-                    << "\n";
-      }
-    }
-    if(verbose & debug){
-      end = std::chrono::steady_clock::now();
-      Rcpp::Rcout << "[gibbs_sample_tausq] "
-                  << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() 
-                  << "us.\n";
-    }
-  } else {
-    message("[gibbs_sample_tausq] start (sampling via Robust adaptive Metropolis)");
-    start = std::chrono::steady_clock::now();
-    
-    tausq_adapt.count_proposal();
-    Rcpp::RNGScope scope;
-    arma::vec new_tausq = 1.0/tausq_inv;
-    arma::vec U_update = arma::randn(q);
-    new_tausq = par_huvtransf_back(par_huvtransf_fwd(1.0/tausq_inv, tausq_unif_bounds) + 
-      tausq_adapt.paramsd * U_update, tausq_unif_bounds);
-    
-    double start_logpost = 0;
-    for(int j=0; j<q; j++){
-      arma::vec regprecis = 1.0/(param_data.Ddiag.submat(ix_by_q_a(j), oneuv*j) + 1.0/tausq_inv(j));
-      arma::mat yrr = (y.submat(ix_by_q_a(j), oneuv*j) - 
-        XB.submat(ix_by_q_a(j), oneuv*j) - 
-        LambdaHw.submat(ix_by_q_a(j), oneuv*j)) % pow(regprecis, .5); // ***
-      double bcore = arma::conv_to<double>::from( yrr.t() * yrr );
-      start_logpost += 0.5 * arma::accu(log(regprecis)) - 0.5*bcore;
-    }
-    
-    double new_logpost = 0;
-    // note that at the available locations w already includes Lambda 
-    for(int j=0; j<q; j++){
-      arma::vec regprecis = 1.0/(param_data.Ddiag.submat(ix_by_q_a(j), oneuv*j) + new_tausq(j));
-      arma::mat yrr = (y.submat(ix_by_q_a(j), oneuv*j) - 
-        XB.submat(ix_by_q_a(j), oneuv*j) - 
-        LambdaHw.submat(ix_by_q_a(j), oneuv*j)) % pow(regprecis, .5); // ***
-      double bcore = arma::conv_to<double>::from( yrr.t() * yrr );
-      new_logpost += 0.5 * arma::accu(log(regprecis)) - 0.5*bcore;
-    }
-    
-    double prior_logratio = calc_prior_logratio(new_tausq, 1.0/tausq_inv);
-    double jacobian  = calc_jacobian(new_tausq, 1.0/tausq_inv, tausq_unif_bounds);
-    double logaccept = new_logpost - start_logpost + 
-      prior_logratio +
-      jacobian;
-    
-    bool accepted = do_I_accept(logaccept);
-    if(accepted){
-      tausq_adapt.count_accepted();
-      tausq_inv = 1.0/new_tausq;
-      logpost = new_logpost;
-    } else {
-      logpost = start_logpost;
-    }
-    
-    tausq_adapt.update_ratios();
-    tausq_adapt.adapt(U_update, exp(logaccept), mcmc_counter); 
-    mcmc_counter ++;
-    if(verbose & debug){
-      end = std::chrono::steady_clock::now();
-      Rcpp::Rcout << "[gibbs_sample_tausq] " << tausq_adapt.accept_ratio << " average acceptance rate, "
-                  << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() 
-                  << "us.\n";
-    }
+    Lambda.submat(oneuv*j, subcols) = sampled;
+  } 
+
+  // refreshing density happens in the 'logpost_refresh_after_gibbs' function
+  
+  if(verbose & debug){
+    end = std::chrono::steady_clock::now();
+    Rcpp::Rcout << "[gibbs_sample_Lambda] " 
+                << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+                << "us.\n";
   }
 }
 
+void LMCMeshGP::sample_c_Lambda_std(){
+  message("[sample_c_Lambda_std] starting");
+  start = std::chrono::steady_clock::now();
+  if(q > 1){
+    Rcpp::stop("Centered parametrization not implemented for q>1");
+  }
+  
+  double sigmasq = pow(Lambda(0,0), 2.0) / 
+    pow(param_data.theta(0), 2.0*param_data.theta(1)); //.0+matern.twonu) * 
+  
+  double aparam = 2.01 + n_loc_ne_blocks*1.0/2.0; //
+  double bparam = 1.0/( 1 + .5 * sigmasq * arma::accu( param_data.wcore ));
+  
+  Rcpp::RNGScope scope;
+  double sigmasqinv = R::rgamma(aparam, bparam);
+  double sigmasq_new = 1.0/sigmasqinv;
+  
+  Lambda(0,0) = sqrt(sigmasq_new * pow(param_data.theta(0), 2.0*param_data.theta(1)) //.0+matern.twonu)
+                       );
+  
+  // refreshing density happens in the 'logpost_refresh_after_gibbs' function
+  
+  if(verbose & debug){
+    end = std::chrono::steady_clock::now();
+    Rcpp::Rcout << "[sample_c_Lambda_std] " 
+                << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+                << "us.\n";
+  }
+}
+
+void LMCMeshGP::deal_with_tausq(MeshDataLMC& data, double aprior=2.001, double bprior=1){
+  if(forced_grid){
+    gibbs_sample_tausq_fgrid(data, aprior, bprior);
+  } else {
+    gibbs_sample_tausq_std(aprior, bprior);
+  }
+}
+
+void LMCMeshGP::gibbs_sample_tausq_std(double aprior, double bprior){
+  message("[gibbs_sample_tausq_std] start");
+  start = std::chrono::steady_clock::now();
+  // note that at the available locations w already includes Lambda 
+  logpost = 0;
+  for(int j=0; j<q; j++){
+    
+    arma::mat yrr = y.submat(ix_by_q_a(j), oneuv*j) - 
+      XB.submat(ix_by_q_a(j), oneuv*j) - 
+      LambdaHw.submat(ix_by_q_a(j), oneuv*j); //***
+    
+    double bcore = arma::conv_to<double>::from( yrr.t() * yrr );
+    
+    double aparam = aprior + ix_by_q_a(j).n_elem/2.0;
+    double bparam = 1.0/( bprior + .5 * bcore );
+    
+    Rcpp::RNGScope scope;
+    tausq_inv(j) = R::rgamma(aparam, bparam);
+    logpost += 0.5 * (ix_by_q_a(j).n_elem + .0) * log(tausq_inv(j)) - 0.5*tausq_inv(j)*bcore;
+    
+    if(verbose & debug){
+      Rcpp::Rcout << "[gibbs_sample_tausq] " << j << " | "
+                  << aparam << " : " << bparam << " " << bcore << " --> " << 1.0/tausq_inv(j)
+                  << "\n";
+    }
+  }
+  if(verbose & debug){
+    end = std::chrono::steady_clock::now();
+    Rcpp::Rcout << "[gibbs_sample_tausq] "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() 
+                << "us.\n";
+  }
+  
+}
+
+void LMCMeshGP::gibbs_sample_tausq_fgrid(MeshDataLMC& data, double aprior, double bprior){
+  message("[gibbs_sample_tausq_fgrid] start (sampling via Robust adaptive Metropolis)");
+  start = std::chrono::steady_clock::now();
+  
+  tausq_adapt.count_proposal();
+  Rcpp::RNGScope scope;
+  arma::vec new_tausq = 1.0/tausq_inv;
+  arma::vec U_update = arma::randn(q);
+  new_tausq = par_huvtransf_back(par_huvtransf_fwd(1.0/tausq_inv, tausq_unif_bounds) + 
+    tausq_adapt.paramsd * U_update, tausq_unif_bounds);
+  
+  double start_logpost = 0;
+  for(int j=0; j<q; j++){
+    arma::vec regprecis = 1.0/(data.Ddiag.submat(ix_by_q_a(j), oneuv*j) + 1.0/tausq_inv(j)); // ***
+    arma::mat yrr = (y.submat(ix_by_q_a(j), oneuv*j) - 
+      XB.submat(ix_by_q_a(j), oneuv*j) - 
+      LambdaHw.submat(ix_by_q_a(j), oneuv*j)); // ***
+    double bcore = arma::conv_to<double>::from( yrr.t() * (yrr%regprecis) );
+    start_logpost += 0.5 * arma::accu(log(regprecis)) - 0.5*bcore;
+  }
+  
+  double new_logpost = 0;
+  // note that at the available locations w already includes Lambda 
+  for(int j=0; j<q; j++){
+    arma::vec regprecis = 1.0/(data.Ddiag.submat(ix_by_q_a(j), oneuv*j) + new_tausq(j)); // ***
+    arma::mat yrr = (y.submat(ix_by_q_a(j), oneuv*j) - 
+      XB.submat(ix_by_q_a(j), oneuv*j) - 
+      LambdaHw.submat(ix_by_q_a(j), oneuv*j)); // ***
+    double bcore = arma::conv_to<double>::from( yrr.t() * (yrr%regprecis) );
+    new_logpost += 0.5 * arma::accu(log(regprecis)) - 0.5*bcore;
+  }
+  
+  double prior_logratio = calc_prior_logratio(new_tausq, 1.0/tausq_inv, aprior, bprior);
+  double jacobian  = calc_jacobian(new_tausq, 1.0/tausq_inv, tausq_unif_bounds);
+  double logaccept = new_logpost - start_logpost + 
+    prior_logratio +
+    jacobian;
+  
+  bool accepted = do_I_accept(logaccept);
+  if(accepted){
+    tausq_adapt.count_accepted();
+    tausq_inv = 1.0/new_tausq;
+    logpost = new_logpost;
+  } else {
+    logpost = start_logpost;
+  }
+  
+  tausq_adapt.update_ratios();
+  tausq_adapt.adapt(U_update, exp(logaccept), tausq_mcmc_counter); 
+  tausq_mcmc_counter ++;
+  if(verbose & debug){
+    end = std::chrono::steady_clock::now();
+    Rcpp::Rcout << "[gibbs_sample_tausq_fgrid] " << tausq_adapt.accept_ratio << " average acceptance rate, "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() 
+                << "us.\n";
+  }
+}
 
 void LMCMeshGP::update_lly(int u, MeshDataLMC& data){
-  message("[update_lly] start.");
+  //message("[update_lly] start.");
   start = std::chrono::steady_clock::now();
   // if the grid is forced it likely is not overlapping with the data
   // therefore the spatial ranges end up in the likelihood
@@ -1468,10 +1685,10 @@ void LMCMeshGP::update_lly(int u, MeshDataLMC& data){
   }
   
   end = std::chrono::steady_clock::now();
-  message("[update_lly] done.");
+  //message("[update_lly] done.");
 }
 
-void LMCMeshGP::logpost_refresh_after_gibbs(){
+void LMCMeshGP::logpost_refresh_after_gibbs(MeshDataLMC& data){
   message("[logpost_refresh_after_gibbs]");
   start_overall = std::chrono::steady_clock::now();
   
@@ -1487,26 +1704,26 @@ void LMCMeshGP::logpost_refresh_after_gibbs(){
     if(parents(u).n_elem > 0){
       arma::mat wpar = w.rows(parents_indexing(u));
       for(int j=0; j<k; j++){
-        wx.col(j) = wx.col(j) - param_data.w_cond_mean_K(u).slice(j) * wpar.col(j);
+        wx.col(j) = wx.col(j) - data.w_cond_mean_K(u).slice(j) * wpar.col(j);
       }
     }
     
-    arma::mat wcoresum = arma::zeros(1, param_data.wcore.n_cols);
+    arma::mat wcoresum = arma::zeros(1, data.wcore.n_cols);
     for(int j=0; j<k; j++){
-      wcoresum += arma::trans(wx.col(j)) * param_data.w_cond_prec(u).slice(j) * wx.col(j);
+      wcoresum += arma::trans(wx.col(j)) * data.w_cond_prec(u).slice(j) * wx.col(j);
     }
-    param_data.wcore.row(u) = wcoresum;
-    param_data.loglik_w_comps.row(u) = (indexing(u).n_elem+.0) * hl2pi -.5 * param_data.wcore.row(u);
+    data.wcore.row(u) = wcoresum;
+    data.loglik_w_comps.row(u) = (indexing(u).n_elem+.0) * hl2pi -.5 * data.wcore.row(u);
 
     if(forced_grid){
       // if the grid is forced it likely is not overlapping with the data
-      update_lly(u, param_data);
+      update_lly(u, data);
     }
   }
   
-  param_data.loglik_w = arma::accu(param_data.logdetCi_comps) + 
-    arma::accu(param_data.loglik_w_comps) + 
-    arma::accu(param_data.ll_y);
+  data.loglik_w = arma::accu(data.logdetCi_comps) + 
+    arma::accu(data.loglik_w_comps) + 
+    arma::accu(data.ll_y);
   
   
   if(verbose & debug){
@@ -1519,7 +1736,8 @@ void LMCMeshGP::logpost_refresh_after_gibbs(){
   }
 }
 
-void LMCMeshGP::update_block_w_cache(int u, MeshDataLMC& data){
+void LMCMeshGP::update_block_w_cache(int u, MeshDataLMC& data, arma::vec& timing){
+  start = std::chrono::steady_clock::now();
   // 
   arma::uvec blockdims = arma::cumsum( indexing(u).n_elem * arma::ones<arma::uvec>(k) );
   blockdims = arma::join_vert(oneuv * 0, blockdims);
@@ -1539,11 +1757,14 @@ void LMCMeshGP::update_block_w_cache(int u, MeshDataLMC& data){
     end = std::chrono::steady_clock::now();
     
     //Rcpp::Rcout << "7 " << "\n";
-    start = std::chrono::steady_clock::now();
+    
     add_AK_AKu_multiply_(Sigi_tot, data.AK_uP(u)(c), AK_u, blockdims);// childdims);
-    end = std::chrono::steady_clock::now();
+    
   }
+  end = std::chrono::steady_clock::now();
+  //timing(0) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   
+  start = std::chrono::steady_clock::now();
   // each row of u_tausq_inv stores the diagonal of the nugget variance 
   // for the (q,1) vector Y(s) 
   
@@ -1552,13 +1773,19 @@ void LMCMeshGP::update_block_w_cache(int u, MeshDataLMC& data){
   for(int j=0; j<q; j++){
     for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
       if(na_mat(indexing_obs(u)(ix), j) == 1){
-        u_tau_inv(ix, j) = pow(1.0/tausq_inv(j) + data.Ddiag(indexing_obs(u)(ix), j), -.5);
+        u_tau_inv(ix, j) = pow(1.0/tausq_inv(j) +  
+          data.Ddiag(indexing_obs(u)(ix), j), -.5);
         ytilde(ix, j) = (y(indexing_obs(u)(ix), j) - XB(indexing_obs(u)(ix), j))*u_tau_inv(ix, j);
       }
     }
   }
+  end = std::chrono::steady_clock::now();
+  //timing(1) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   
+  
+  start = std::chrono::steady_clock::now();
   if(forced_grid){
+    
     for(int j=0; j<q; j++){
       start = std::chrono::steady_clock::now();
       int indxsize = indexing(u).n_elem;
@@ -1576,8 +1803,8 @@ void LMCMeshGP::update_block_w_cache(int u, MeshDataLMC& data){
         }
       }
       end = std::chrono::steady_clock::now();
-      Smu_tot += //param_data.LambdaH_Ditau(u)(j).t() * 
-        LambdaH_Ditau.t() * ytilde.col(j);//
+      Smu_tot += LambdaH_Ditau.t() * ytilde.col(j);// original
+          
       if(k > q){
         add_lambda_crossprod(Sigi_tot, LambdaH_Ditau, //data.LambdaH_Ditau(u)(j), 
                              j, q, k, indexing(u).n_elem);
@@ -1585,7 +1812,10 @@ void LMCMeshGP::update_block_w_cache(int u, MeshDataLMC& data){
         Sigi_tot += LambdaH_Ditau.t() * LambdaH_Ditau; //data.LambdaH_Ditau(u)(j).t() * data.LambdaH_Ditau(u)(j); 
       }
     }
+    
+    
   } else {
+    
     for(int j=0; j<q; j++){
       start = std::chrono::steady_clock::now();
       // dont erase:
@@ -1598,6 +1828,10 @@ void LMCMeshGP::update_block_w_cache(int u, MeshDataLMC& data){
     }
   }
   
+  end = std::chrono::steady_clock::now();
+  //timing(2) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  
+  
   start = std::chrono::steady_clock::now();
   data.Smu_start(u) = Smu_tot;
   data.Sigi_chol(u) = Sigi_tot;
@@ -1609,31 +1843,41 @@ void LMCMeshGP::update_block_w_cache(int u, MeshDataLMC& data){
   } else {
     data.Sigi_chol(u) = arma::inv(arma::trimatl(arma::chol( arma::symmatu( Sigi_tot ), "lower")));
   }
+  //Rcpp::Rcout << "size of Sigi_tot " << arma::size(Sigi_tot) << endl;
+  end = std::chrono::steady_clock::now();
+  //timing(3) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  
+  
 }
 
-void LMCMeshGP::gibbs_sample_w(bool needs_update=true){
+void LMCMeshGP::gibbs_sample_w(MeshDataLMC& data, bool needs_update=true){
   if(verbose & debug){
     Rcpp::Rcout << "[gibbs_sample_w] " << "\n";
   }
+  //Rcpp::Rcout << "Lambda from:  " << Lambda_orig(0, 0) << " to  " << Lambda(0, 0) << endl;
   
   Rcpp::RNGScope scope;
   rand_norm_mat = arma::randn(coords.n_rows, k);
   start_overall = std::chrono::steady_clock::now();
   
+  arma::vec timing = arma::zeros(5);
+  
+  start = std::chrono::steady_clock::now();
   arma::field<arma::mat> LCi_cache(coords_caching.n_elem);
-  if(recover_generator){
+  if(recover_generator & matern_estim){
     for(int i=0; i<coords_caching.n_elem; i++){
       int u = coords_caching(i); // block name of ith representative
       arma::mat cx = coords.rows(indexing(u));
       arma::mat CCu = CmaternInv(cx, pow(Lambda(0,0), 2.0),
-                                 param_data.theta(0,0), param_data.theta(1, 0), 1.0/tausq_inv(0));
+                                 data.theta(0,0), data.theta(1, 0), 1.0/tausq_inv(0));
       LCi_cache(i) = arma::inv(arma::trimatl(arma::chol(CCu, "lower")));
     }
   }
+  end = std::chrono::steady_clock::now();
+  //timing(0) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   
-  double timing=0;
-  
-  for(int g=0; g<n_gibbs_groups; g++){
+  //for(int g=0; g<n_gibbs_groups; g++){
+  for(int g=n_gibbs_groups-1; g>=0; g--){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
@@ -1642,80 +1886,89 @@ void LMCMeshGP::gibbs_sample_w(bool needs_update=true){
       
       if((block_ct_obs(u) > 0)){
         
-        start = std::chrono::steady_clock::now();
         if(needs_update){
           // recompute tchol of conditional variance
-          update_block_w_cache(u, param_data);
+          update_block_w_cache(u, data, timing);
         }
-        end = std::chrono::steady_clock::now();
-        timing += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         
+        start = std::chrono::steady_clock::now();
         // recompute conditional mean
         arma::uvec blockdims = arma::cumsum( indexing(u).n_elem * arma::ones<arma::uvec>(k) );
         blockdims = arma::join_vert(oneuv * 0, blockdims);
         
-        arma::mat Smu_tot = param_data.Smu_start(u); //
+        arma::mat Smu_tot = data.Smu_start(u); //
         
         if(parents(u).n_elem>0){
-          add_smu_parents_(Smu_tot, param_data.w_cond_prec_times_cmk(u), 
+          add_smu_parents_(Smu_tot, data.w_cond_prec_times_cmk(u), 
                            w.rows( parents_indexing(u) ), blockdims);
         } 
         for(int c=0; c<children(u).n_elem; c++){
           int child = children(u)(c);
           //---------------------
           
-          arma::cube AK_u = cube_cols(param_data.w_cond_mean_K(child), u_is_which_col_f(u)(c)(0));
+          arma::cube AK_u = cube_cols(data.w_cond_mean_K(child), u_is_which_col_f(u)(c)(0));
           
           arma::mat w_child = w.rows(indexing(child));
           arma::mat w_parchild = w.rows(parents_indexing(child));
           //---------------------
           if(parents(child).n_elem > 1){
             start = std::chrono::steady_clock::now();
-            arma::cube AK_others = cube_cols(param_data.w_cond_mean_K(child), u_is_which_col_f(u)(c)(1));
+            arma::cube AK_others = cube_cols(data.w_cond_mean_K(child), u_is_which_col_f(u)(c)(1));
             
             arma::mat w_parchild_others = w_parchild.rows(u_is_which_col_f(u)(c)(1));
             Smu_tot += 
-              arma::vectorise(AK_vec_multiply(param_data.AK_uP(u)(c), 
+              arma::vectorise(AK_vec_multiply(data.AK_uP(u)(c), 
                                               w_child - AK_vec_multiply(AK_others, w_parchild_others)));
             end = std::chrono::steady_clock::now();
             
           } else {
             Smu_tot += 
-              arma::vectorise(AK_vec_multiply(param_data.AK_uP(u)(c), w_child));
+              arma::vectorise(AK_vec_multiply(data.AK_uP(u)(c), w_child));
           }
         }
+        end = std::chrono::steady_clock::now();
+        //timing(2) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         
+        start = std::chrono::steady_clock::now();
         // sample
         arma::vec rnvec = arma::vectorise(rand_norm_mat.rows(indexing(u)));
-        arma::vec wmean = param_data.Sigi_chol(u).t() * param_data.Sigi_chol(u) * Smu_tot;
-        arma::vec wtemp = wmean + param_data.Sigi_chol(u).t() * rnvec; 
+        arma::vec wmean = data.Sigi_chol(u).t() * data.Sigi_chol(u) * Smu_tot;
+        
+        arma::vec wtemp = wmean + data.Sigi_chol(u).t() * rnvec;
         
         w.rows(indexing(u)) = //arma::trans(arma::mat(wtemp.memptr(), k, wtemp.n_elem/k)); 
             arma::mat(wtemp.memptr(), wtemp.n_elem/k, k); 
       
+        arma::mat w_obs_temp = arma::zeros(indexing_obs(u).n_elem, w.n_cols);
         if(forced_grid){
           for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
             if(na_1_blocks(u)(ix) == 1){
-              w.row(indexing_obs(u)(ix)) = //arma::trans(param_data.Hproject(u).slice(ix) * wtemp);
-                arma::sum(arma::trans(param_data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u)))), 0);
-              w.row(indexing_obs(u)(ix)) = w.row(indexing_obs(u)(ix));
+              w_obs_temp.row(ix) = 
+                arma::sum(arma::trans(data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u)))), 0);
+                
+              w.row(indexing_obs(u)(ix)) = w_obs_temp.row(ix);// + sqrt(data.Rproject(u).slice(ix)) * arma::randn(1);
+                
               // do not sample here
               //LambdaHw.row(indexing_obs(u)(ix)) = w.row(indexing_obs(u)(ix)) * Lambda.t();
             }
           }
         }
-        LambdaHw.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * Lambda.t();
+        LambdaHw.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * //w_obs_temp * 
+          Lambda.t();
         
         end = std::chrono::steady_clock::now();
-        //timings(6) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        //timing(3) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         
-        
+        start = std::chrono::steady_clock::now();
         // *** kaust
-        if(recover_generator){
+        if(recover_generator & matern_estim){
           int u_cached_ix = coords_caching_ix(u);
           arma::uvec cx = arma::find( coords_caching == u_cached_ix, 1, "first" );
           wgen.rows(indexing(u)) = LCi_cache(cx(0)) * w.rows(indexing(u));
         }
+        end = std::chrono::steady_clock::now();
+        //timing(4) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        
         
       } 
     }
@@ -1724,9 +1977,9 @@ void LMCMeshGP::gibbs_sample_w(bool needs_update=true){
   
   
   
-  //Rcpp::Rcout << "timing for refresh: " << timing << endl;
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
+    Rcpp::Rcout << "timing: " << timing.t();
     Rcpp::Rcout << "[gibbs_sample_w] gibbs loops "
                 << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()
                 << "us. " << "\n";
@@ -1738,10 +1991,10 @@ void LMCMeshGP::refresh_w_cache(MeshDataLMC& data){
     Rcpp::Rcout << "[refresh_w_cache] \n";
   }
   start_overall = std::chrono::steady_clock::now();
-  
+  arma::vec timing = arma::zeros(2);
   for(int i=0; i<n_blocks; i++){
     int u=block_names(i)-1;
-    update_block_w_cache(u, data);
+    update_block_w_cache(u, data, timing);
   }
   
   if(verbose & debug){
@@ -1778,13 +2031,13 @@ void LMCMeshGP::predict(){
         arma::uvec cx = arma::find( coords_caching == u_cached_ix, 1, "first" );
         
         CviaKron_HRj_chol_bdiag_wcache(Hpred(i), Rcholpred(i), param_data.Kxxi_cache(cx(0)), na_1_blocks(u),
-                                coords, indexing_obs(u), predict_parent_indexing, k, param_data.theta, bessel_ws);
+                                coords, indexing_obs(u), predict_parent_indexing, k, param_data.theta, matern);
       } else {
         // no observed locations, use line of sight
         predict_parent_indexing = parents_indexing(u);
         CviaKron_HRj_chol_bdiag(Hpred(i), Rcholpred(i), Kxxi_parents,
                                 na_1_blocks(u),
-                                coords, indexing_obs(u), predict_parent_indexing, k, param_data.theta, bessel_ws);
+                                coords, indexing_obs(u), predict_parent_indexing, k, param_data.theta, matern);
       }
       end = std::chrono::steady_clock::now();
       timer(0) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -1818,7 +2071,7 @@ void LMCMeshGP::predict(){
           arma::mat Rcholpredx = arma::zeros(k, indexing(u).n_elem);
           arma::uvec all_na = arma::zeros<arma::uvec>(indexing(u).n_elem);
           CviaKron_HRj_chol_bdiag_wcache(Hpredx, Rcholpredx, Kxxi_parents, all_na, 
-                                         coords, indexing(u), predict_parent_indexing, k, param_data.theta, bessel_ws);
+                                         coords, indexing(u), predict_parent_indexing, k, param_data.theta, matern);
           for(int ix=0; ix<indexing(u).n_elem; ix++){
             arma::mat wpars = w.rows(predict_parent_indexing);
             arma::rowvec wtemp = arma::sum(arma::trans(Hpredx.slice(ix)) % wpars, 0) + 
