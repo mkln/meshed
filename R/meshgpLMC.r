@@ -385,11 +385,17 @@ meshedgp <- function(y, x, coords, k=NULL,
     }
     
     n_par_each_process <- nrow(start_theta)
-    if(length(starting$mcmcsd) == 1){
-      mcmc_mh_sd <- diag(k * n_par_each_process) * starting$mcmcsd
+    if(is.null(starting$mcmcsd)){
+      mcmc_mh_sd <- diag(k * n_par_each_process) * 0.05
     } else {
-      mcmc_mh_sd <- starting$mcmcsd
+      if(length(starting$mcmcsd) == 1){
+        mcmc_mh_sd <- diag(k * n_par_each_process) * starting$mcmcsd
+      } else {
+        mcmc_mh_sd <- starting$mcmcsd
+      }
     }
+    
+    
     
     if(is.null(starting$tausq)){
       start_tausq  <- rep(.1, q)

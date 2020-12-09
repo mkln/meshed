@@ -117,7 +117,60 @@ arma::mat matern(const arma::mat& x, const arma::mat& y, const double& phi, cons
 // matern covariance with nu = p + 1/2, and p=0,1,2
 arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int twonu){
   // 0 based indexing
-  arma::mat D;
+  arma::mat res = arma::zeros(x.n_rows, y.n_rows);
+  double nugginside = 0;//1e-9;
+  if(same){
+    for(int i=0; i<x.n_rows; i++){
+      arma::rowvec cri = x.row(i);
+      for(int j=i; j<y.n_rows; j++){
+        arma::rowvec delta = cri - y.row(j);
+        double hphi = arma::norm(delta) * phi;
+        if(hphi > 0.0){
+          if(twonu == 1){
+            res(i, j) = exp(-hphi);
+          } else {
+            if(twonu == 3){
+              res(i, j) = exp(-hphi) * (1 + hphi);
+            } else {
+              if(twonu == 5){
+                res(i, j) = (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
+              }
+            }
+          }
+        } else {
+          res(i, j) = 1.0 + nugginside;
+        }
+      }
+    }
+    res = arma::symmatu(res);
+  } else {
+    for(int i=0; i<x.n_rows; i++){
+      arma::rowvec cri = x.row(i);
+      for(int j=0; j<y.n_rows; j++){
+        arma::rowvec delta = cri - y.row(j);
+        double hphi = arma::norm(delta) * phi;
+        if(hphi > 0.0){
+          if(twonu == 1){
+            res(i, j) = exp(-hphi);
+          } else {
+            if(twonu == 3){
+              res(i, j) = exp(-hphi) * (1 + hphi);
+            } else {
+              if(twonu == 5){
+                res(i, j) = (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
+              }
+            }
+          }
+        } else {
+          res(i, j) = 1.0 + nugginside;
+        }
+      }
+    }
+  }
+  return res;
+  
+  
+  /*
   if(same){
     arma::mat pmag = arma::sum(x % x, 1);
     int np = x.n_rows;
@@ -148,32 +201,43 @@ arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& p
       Dstar.diag() += 1e-7;
     }
     return Dstar;
-  }
+  }*/
 }
 
 
-// matern covariance with nu = p + 1/2, and p=0,1,2
-arma::mat squaredexp(const arma::mat& x, const arma::mat& y, const double& phi, bool same){
-  // 0 based indexing
-  arma::mat D;
+// powered exponential nu<2
+arma::mat powerexp(const arma::mat& x, const arma::mat& y, const double& phi, const double& nu, bool same){
+  arma::mat res = arma::zeros(x.n_rows, y.n_rows);
+  double nugginside = 0;//1e-9;
   if(same){
-    arma::mat pmag = arma::sum(x % x, 1);
-    int np = x.n_rows;
-    D = abs(arma::repmat(pmag.t(), np, 1) + arma::repmat(pmag, 1, np) - 2 * x * x.t());
+    for(int i=0; i<x.n_rows; i++){
+      arma::rowvec cri = x.row(i);
+      for(int j=i; j<y.n_rows; j++){
+        arma::rowvec delta = cri - y.row(j);
+        double hnuphi = pow(arma::norm(delta), nu) * phi;
+        if(hnuphi > 0.0){
+          res(i, j) = exp(-hnuphi);
+        } else {
+          res(i, j) = 1.0 + nugginside;
+        }
+      }
+    }
+    res = arma::symmatu(res);
   } else {
-    arma::mat pmag = arma::sum(x % x, 1);
-    arma::mat qmag = arma::sum(y % y, 1);
-    int np = x.n_rows;
-    int nq = y.n_rows;
-    D = abs(arma::repmat(qmag.t(), np, 1) + arma::repmat(pmag, 1, nq) - 2 * x * y.t());
+    for(int i=0; i<x.n_rows; i++){
+      arma::rowvec cri = x.row(i);
+      for(int j=0; j<y.n_rows; j++){
+        arma::rowvec delta = cri - y.row(j);
+        double hnuphi = pow(arma::norm(delta), nu) * phi;
+        if(hnuphi > 0.0){
+          res(i, j) = exp(-hnuphi);
+        } else {
+          res(i, j) = 1.0 + nugginside;
+        }
+      }
+    }
   }
-  if(same){
-    D = exp(-phi * D);
-    D.diag() += 1e-6;
-    return D;
-  } else {
-    return exp(-phi * D); 
-  }
+  return res;
 }
 
 
@@ -213,25 +277,30 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y,
   if(x.n_cols == 2){
     // spatial matern
     // reparametrized here
-    if(theta.n_rows == 1){
+    if(theta.n_rows == 2){
       // exponential
       double phi = theta(0);
+      double sigmasq = theta(1);
+      
       int nutimes2 = matern.twonu;
       double reparam = //phi; //
         pow(theta(0), .0 + nutimes2);
       
-      return matern_halfint(x, y, phi, same, nutimes2)/reparam;
+      return sigmasq * matern_halfint(x, y, phi, same, nutimes2);///reparam;
     } else {
       double phi = theta(0);
       double nu = theta(1);
+      double sigmasq = theta(2);
+      
       double reparam = pow(phi, 2*nu);
       
       //double reparam = phi;
-      double nugginside = 1e-7;
+      double nugginside = 0;//1e-7;
       
+      //return powerexp(x, y, phi, nu, same)/phi;
       // we divide by phi given the equivalence in 
       // zhang 2004, corrollary to Thm.2: 
-      return matern_internal(x, y, phi, nu, matern.bessel_ws, nugginside, same)/reparam;
+      return sigmasq * matern_internal(x, y, phi, nu, matern.bessel_ws, nugginside, same)/reparam;
     }
     //return squaredexp(x, y, theta(0), same)/theta(0);
   } else {
@@ -393,7 +462,8 @@ void CviaKron_HRj_chol_bdiag(
         Hj.slice(ix).row(j) = Hloc;//+=arma::kron(arma::diagmat(Iselect.col(j)), Hloc);
         double Rcholtemp = arma::conv_to<double>::from(
           Cxx - Hloc * Cxy.t() );
-        Rjchol(j, ix) = pow(abs(Rcholtemp), .5); // 0 could be numerically negative
+        Rcholtemp = Rcholtemp < 0 ? 0.0 : Rcholtemp;
+        Rjchol(j, ix) = pow(Rcholtemp, .5); // 0 could be numerically negative
       }
       
     }
@@ -427,7 +497,8 @@ void CviaKron_HRj_chol_bdiag_wcache(
         Hj.slice(ix).row(j) = Hloc;//+=arma::kron(arma::diagmat(Iselect.col(j)), Hloc);
         double Rcholtemp = arma::conv_to<double>::from(
           Cxx - Hloc * Cxy.t() );
-        Rjchol(j,ix) = pow(abs(Rcholtemp), .5); // 0 could be numerically negative
+        Rcholtemp = Rcholtemp < 0 ? 0.0 : Rcholtemp;
+        Rjchol(j,ix) = pow(Rcholtemp, .5); // 0 could be numerically negative
       }
     }
   }
@@ -516,7 +587,7 @@ arma::mat CviaKron_Rcholinv(const arma::mat& coords,
 // inplace functions
 
 
-double CviaKron_HRi_(arma::cube& H, arma::cube& Ri,
+double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, arma::cube& Richol,
                      const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
                      int k, const arma::mat& theta, MaternParams& matern){
@@ -543,6 +614,7 @@ double CviaKron_HRi_(arma::cube& H, arma::cube& Ri,
     if(indy.n_elem > 0){
       H.slice(j) = Hloc;//H.submat(firstrow, firstcol, lastrow, lastcol) = Hloc;
     }
+    Richol.slice(j) = Rloc_ichol;
     Ri.slice(j) = Rloc_ichol.t() * Rloc_ichol;//Ri.submat(firstrow, firstrow, lastrow, lastrow) = Rloc_ichol.t() * Rloc_ichol; // symmetric
   }
   return logdet;
@@ -592,23 +664,8 @@ void CviaKron_HRj_bdiag_(
         arma::mat Hloc = Cxy * Cyy_i;
         arma::mat R = Cxx - Hloc * Cxy.t();
         
-        
-        //for(int s=0; s<Hloc.n_elem; s++){
-        //  if(abs(Hloc(s)) < 1e-5){
-        //    Hloc(s) = 0;
-        //  }
-        //}
-        
-        
-        //Rcpp::Rcout << "Hj: " << arma::size(Hj(ix)) << " Rj: " << arma::size(Rj(ix)) << endl;
-        //Rcpp::Rcout << j << " " << firstcol << " " << lastcol << endl;
-        //Rcpp::Rcout << "Hloc " << arma::size(Hloc) << endl;
-        //Rcpp::Rcout << "j: " << j << " firstcol: " << firstcol << " lastcol: " << lastcol << " ix: " << ix << endl;
-        //Rcpp::Rcout << arma::size(Hj) << endl;
-        //Hj.subcube(j, firstcol, ix, j, lastcol, ix) = Hloc; //******** diag(1:2) %x% matrix(rnorm(2), ncol=2)
         Hj.subcube(j, 0, ix, j, Hj.n_cols-1, ix) = Hloc;
-        //Rcpp::Rcout << "R " << arma::size(R) << endl;
-        Rj(j, j, ix) = abs(R(0,0));
+        Rj(j, j, ix) = R(0,0) < 0 ? 0.0 : R(0,0);
       }
     }
   }

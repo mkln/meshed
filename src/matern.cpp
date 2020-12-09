@@ -70,6 +70,62 @@ arma::mat Cov_matern(const arma::mat& x, const arma::mat& y,
   return res;
 }
 
+//[[Rcpp::export]]
+arma::mat Cov_matern2(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int twonu){
+  // 0 based indexing
+  arma::mat res = arma::zeros(x.n_rows, y.n_rows);
+  double nugginside = 1e-7;
+  if(same){
+    for(int i=0; i<x.n_rows; i++){
+      arma::rowvec cri = x.row(i);
+      for(int j=i; j<y.n_rows; j++){
+        arma::rowvec delta = cri - y.row(j);
+        double hphi = arma::norm(delta) * phi;
+        if(hphi > 0.0){
+          if(twonu == 1){
+            res(i, j) = exp(-hphi);
+          } else {
+            if(twonu == 3){
+              res(i, j) = exp(-hphi) * (1 + hphi);
+            } else {
+              if(twonu == 5){
+                res(i, j) = (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
+              }
+            }
+          }
+        } else {
+          res(i, j) = 1.0 + nugginside;
+        }
+      }
+    }
+    res = arma::symmatu(res);
+  } else {
+    for(int i=0; i<x.n_rows; i++){
+      arma::rowvec cri = x.row(i);
+      for(int j=0; j<y.n_rows; j++){
+        arma::rowvec delta = cri - y.row(j);
+        double hphi = arma::norm(delta) * phi;
+        if(hphi > 0.0){
+          if(twonu == 1){
+            res(i, j) = exp(-hphi);
+          } else {
+            if(twonu == 3){
+              res(i, j) = exp(-hphi) * (1 + hphi);
+            } else {
+              if(twonu == 5){
+                res(i, j) = (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
+              }
+            }
+          }
+        } else {
+          res(i, j) = 1.0 + nugginside;
+        }
+      }
+    }
+  }
+  return res;
+}
+
 
 //[[Rcpp::export]]
 double Cov_matern_h(const double& h, 
@@ -81,6 +137,19 @@ double Cov_matern_h(const double& h,
   if(hphi > 0.0){
     return sigmasq * pow(hphi, nu) * pow2_nu1_gammanu *
       R::bessel_k(hphi, nu, 1.0);
+  } else {
+    return sigmasq + tausq;
+  }
+}
+
+//[[Rcpp::export]]
+double Cov_powexp_h(const double& h, 
+                    const double& sigmasq,
+                    const double& phi, const double& nu, const double& tausq){
+  
+  double hphi = h*phi;
+  if(hphi > 0.0){
+    return sigmasq * exp(-pow(hphi, nu)) + tausq;
   } else {
     return sigmasq + tausq;
   }

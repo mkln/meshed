@@ -55,6 +55,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// Cov_matern2
+arma::mat Cov_matern2(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int twonu);
+RcppExport SEXP _spmeshed_Cov_matern2(SEXP xSEXP, SEXP ySEXP, SEXP phiSEXP, SEXP sameSEXP, SEXP twonuSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const double& >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
+    Rcpp::traits::input_parameter< int >::type twonu(twonuSEXP);
+    rcpp_result_gen = Rcpp::wrap(Cov_matern2(x, y, phi, same, twonu));
+    return rcpp_result_gen;
+END_RCPP
+}
 // Cov_matern_h
 double Cov_matern_h(const double& h, const double& sigmasq, const double& phi, const double& nu, const double& tausq);
 RcppExport SEXP _spmeshed_Cov_matern_h(SEXP hSEXP, SEXP sigmasqSEXP, SEXP phiSEXP, SEXP nuSEXP, SEXP tausqSEXP) {
@@ -67,6 +82,21 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const double& >::type nu(nuSEXP);
     Rcpp::traits::input_parameter< const double& >::type tausq(tausqSEXP);
     rcpp_result_gen = Rcpp::wrap(Cov_matern_h(h, sigmasq, phi, nu, tausq));
+    return rcpp_result_gen;
+END_RCPP
+}
+// Cov_powexp_h
+double Cov_powexp_h(const double& h, const double& sigmasq, const double& phi, const double& nu, const double& tausq);
+RcppExport SEXP _spmeshed_Cov_powexp_h(SEXP hSEXP, SEXP sigmasqSEXP, SEXP phiSEXP, SEXP nuSEXP, SEXP tausqSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const double& >::type h(hSEXP);
+    Rcpp::traits::input_parameter< const double& >::type sigmasq(sigmasqSEXP);
+    Rcpp::traits::input_parameter< const double& >::type phi(phiSEXP);
+    Rcpp::traits::input_parameter< const double& >::type nu(nuSEXP);
+    Rcpp::traits::input_parameter< const double& >::type tausq(tausqSEXP);
+    rcpp_result_gen = Rcpp::wrap(Cov_powexp_h(h, sigmasq, phi, nu, tausq));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -264,7 +294,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spmeshed_matern_halfint", (DL_FUNC) &_spmeshed_matern_halfint, 5},
     {"_spmeshed_gneiting2002", (DL_FUNC) &_spmeshed_gneiting2002, 6},
     {"_spmeshed_Cov_matern", (DL_FUNC) &_spmeshed_Cov_matern, 8},
+    {"_spmeshed_Cov_matern2", (DL_FUNC) &_spmeshed_Cov_matern2, 5},
     {"_spmeshed_Cov_matern_h", (DL_FUNC) &_spmeshed_Cov_matern_h, 5},
+    {"_spmeshed_Cov_powexp_h", (DL_FUNC) &_spmeshed_Cov_powexp_h, 5},
     {"_spmeshed_blanket", (DL_FUNC) &_spmeshed_blanket, 4},
     {"_spmeshed_coloring", (DL_FUNC) &_spmeshed_coloring, 3},
     {"_spmeshed_kthresholdscp", (DL_FUNC) &_spmeshed_kthresholdscp, 2},

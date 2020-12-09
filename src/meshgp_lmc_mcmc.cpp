@@ -62,7 +62,7 @@ arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arma::mat&
       
     }
   }
-  return Lambda_in * reparametrizer;
+  return Lambda_in;// * reparametrizer;
 }
 
 arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in, const arma::mat& theta, int d, int nutimes2){
@@ -92,7 +92,7 @@ arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in, const arma::m
     }
   }
 
-  return Lambda_in * reparametrizer;
+  return Lambda_in;// * reparametrizer;
 }
 
 //[[Rcpp::export]]
@@ -213,9 +213,9 @@ Rcpp::List lmc_mgp_mcmc(
   arma::cube b_mcmc = arma::zeros(X.n_cols, q, mcmc_thin*mcmc_keep);
   arma::mat tausq_mcmc = arma::zeros(q, mcmc_thin*mcmc_keep);
   arma::cube theta_mcmc = arma::zeros(param.n_elem/k, k, mcmc_thin*mcmc_keep);
+  
   arma::cube lambda_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   
-  arma::mat theta_aux = arma::zeros(param.n_elem, mcmc);
   arma::vec logaccept_mcmc = arma::zeros(mcmc);
   
   arma::vec llsave = arma::zeros(mcmc_thin*mcmc_keep);
@@ -223,11 +223,13 @@ Rcpp::List lmc_mgp_mcmc(
   
   // field avoids limit in size of objects -- ideally this should be a cube
   arma::field<arma::mat> w_mcmc(mcmc_keep);
+  arma::field<arma::mat> lw_mcmc(mcmc_keep);
   arma::field<arma::mat> wgen_mcmc(mcmc_keep); // remove me
   arma::field<arma::mat> yhat_mcmc(mcmc_keep);
   
   for(int i=0; i<mcmc_keep; i++){
     w_mcmc(i) = arma::zeros(mesh.w.n_rows, k);
+    lw_mcmc(i) = arma::zeros(mesh.y.n_rows, q);
     wgen_mcmc(i) = arma::zeros(mesh.w.n_rows, k); // remove me
     yhat_mcmc(i) = arma::zeros(mesh.y.n_rows, q);
   }
@@ -354,6 +356,7 @@ Rcpp::List lmc_mgp_mcmc(
       }
       
       // --------- GIBBS STEPS ---------
+  
       if(sample_w){
         start = std::chrono::steady_clock::now();
         mesh.gibbs_sample_w(mesh.param_data, true);
@@ -442,7 +445,6 @@ Rcpp::List lmc_mgp_mcmc(
       }
       
       //save
-      theta_aux.col(m) = par_huvtransf_fwd(mesh.param_data.theta, set_unif_bounds);
       logaccept_mcmc(m) = logaccept > 0 ? 0 : logaccept;
       
       if(mx >= 0){
@@ -460,10 +462,11 @@ Rcpp::List lmc_mgp_mcmc(
         
         if(mx % mcmc_thin == 0){
           w_mcmc(mcmc_saved) = mesh.w;
+          lw_mcmc(mcmc_saved) = mesh.LambdaHw;
           wgen_mcmc(mcmc_saved) = mesh.wgen; // remove me
           Rcpp::RNGScope scope;
           yhat_mcmc(mcmc_saved) = mesh.XB + mesh.LambdaHw + 
-            arma::kron(arma::trans(pow(1.0/mesh.tausq_inv, .5)), arma::ones(n,1)) % arma::randn(n, q);
+            pow(arma::kron(arma::trans(1.0/mesh.tausq_inv), arma::ones(n,1)) + mesh.param_data.Ddiag, .5) % arma::randn(n, q);
           mcmc_saved++;
         }
       }
@@ -476,11 +479,11 @@ Rcpp::List lmc_mgp_mcmc(
     return Rcpp::List::create(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("w_mcmc") = w_mcmc,
+      Rcpp::Named("lw_mcmc") = lw_mcmc,
       Rcpp::Named("wgen_mcmc") = wgen_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
-      Rcpp::Named("theta_aux") = theta_aux,
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
       Rcpp::Named("paramsd") = adaptivemc.paramsd,
       Rcpp::Named("mcmc") = mcmc,

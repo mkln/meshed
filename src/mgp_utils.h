@@ -17,13 +17,16 @@ struct MeshDataLMC {
   
   arma::field<arma::cube> w_cond_mean_K;
   arma::field<arma::cube> w_cond_prec;
+  arma::field<arma::cube> w_cond_precchol;
   arma::field<arma::cube> w_cond_prec_times_cmk;
   
   arma::vec logdetCi_comps;
   double logdetCi;
   
-  arma::mat wcore; 
+  arma::cube wcore; 
   arma::mat loglik_w_comps;
+  arma::cube nr_wcore;
+  arma::vec nr_ldetci;
   
   arma::vec ll_y;
   
@@ -35,7 +38,6 @@ struct MeshDataLMC {
   //arma::field<arma::field<arma::mat> > LambdaH; //***
   arma::mat Ddiag; //***
   //arma::field<arma::mat> KcxKxxi_obs; // ***
-  
   
   // w cache
   arma::field<arma::mat> Sigi_chol;
@@ -49,7 +51,10 @@ struct MeshDataLMC {
 arma::vec drowcol_uv(const arma::field<arma::uvec>& diag_blocks);
 
 arma::uvec field_v_concat_uv(arma::field<arma::uvec> const& fuv);
-  
+
+arma::mat rwishart(unsigned int df, const arma::mat& S);
+
+arma::mat rinvwishart(unsigned int df, const arma::mat& S);
 
 #endif
 

@@ -13,8 +13,16 @@ Cov_matern <- function(x, y, sigmasq, phi, nu, tausq, same, nThreads = 1L) {
     .Call(`_spmeshed_Cov_matern`, x, y, sigmasq, phi, nu, tausq, same, nThreads)
 }
 
+Cov_matern2 <- function(x, y, phi, same, twonu) {
+    .Call(`_spmeshed_Cov_matern2`, x, y, phi, same, twonu)
+}
+
 Cov_matern_h <- function(h, sigmasq, phi, nu, tausq) {
     .Call(`_spmeshed_Cov_matern_h`, h, sigmasq, phi, nu, tausq)
+}
+
+Cov_powexp_h <- function(h, sigmasq, phi, nu, tausq) {
+    .Call(`_spmeshed_Cov_powexp_h`, h, sigmasq, phi, nu, tausq)
 }
 
 blanket <- function(parents, children, names, block_ct_obs) {
