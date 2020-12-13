@@ -118,7 +118,7 @@ arma::mat matern(const arma::mat& x, const arma::mat& y, const double& phi, cons
 arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int twonu){
   // 0 based indexing
   arma::mat res = arma::zeros(x.n_rows, y.n_rows);
-  double nugginside = 0;//1e-9;
+  double nugginside = 0;//1e-7;
   if(same){
     for(int i=0; i<x.n_rows; i++){
       arma::rowvec cri = x.row(i);
@@ -283,10 +283,10 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y,
       double sigmasq = theta(1);
       
       int nutimes2 = matern.twonu;
-      double reparam = //phi; //
-        pow(theta(0), .0 + nutimes2);
+      double reparam = pow(phi, .0 + nutimes2);
       
-      return sigmasq * matern_halfint(x, y, phi, same, nutimes2);///reparam;
+      return sigmasq * 
+        matern_halfint(x, y, phi, same, nutimes2)/reparam;
     } else {
       double phi = theta(0);
       double nu = theta(1);
@@ -294,13 +294,13 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y,
       
       double reparam = pow(phi, 2*nu);
       
-      //double reparam = phi;
       double nugginside = 0;//1e-7;
       
       //return powerexp(x, y, phi, nu, same)/phi;
       // we divide by phi given the equivalence in 
       // zhang 2004, corrollary to Thm.2: 
-      return sigmasq * matern_internal(x, y, phi, nu, matern.bessel_ws, nugginside, same)/reparam;
+      return sigmasq * 
+        matern_internal(x, y, phi, nu, matern.bessel_ws, nugginside, same)/reparam;
     }
     //return squaredexp(x, y, theta(0), same)/theta(0);
   } else {
@@ -368,7 +368,6 @@ double CviaKron_invchol(arma::mat& res,
   }
   return logdet;
 }
-
 
 
 arma::mat CviaKron_H(const arma::mat& coords, 
@@ -587,7 +586,7 @@ arma::mat CviaKron_Rcholinv(const arma::mat& coords,
 // inplace functions
 
 
-double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, arma::cube& Richol,
+double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, 
                      const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
                      int k, const arma::mat& theta, MaternParams& matern){
@@ -614,7 +613,7 @@ double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, arma::cube& Richol,
     if(indy.n_elem > 0){
       H.slice(j) = Hloc;//H.submat(firstrow, firstcol, lastrow, lastcol) = Hloc;
     }
-    Richol.slice(j) = Rloc_ichol;
+    //Richol.slice(j) = Rloc_ichol;
     Ri.slice(j) = Rloc_ichol.t() * Rloc_ichol;//Ri.submat(firstrow, firstrow, lastrow, lastrow) = Rloc_ichol.t() * Rloc_ichol; // symmetric
   }
   return logdet;

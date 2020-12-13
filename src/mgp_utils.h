@@ -17,13 +17,13 @@ struct MeshDataLMC {
   
   arma::field<arma::cube> w_cond_mean_K;
   arma::field<arma::cube> w_cond_prec;
-  arma::field<arma::cube> w_cond_precchol;
+  //arma::field<arma::cube> w_cond_precchol;
   arma::field<arma::cube> w_cond_prec_times_cmk;
   
   arma::vec logdetCi_comps;
   double logdetCi;
   
-  arma::cube wcore; 
+  arma::mat wcore; 
   arma::mat loglik_w_comps;
   arma::cube nr_wcore;
   arma::vec nr_ldetci;

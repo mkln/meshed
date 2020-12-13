@@ -246,28 +246,30 @@ inline void RAMAdapt::update_ratios(){
 }
 
 inline void RAMAdapt::adapt(const arma::vec& U, double alpha, int mc){
-  if(c < g0){
-    prodparam += U * U.t() / (mc + 1.0);
-  } else {
+  //if((c < g0) & false){
+  //  prodparam += U * U.t() / (mc + 1.0);
+  //} else {
     if(!started & (c < 2*g0)){
       // if mc > 2*g0 this is being called from a restarted mcmc
       // (and if not, it would make no difference since g0 is small)
-      paramsd = prodparam;
+      //paramsd = prodparam;
       started = true;
     }
     i = c-g0;
     eta = min(1.0, (p+.0) * pow(i+1.0, -gamma));
     alpha = std::min(1.0, alpha);
     
-    Sigma = Ip + eta * (alpha - alpha_star) * U * U.t() / arma::accu(U % U);
-    //Rcpp::Rcout << "Sigma: " << endl << Sigma;
-    S = paramsd * Sigma * paramsd.t();
-    //Rcpp::Rcout << "S: " << endl << S;
-    paramsd = arma::chol(S, "lower");
-    
+    if(started){
+      Sigma = Ip + eta * (alpha - alpha_star) * U * U.t() / arma::accu(U % U);
+      //Rcpp::Rcout << "Sigma: " << endl << Sigma;
+      S = paramsd * Sigma * paramsd.t();
+      //Rcpp::Rcout << "S: " << endl << S;
+      paramsd = arma::chol(S, "lower");
+    }
+  
     //Rcpp::Rcout << "mc: " << mc << " paramsd: " << endl;
     //Rcpp::Rcout << paramsd << endl;
-  }
+  //}
 }
 
 inline void RAMAdapt::print(int itertime, int mc){

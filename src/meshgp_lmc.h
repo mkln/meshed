@@ -299,7 +299,7 @@ public:
   // caching some matrices // ***
   arma::field<arma::cube> H_cache;
   arma::field<arma::cube> Ri_cache;
-  arma::field<arma::cube> Richol_cache;
+  //arma::field<arma::cube> Richol_cache;
   
   //arma::field<arma::cube> Kxxi_cache; //*** we store the components not the Kroned matrix
   arma::vec Ri_chol_logdet;
@@ -328,9 +328,9 @@ public:
   void gibbs_sample_beta();
   
   void deal_with_Lambda(MeshDataLMC& data);
-  void sample_nc_Lambda_std(const arma::mat&); // noncentered
-  void sample_nc_Lambda_fgrid(MeshDataLMC& data, const arma::mat&);
-  void sample_c_Lambda_std(const arma::mat&); // centered
+  void sample_nc_Lambda_std(); // noncentered
+  void sample_nc_Lambda_fgrid(MeshDataLMC& data);
+  void refresh_after_lambda();
   
   void deal_with_tausq(MeshDataLMC& data, double, double);
   void gibbs_sample_tausq_std(double, double);
@@ -546,7 +546,7 @@ LMCMeshGP::LMCMeshGP(
   // initial values
   w = w_in; 
   
-  matern_estim = (dd == 2) & (theta_in.n_rows == 2);
+  matern_estim = (dd == 2) & (theta_in.n_rows == 3);
   recover_generator = matern_estim;
   if(recover_generator){
     wgen = arma::zeros(arma::size(w)); // *** remove
@@ -761,7 +761,7 @@ void LMCMeshGP::na_study(){
   
   message("[na_study] step 1.");
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i=0; i<n_blocks;i++){
     arma::mat yvec = y.rows(indexing_obs(i));
@@ -807,7 +807,7 @@ void LMCMeshGP::fill_zeros_Kcache(){
   // ***
   H_cache = arma::field<arma::cube> (kr_caching.n_elem);
   Ri_cache = arma::field<arma::cube> (kr_caching.n_elem);
-  Richol_cache = arma::field<arma::cube> (kr_caching.n_elem);
+  //Richol_cache = arma::field<arma::cube> (kr_caching.n_elem);
   
   Ri_chol_logdet = arma::zeros(kr_caching.n_elem);
   
@@ -817,8 +817,8 @@ void LMCMeshGP::fill_zeros_Kcache(){
       arma::zeros(indexing(u).n_elem, parents_indexing(u).n_elem, k);
     Ri_cache(i) = 
       arma::zeros(indexing(u).n_elem, indexing(u).n_elem, k);
-    Richol_cache(i) = 
-      arma::zeros(indexing(u).n_elem, indexing(u).n_elem, k);
+    //Richol_cache(i) = 
+    //  arma::zeros(indexing(u).n_elem, indexing(u).n_elem, k);
   }
   
   message("[fill_zeros_Kcache] done.");
@@ -839,7 +839,7 @@ void LMCMeshGP::init_cache(){
   
   arma::field<arma::mat> kr_pairing(n_blocks);
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_blocks; i++){
     int u = block_names(i)-1;
@@ -879,7 +879,7 @@ void LMCMeshGP::init_meshdata(const arma::mat& theta_in){
   // block params
   param_data.w_cond_mean_K = arma::field<arma::cube> (n_blocks);
   param_data.w_cond_prec   = arma::field<arma::cube> (n_blocks);
-  param_data.w_cond_precchol   = arma::field<arma::cube> (n_blocks);
+  //param_data.w_cond_precchol   = arma::field<arma::cube> (n_blocks);
   param_data.w_cond_prec_times_cmk = arma::field<arma::cube> (n_blocks);
   
   param_data.Rproject = arma::field<arma::cube>(n_blocks);
@@ -895,7 +895,7 @@ void LMCMeshGP::init_meshdata(const arma::mat& theta_in){
     int u=block_names(i) - 1;
     param_data.w_cond_mean_K(i) = arma::zeros(indexing(i).n_elem, parents_indexing(i).n_elem, k);
     param_data.w_cond_prec(i) = arma::zeros(indexing(i).n_elem, indexing(i).n_elem, k);
-    param_data.w_cond_precchol(i) = arma::zeros(indexing(i).n_elem, indexing(i).n_elem, k);
+    //param_data.w_cond_precchol(i) = arma::zeros(indexing(i).n_elem, indexing(i).n_elem, k);
     param_data.w_cond_prec_times_cmk(i) = arma::zeros(indexing(i).n_elem, parents_indexing(i).n_elem, k);
     
     param_data.Hproject(i) = arma::zeros(k, //k*
@@ -921,7 +921,7 @@ void LMCMeshGP::init_meshdata(const arma::mat& theta_in){
   param_data.logdetCi       = 0;
   
   // ***
-  param_data.wcore = arma::zeros(k, k, n_blocks);
+  param_data.wcore = arma::zeros(n_blocks, 1);
   param_data.loglik_w_comps = arma::zeros(n_blocks, 1);
   param_data.ll_y = arma::zeros(coords.n_rows, 1);
   param_data.loglik_w       = 0; 
@@ -940,7 +940,7 @@ void LMCMeshGP::init_indexing(){
   
   message("[init_indexing] parent_indexing");
 #ifdef _OPENMP
-////***#pragma omp parallel for 
+//#pragma omp parallel for 
 #endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
@@ -961,7 +961,7 @@ void LMCMeshGP::init_finalize(){
   arma::field<arma::uvec> dim_by_parent(n_blocks);
   
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i=0; i<n_blocks; i++){ // all blocks
     int u = block_names(i)-1; // block name
@@ -1017,12 +1017,11 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
   message("[refresh_cache] start.");
   
   Ri_chol_logdet = arma::zeros(kr_caching.n_elem);
-  
   arma::vec timings = arma::zeros(2);
   int errtype = -1;
   
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int it=0; it<cx_and_kr_caching.n_elem; it++){
     int i = 0;
@@ -1042,7 +1041,7 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
       int u = kr_caching(i);
       try {
         if(block_ct_obs(u) > 0){
-          Ri_chol_logdet(i) = CviaKron_HRi_(H_cache(i), Ri_cache(i), Richol_cache(i),
+          Ri_chol_logdet(i) = CviaKron_HRi_(H_cache(i), Ri_cache(i), //Richol_cache(i),
                          coords, indexing(u), parents_indexing(u), k, data.theta, matern);
         }
       } catch (...) {
@@ -1066,162 +1065,48 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
                 << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()
                 << "us.\n";
   }
-  
   return true;
 }
 
-/*
-bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
-  start_overall = std::chrono::steady_clock::now();
-  message("[refresh_cache] start.");
-  
-  Ri_chol_logdet = arma::zeros(kr_caching.n_elem);
-  
-  arma::vec timings = arma::zeros(2);
-  int errtype = -1;
-  
-  start = std::chrono::steady_clock::now();
-  if(forced_grid){
-    // for forced grids we compute the cached inverse of each blocks
-#ifdef _OPENMP
-//***#pragma omp parallel for if(coords_caching.n_elem > 3)
-#endif
-    for(int i=0; i<coords_caching.n_elem; i++){
-      int u = coords_caching(i); // block name of ith representative
-      arma::mat cx = coords.rows(indexing(u));
-      try {
-        for(int j=0; j<k; j++){
-          data.Kxxi_cache(i).slice(j) = arma::inv_sympd(
-            Correlationf(cx, cx, data.theta.col(j), true));
-        }
-      } catch(...) {
-        errtype = 1;
-      }
-    }
-  }
-
-  
-  if(errtype > 0){
-    return false;
-  }
-  end = std::chrono::steady_clock::now();
-  timings(0) = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-  
-  start = std::chrono::steady_clock::now();
-#ifdef _OPENMP
-//***#pragma omp parallel for 
-#endif
-  for(int i=0; i<kr_caching.n_elem; i++){
-    int u = kr_caching(i);
-    try {
-      if(block_ct_obs(u) > 0){
-        Ri_chol_logdet(i) = CviaKron_HRi_(H_cache(i), Ri_cache(i),
-                       coords, indexing(u), parents_indexing(u), k, data.theta);
-      }
-    } catch (...) {
-      errtype = 2;
-    }
-  }
-  end = std::chrono::steady_clock::now();
-  timings(1) = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
-  
-  if(errtype > 0){
-    if(verbose & debug){
-      Rcpp::Rcout << "Cholesky failed at some point. Here's the value of theta that caused this" << "\n";
-      Rcpp::Rcout << "theta: " << data.theta.t() << "\n";
-      Rcpp::Rcout << " -- auto rejected and proceeding." << "\n";
-    }
-    return false;
-  }
-  
-  Rcpp::Rcout << "timings: " << endl << timings.t() << endl;
-  
-  if(verbose & debug){
-    end_overall = std::chrono::steady_clock::now();
-    Rcpp::Rcout << "[refresh_cache] "
-                << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()
-                << "us.\n";
-  }
-  
-  return true;
-}
-*/
 void LMCMeshGP::update_block_covpars(int u, MeshDataLMC& data){
   //message("[update_block_covpars] start.");
   // given block u as input, this function updates H and R
   // which will be used later to compute logp(w | theta)
-  
-  //int u_cached_ix = coords_caching_ix(u);
-  //Rcpp::Rcout << "u: " << u << "\n";
-  
-  //arma::uvec cx = arma::find( coords_caching == u_cached_ix, 1, "first" );
-  //arma::mat wx = w.rows(indexing(u));
-  
+
   if( parents(u).n_elem > 0 ){
-    //arma::vec vecwpar = arma::vectorise(w.rows(parents_indexing(u)));
-    //arma::mat wpar = w.rows(parents_indexing(u));
-    
     int kr_cached_ix = kr_caching_ix(u);
     arma::uvec cpx = arma::find(kr_caching == kr_cached_ix, 1, "first" );
     data.w_cond_mean_K(u) = H_cache(cpx(0));
     data.w_cond_prec(u) = Ri_cache(cpx(0));
-    data.w_cond_precchol(u) = Richol_cache(cpx(0));
+    //data.w_cond_precchol(u) = Richol_cache(cpx(0));
     for(int j=0; j<k; j++){
       data.w_cond_prec_times_cmk(u).slice(j) = data.w_cond_prec(u).slice(j) * data.w_cond_mean_K(u).slice(j);
     }
-    
-    //for(int j=0; j<k; j++){
-    //  wx.col(j) = wx.col(j) - data.w_cond_mean_K(u).slice(j) * wpar.col(j);
-    //}
     
     data.logdetCi_comps(u) = Ri_chol_logdet(cpx(0));
   } else {
     data.logdetCi_comps(u) = CviaKron_invsympd_wdet_(data.w_cond_prec(u), coords, indexing(u), k, data.theta, matern);
   }
-  
   //message("[update_block_covpars] done.");
 }
 
 void LMCMeshGP::update_block_logdens(int u, MeshDataLMC& data){
-  //message("[update_block_logdens] start.");
-  
   arma::mat wx = w.rows(indexing(u));
-  //arma::mat wx2 = w.rows(indexing(u));
-  
-  //arma::mat wcoresum = arma::zeros(1, k);
-  data.wcore.slice(u) = arma::zeros(k, k);
-  
+  arma::mat wcoresum = arma::zeros(1, k);
   if( parents(u).n_elem > 0 ){
-    //arma::vec vecwpar = arma::vectorise(w.rows(parents_indexing(u)));
     arma::mat wpar = w.rows(parents_indexing(u));
     for(int j=0; j<k; j++){
-      //wx.col(j) = wx.col(j) - data.w_cond_mean_K(u).slice(j) * wpar.col(j);
-      
-      // 
-      //arma::mat CiL = arma::chol(data.w_cond_prec(u).slice(j), "lower");
-      wx.col(j) = data.w_cond_precchol(u).slice(j) * (wx.col(j) - data.w_cond_mean_K(u).slice(j) * wpar.col(j));
-    }
-  } else {
-    for(int j=0; j<k; j++){
-      //arma::mat CiL = arma::chol(data.w_cond_prec(u).slice(j), "lower");
-      wx.col(j) = data.w_cond_precchol(u).slice(j) * wx.col(j);
+      wx.col(j) = wx.col(j) - data.w_cond_mean_K(u).slice(j) * wpar.col(j);
     }
   }
+  for(int j=0; j<k; j++){
+    wcoresum(j) = 
+      arma::conv_to<double>::from(arma::trans(wx.col(j)) * data.w_cond_prec(u).slice(j) * wx.col(j));
+  }
   
-  //for(int j=0; j<k; j++){
-  //  wcoresum(j) += 
-  //    arma::conv_to<double>::from(arma::trans(wx.col(j)) * data.w_cond_prec(u).slice(j) * wx.col(j));
-  //}
-  
-  data.wcore.slice(u) = wx.t() * wx;
-  
-  //Rcpp::Rcout << "checking " << endl;
-  //Rcpp::Rcout << data.wcore.slice(u) << endl;
-  //Rcpp::Rcout << wcoresum << endl;
-  
-  //data.wcore.row(u) = wcoresum;
-  data.loglik_w_comps.row(u) = (indexing(u).n_elem+.0) * hl2pi -.5 * //arma::accu(wcoresum); //
-      arma::accu(data.wcore.slice(u).diag());
+  data.wcore.row(u) = arma::accu(wcoresum);
+  data.loglik_w_comps.row(u) = (indexing(u).n_elem+.0) * hl2pi -.5 * arma::accu(wcoresum); //
+      //arma::accu(data.wcore.slice(u).diag());
   
   if(forced_grid){
     int u_cached_ix = coords_caching_ix(u);
@@ -1257,18 +1142,21 @@ void LMCMeshGP::update_lly(int u, MeshDataLMC& data){
         // if the observation is numerically overlapping with the knot coordinate
         // then the MH ratio at this location will always be zero
         // therefore skip if coordinate is numerically overlapping with a knot
-        if(data.Ddiag(indexing_obs(u)(ix), j) > 1e-6){
+        
+        //if(data.Ddiag(indexing_obs(u)(ix), j) > 0){
           double ysigmasq = data.Ddiag(indexing_obs(u)(ix), j) + 
             1.0/tausq_inv(j); // this used to be tausq_inv_long but we probably don't need it
           
           // here we dont use the non-reference conditional means that was calculated before
           // because we have proposed values for theta
           double KXw = arma::conv_to<double>::from(Lambda_var * 
-                                                   arma::sum(data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u))), 1));
+                        arma::sum(data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u))), 1));
           
           double ytilde = y(indexing_obs(u)(ix), j) - XB(indexing_obs(u)(ix), j) - KXw;
           data.ll_y.row(indexing_obs(u)(ix)) += hl2pi -.5 * log(ysigmasq) - 0.5/ysigmasq*pow(ytilde, 2.0);
-        }
+          
+        //}
+        
       }
     }
   }
@@ -1277,38 +1165,16 @@ void LMCMeshGP::update_lly(int u, MeshDataLMC& data){
   //message("[update_lly] done.");
 }
 
-void LMCMeshGP::update_llnref(int u, MeshDataLMC& data){
-  data.nr_wcore.slice(u) = arma::zeros(k, k);
-  data.nr_ldetci(u) = 0;
-  for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
-    if(na_1_blocks(u)(ix) == 1){
-      
-      arma::vec wxmean = arma::sum(data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u))), 1);
-      arma::vec wx = arma::trans(w.row(indexing_obs(u)(ix))) - wxmean;
-      arma::mat wcore = arma::zeros(k, k);
-      
-      for(int j=0; j<k; j++){
-        double wvar = data.Rproject(u)(j, j, ix);
-        if(wvar > 1e-10){
-          wcore += wx.t() * wx/wvar;
-          
-          data.nr_wcore.slice(u) += wcore;
-          data.nr_ldetci(u) += (-0.5*log(wvar));
-        }
-      }
-    }
-  }
-}
-
 bool LMCMeshGP::calc_ywlogdens(MeshDataLMC& data){
   // this is for standard mcmc not pseudomarginal
   // in pseudomarginal we do this along with sampling in 1 loop
   start_overall = std::chrono::steady_clock::now();
   message("[calc_ywlogdens] start.");
 
+  
   //start = std::chrono::steady_clock::now();
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
@@ -1372,17 +1238,15 @@ void LMCMeshGP::gibbs_sample_beta(){
 }
 
 void LMCMeshGP::deal_with_Lambda(MeshDataLMC& data){
-  arma::mat Lambdati = arma::inv(arma::trimatu(arma::trans(Lambda)));
-  
   if(forced_grid){
-    sample_nc_Lambda_fgrid(data, Lambdati);
+    sample_nc_Lambda_fgrid(data);
   } else {
-    //sample_nc_Lambda_std(Lambdati);
+    sample_nc_Lambda_std();
   }
-  sample_c_Lambda_std(Lambdati); 
+  refresh_after_lambda();
 }
 
-void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data, const arma::mat& Lambdati){
+void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data){
   message("[gibbs_sample_Lambda_fgrid] start (sampling via Robust adaptive Metropolis)");
   start = std::chrono::steady_clock::now();
   
@@ -1405,7 +1269,7 @@ void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data, const arma::mat& Lambd
   arma::mat LambdaHw_proposal = arma::zeros(w.n_rows, k);
   
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
@@ -1424,11 +1288,13 @@ void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data, const arma::mat& Lambd
         }
       }
     }
-    arma::mat wtemp = LambdaHw.rows(indexing_obs(u)) * Lambdati;
-    LambdaHw_proposal.rows(indexing_obs(u)) = wtemp * //w.rows(indexing_obs(u)) * 
+    //arma::mat wtemp = LambdaHw.rows(indexing_obs(u)) * Lambdati;
+    LambdaHw_proposal.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * 
       Lambda_proposal.t();
-    LambdaHw.rows(indexing_obs(u)) = wtemp * //w.rows(indexing_obs(u)) * 
-      Lambda.t();
+    LambdaHw_proposal.rows(indexing(u)) = w.rows(indexing(u)) * 
+      Lambda_proposal.t();
+    //LambdaHw.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * 
+    //  Lambda.t();
   }
   
   double start_logpost = 0;
@@ -1459,8 +1325,18 @@ void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data, const arma::mat& Lambd
   }
     
   //double prior_logratio = calc_prior_logratio(new_tausq, 1.0/tausq_inv);
+  
+  //Rcpp::Rcout << "Lambda: " << Lambda_proposal(0,0) << " vs " << Lambda(0,0) << endl;
+  
+  arma::vec Lambda_prop_d = Lambda_proposal.diag();
+  arma::vec Lambda_d = Lambda.diag();
+  arma::mat L_prior_prec = .001 * arma::eye(Lambda_d.n_elem, Lambda_d.n_elem);
+  double log_prior_ratio = arma::conv_to<double>::from(
+    -0.5*Lambda_prop_d.t() * L_prior_prec * Lambda_prop_d
+    +0.5*Lambda_d.t() * L_prior_prec * Lambda_d);
+  
   double jacobian  = calc_jacobian(lambda_vec_proposal, lambda_vec_current, lambda_unif_bounds);
-  double logaccept = new_logpost - start_logpost + jacobian;
+  double logaccept = new_logpost - start_logpost + log_prior_ratio + jacobian;
   
   //double u = R::runif(0,1);//arma::randu();
   bool accepted = do_I_accept(logaccept);
@@ -1494,9 +1370,11 @@ void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data, const arma::mat& Lambd
   }
 }
 
-void LMCMeshGP::sample_nc_Lambda_std(const arma::mat& Lambdati){
+void LMCMeshGP::sample_nc_Lambda_std(){
   message("[gibbs_sample_Lambda] starting");
   start = std::chrono::steady_clock::now();
+  
+  //arma::mat wmean = LambdaHw * Lambdati;
 
   // new with botev's 2017 method to sample from truncated normal
   for(int j=0; j<q; j++){
@@ -1506,7 +1384,8 @@ void LMCMeshGP::sample_nc_Lambda_std(const arma::mat& Lambdati){
     
     // filter: choose value of spatial processes at locations of Yj that are available
     arma::mat WWj = w.submat(ix_by_q_a(j), subcols); // acts as X
-  
+      //wmean.submat(ix_by_q_a(j), subcols); // acts as X
+    
     arma::mat Wcrossprod = WWj.t() * WWj; 
     
     arma::mat Lprior_inv = tausq_inv(j) * 
@@ -1538,28 +1417,10 @@ void LMCMeshGP::sample_nc_Lambda_std(const arma::mat& Lambdati){
     }
     arma::rowvec sampled = arma::trans(mvtruncnormal(Lambdarow_mu, lower_lim, upper_lim, Lambdarow_Sig, 1));
 
-    Rcpp::Rcout << "Lambda:  " << sampled;
+    //Rcpp::Rcout << "Lambda:  " << sampled;
     Lambda.submat(oneuv*j, subcols) = sampled;
   } 
 
-  for(int i=0; i<n_blocks; i++){
-    int u = block_names(i)-1;
-    
-    for(int j=0; j<q; j++){
-      for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
-        if(na_mat(indexing_obs(u)(ix), j) == 1){
-          arma::rowvec Lambda_r_prop = Lambda.row(j);
-          double Rix = arma::conv_to<double>::from(
-            Lambda_r_prop * param_data.Rproject(u).slice(ix) * Lambda_r_prop.t());
-          param_data.Ddiag(indexing_obs(u)(ix), j) = Rix;
-        }
-      }
-    }
-    
-    arma::mat wtemp = LambdaHw.rows(indexing_obs(u)) * Lambdati;
-    LambdaHw.rows(indexing_obs(u)) = wtemp * //w.rows(indexing_obs(u)) * 
-      Lambda.t();
-  }
   // refreshing density happens in the 'logpost_refresh_after_gibbs' function
   
   if(verbose & debug){
@@ -1570,99 +1431,13 @@ void LMCMeshGP::sample_nc_Lambda_std(const arma::mat& Lambdati){
   }
 }
 
-void LMCMeshGP::sample_c_Lambda_std(const arma::mat& Lambdati){
-  message("[sample_c_Lambda_std] starting");
-  start = std::chrono::steady_clock::now();
-  if(q > 1){
-    Rcpp::stop("Centered parametrization not implemented for q>1");
-  }
-  
-  double wcore, sigmasq, sigmasq_new;
-  arma::mat wcoresum;
-  
-  if(q==1){
-    double m_twonu = matern_estim ? 2.0*param_data.theta(1) : (.0 + matern.twonu);
-    
-    sigmasq = pow(Lambda(0,0), 2.0);// / 
-      //pow(param_data.theta(0), m_twonu); 
-    
-    wcoresum = arma::sum(param_data.wcore,2);
-    wcore = arma::accu(wcoresum.diag());//arma::accu(data.wcore.row(u));
-    double aparam, bparam, nr_wcore;
-    
-    if(forced_grid){
-      int n_loc_ne_blocks_nr = n_loc_ne_blocks;
-      for(int i=0; i<n_ref_blocks; i++){
-        int r = reference_blocks(i);
-        int u = block_names(r)-1;
-        update_llnref(u, param_data);
-        n_loc_ne_blocks_nr += block_ct_obs(u);
-      }
-      nr_wcore = arma::accu(param_data.nr_wcore);
-      aparam = 2.01 + n_loc_ne_blocks_nr*1.0/2.0; //
-      bparam = 1.0/( 1 + .5 * sigmasq * (wcore + nr_wcore));
-    } else {
-      aparam = 2.01 + n_loc_ne_blocks*1.0/2.0; //
-      bparam = 1.0/( 1 + .5 * sigmasq * wcore );
-    }
-    
-    Rcpp::RNGScope scope;
-    double sigmasqinv = R::rgamma(aparam, bparam);
-    sigmasq_new = 1.0/sigmasqinv;
-    
-    Lambda(0,0) = sqrt(sigmasq_new);// * 
-      //pow(param_data.theta(0), m_twonu));
-    // refreshing density happens in the 'logpost_refresh_after_gibbs' function
-  } else {
-    arma::rowvec m_nu = matern_estim ? param_data.theta.row(1) : arma::rowvec(0.5*matern.twonu*arma::ones(1, k));
-    arma::vec rdiag = arma::zeros(k);
-    for(int j=0; j<k; j++){
-      rdiag(j) = 1;//pow(param_data.theta(0, j), -m_nu(j));
-    }
-    arma::mat reparametrizer = arma::diagmat(rdiag); 
-    arma::mat Lprime = Lambda * reparametrizer;
-    
-    arma::cube wcore_prime = arma::zeros(arma::size(param_data.wcore));
-    
-    for(int i=0; i<n_ref_blocks; i++){
-      int r = reference_blocks(i);
-      int u = block_names(r)-1;
-      arma::mat wx = w.rows(indexing(u));
-      wcore_prime.slice(u) = arma::zeros(k, k);
-      /*
-      if( parents(u).n_elem > 0 ){
-        arma::mat wpar = w.rows(parents_indexing(u));
-        for(int j=0; j<k; j++){
-          wx.col(j) = param_data.w_cond_precchol(u).slice(j) * (wx.col(j) - param_data.w_cond_mean_K(u).slice(j) * wpar.col(j));
-        }
-      } else {
-        for(int j=0; j<k; j++){
-          wx.col(j) = param_data.w_cond_precchol(u).slice(j) * wx.col(j);
-        }
-      }*/
-      wcore_prime.slice(u) = Lambda * param_data.wcore.slice(u) * Lambda.t();
-    }
-    
-    reparametrizer.diag() = 1.0/reparametrizer.diag();
-    
-    arma::mat SS = arma::sum(wcore_prime, 2);
-    
-    //Rcpp::Rcout << "ssq * wcoresum and SS " << endl;
-    //Rcpp::Rcout << sigmasq*wcoresum << endl << SS << endl;
-    
-    SS = SS + arma::eye(k, k);
-    
-    double aparam = 2.01 + n_loc_ne_blocks; //
-    Lprime = arma::chol(rinvwishart(aparam, SS), "lower");
-    
-    //Rcpp::Rcout << sqrt(sigmasq_new) << " " << Lprime(0,0) << endl;
-    
-    Lambda = Lprime * reparametrizer;
-  }
-  
+void LMCMeshGP::refresh_after_lambda(){
+  // refresh LambdaHw and Ddiag
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
-    
     for(int j=0; j<q; j++){
       for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
         if(na_mat(indexing_obs(u)(ix), j) == 1){
@@ -1673,17 +1448,11 @@ void LMCMeshGP::sample_c_Lambda_std(const arma::mat& Lambdati){
         }
       }
     }
-    
-    arma::mat wtemp = LambdaHw.rows(indexing_obs(u)) * Lambdati;
-    LambdaHw.rows(indexing_obs(u)) = wtemp * //w.rows(indexing_obs(u)) * 
+    //arma::mat wtemp = LambdaHw.rows(indexing_obs(u)) * Lambdati;
+    LambdaHw.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * 
       Lambda.t();
-  }
-  
-  if(verbose & debug){
-    end = std::chrono::steady_clock::now();
-    Rcpp::Rcout << "[sample_c_Lambda_std] " 
-                << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-                << "us.\n";
+    LambdaHw.rows(indexing(u)) = w.rows(indexing(u)) * 
+      Lambda.t();
   }
 }
 
@@ -1701,7 +1470,6 @@ void LMCMeshGP::gibbs_sample_tausq_std(double aprior, double bprior){
   // note that at the available locations w already includes Lambda 
   logpost = 0;
   for(int j=0; j<q; j++){
-    
     arma::mat yrr = y.submat(ix_by_q_a(j), oneuv*j) - 
       XB.submat(ix_by_q_a(j), oneuv*j) - 
       LambdaHw.submat(ix_by_q_a(j), oneuv*j); //***
@@ -1793,30 +1561,32 @@ void LMCMeshGP::logpost_refresh_after_gibbs(MeshDataLMC& data){
   start_overall = std::chrono::steady_clock::now();
   
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
     int u = block_names(r)-1;
     
+    
     arma::mat wx = w.rows(indexing(u));
-    data.wcore.slice(u) = arma::zeros(k, k);
+    arma::mat wcoresum = arma::zeros(1, k);
+    data.wcore.row(u) = arma::zeros(1, 1);
     
     if( parents(u).n_elem > 0 ){
       arma::mat wpar = w.rows(parents_indexing(u));
       for(int j=0; j<k; j++){
-        wx.col(j) = data.w_cond_precchol(u).slice(j) * 
-          (wx.col(j) - data.w_cond_mean_K(u).slice(j) * wpar.col(j));
+        wx.col(j) = wx.col(j) - data.w_cond_mean_K(u).slice(j) * wpar.col(j);
       }
-    } else {
-      for(int j=0; j<k; j++){
-        wx.col(j) = data.w_cond_precchol(u).slice(j) * wx.col(j);
-      }
-    }
-    data.wcore.slice(u) = wx.t() * wx;
+    } 
     
-    data.loglik_w_comps.row(u) = (indexing(u).n_elem+.0) * hl2pi -.5 * 
-      arma::accu(data.wcore.slice(u).diag());
+    for(int j=0; j<k; j++){
+      wcoresum(j) = 
+        arma::conv_to<double>::from(arma::trans(wx.col(j)) * data.w_cond_prec(u).slice(j) * wx.col(j));
+    }
+    
+    data.wcore.row(u) = arma::accu(wcoresum);
+    data.loglik_w_comps.row(u) = (indexing(u).n_elem+.0) * hl2pi -.5 * arma::accu(wcoresum); //
+    //arma::accu(data.wcore.slice(u).diag());
     
     if(forced_grid){
       // if the grid is forced it likely is not overlapping with the data
@@ -1827,7 +1597,6 @@ void LMCMeshGP::logpost_refresh_after_gibbs(MeshDataLMC& data){
   data.loglik_w = arma::accu(data.logdetCi_comps) + 
     arma::accu(data.loglik_w_comps) + 
     arma::accu(data.ll_y);
-  
   
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
@@ -1974,10 +1743,10 @@ void LMCMeshGP::gibbs_sample_w(MeshDataLMC& data, bool needs_update=true){
   end = std::chrono::steady_clock::now();
   //timing(0) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   
-  //for(int g=0; g<n_gibbs_groups; g++){
-  for(int g=n_gibbs_groups-1; g>=0; g--){
+  for(int g=0; g<n_gibbs_groups; g++){
+  //for(int g=n_gibbs_groups-1; g>=0; g--){
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
@@ -2043,20 +1812,21 @@ void LMCMeshGP::gibbs_sample_w(MeshDataLMC& data, bool needs_update=true){
               w_obs_temp.row(ix) = 
                 arma::sum(arma::trans(data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u)))), 0);
                 
-              w.row(indexing_obs(u)(ix)) = w_obs_temp.row(ix) + 
-                arma::trans(sqrt(data.Rproject(u).slice(ix)) * 
-                arma::trans(rand_norm_mat.row(indexing_obs(u)(ix))));
+              w.row(indexing_obs(u)(ix)) = w_obs_temp.row(ix);// + 
+                //arma::trans(sqrt(data.Rproject(u).slice(ix)) * 
+                //arma::trans(rand_norm_mat.row(indexing_obs(u)(ix))));
                 
               // do not sample here
               //LambdaHw.row(indexing_obs(u)(ix)) = w.row(indexing_obs(u)(ix)) * Lambda.t();
             }
           }
-          LambdaHw.rows(indexing_obs(u)) = w_obs_temp * 
-            Lambda.t();
-        } else {
-          LambdaHw.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * 
-            Lambda.t();
-        }
+        } 
+        
+        LambdaHw.rows(indexing(u)) = w.rows(indexing(u)) * 
+          Lambda.t();
+        LambdaHw.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * 
+          Lambda.t();
+        
         end = std::chrono::steady_clock::now();
         //timing(3) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         
@@ -2115,7 +1885,7 @@ void LMCMeshGP::predict(){
   
     message("[predict] start ");
   #ifdef _OPENMP
-  //***#pragma omp parallel for 
+  #pragma omp parallel for 
   #endif
     for(int i=0; i<u_predicts.n_elem; i++){ //*** subset to blocks with NA
       int u = u_predicts(i);// u_predicts(i);

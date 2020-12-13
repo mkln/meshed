@@ -4,65 +4,30 @@
 #include "interrupt_handler.h"
 #include "mgp_utils.h"
 
-arma::mat reparametrize_theta_back(const arma::mat& theta_in, int d){
-  /*if((d==2) & (theta_in.n_rows > 1)){
-    arma::mat theta_out = theta_in;
-    // make phi
-    
-    arma::vec phi = arma::zeros(theta_in.n_cols);
-    for(int j=0; j<phi.n_elem; j++){
-      phi(j) = pow(theta_in(0, j), -2*theta_in(1, j));
-    }
-
-    theta_out.row(0) = phi.t();
-    return theta_out;
-  } else {*/
-    return theta_in;
-  //}
-}
-
-arma::mat reparametrize_theta_forward(const arma::mat& theta_in, int d){
-  /*if((d==2) & (theta_in.n_rows > 1)){
-    arma::mat theta_out = theta_in;
-    // make phi
-    arma::vec phi = arma::zeros(theta_in.n_cols);
-    for(int j=0; j<phi.n_elem; j++){
-      phi(j) = pow(theta_in(0, j), 2*theta_in(1, j));
-    }
-    theta_out.row(0) = phi.t();
-    return theta_out;
-  } else {*/
-    return theta_in;
-  //}
-}
-
 arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arma::mat& theta, int d, int nutimes2){
   arma::mat reparametrizer; 
   if(d == 3){
     // exponential reparametrization of gneiting's ? 
-    reparametrizer = arma::diagmat(pow(
-      theta.row(1), - 1.0 / 2.0)); 
+    reparametrizer = arma::diagmat(pow(theta.row(1), - 0.5)); 
   } else {
-    if((theta.n_rows > 1) & true){
+    if(theta.n_rows > 2){
       // full matern
       arma::vec rdiag = arma::zeros(theta.n_cols);
       for(int j=0; j<rdiag.n_elem; j++){
         rdiag(j) = pow(theta(0, j), -theta(1, j));
       }
-      reparametrizer = arma::diagmat(rdiag); 
+      reparametrizer = 
+        arma::diagmat(rdiag) * 
+        arma::diagmat(sqrt(theta.row(2))); 
     } else {
       // we use this from mcmc samples because those already have row0 as the transformed param
       // zhang 2004 corollary to theorem 2.
-      if(theta.n_rows == 1){
-        reparametrizer = arma::diagmat(pow(
-          theta.row(0), - nutimes2 * 1.0 / 2.0)); 
-      } else {
-        reparametrizer = arma::eye(theta.n_cols, theta.n_cols);
-      }
-      
+      reparametrizer = 
+        arma::diagmat(pow(theta.row(0), -nutimes2/2.0)) * 
+        arma::diagmat(sqrt(theta.row(1))); 
     }
   }
-  return Lambda_in;// * reparametrizer;
+  return Lambda_in * reparametrizer;
 }
 
 arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in, const arma::mat& theta, int d, int nutimes2){
@@ -70,29 +35,26 @@ arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in, const arma::m
   if(d == 3){
     // exponential
     reparametrizer = arma::diagmat(pow(
-      theta.row(1), + 1.0 / 2.0)); 
+      theta.row(1), + 0.5)); 
   } else {
-    if((theta.n_rows > 1) & true){
+    if(theta.n_rows > 2){
       // full matern: builds lambda*phi^nu
       arma::vec rdiag = arma::zeros(theta.n_cols);
       for(int j=0; j<rdiag.n_elem; j++){
         rdiag(j) = pow(theta(0, j), theta(1, j));
       }
-      reparametrizer = arma::diagmat(rdiag); 
+      reparametrizer = 
+        arma::diagmat(rdiag) * 
+        arma::diagmat(pow(theta.row(2), -0.5)); ; 
     } else {
       // zhang 2004 corollary to theorem 2.
-      //arma::vec phi = 2 * sqrt(theta.row(1)) / theta.row(0);
       
-      if(theta.n_rows == 1){
-        reparametrizer = arma::diagmat(pow(
-          theta.row(0), + nutimes2 * 1.0 / 2.0)); 
-      } else {
-        reparametrizer = arma::eye(theta.n_cols, theta.n_cols);
-      }
+      reparametrizer = 
+        arma::diagmat(pow(theta.row(0), + nutimes2/2.0)) * 
+        arma::diagmat(pow(theta.row(1), -0.5)); 
     }
   }
-
-  return Lambda_in;// * reparametrizer;
+  return Lambda_in * reparametrizer;
 }
 
 //[[Rcpp::export]]
@@ -192,7 +154,9 @@ Rcpp::List lmc_mgp_mcmc(
   arma::mat metropolis_sd = mcmcsd;
   
   arma::mat start_lambda = reparametrize_lambda_forward(lambda, theta, d, matern_twonu);
-  arma::mat start_theta = reparametrize_theta_forward(theta, d);
+  
+  arma::mat start_theta = theta;
+  Rcpp::Rcout << "start theta \n" << theta;
   
   LMCMeshGP mesh(y, X, coords, k,
                 
@@ -214,6 +178,7 @@ Rcpp::List lmc_mgp_mcmc(
   arma::mat tausq_mcmc = arma::zeros(q, mcmc_thin*mcmc_keep);
   arma::cube theta_mcmc = arma::zeros(param.n_elem/k, k, mcmc_thin*mcmc_keep);
   
+  arma::cube lambdastar_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   arma::cube lambda_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   
   arma::vec logaccept_mcmc = arma::zeros(mcmc);
@@ -286,6 +251,7 @@ Rcpp::List lmc_mgp_mcmc(
           arma::mat(new_param.memptr(), new_param.n_elem/k, k);
         
         mesh.theta_update(mesh.alter_data, theta_proposal);
+        
         acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
         
         
@@ -298,16 +264,26 @@ Rcpp::List lmc_mgp_mcmc(
           new_loglik = tempr*mesh.alter_data.loglik_w;
           current_loglik = tempr*mesh.param_data.loglik_w;
           
-          //prior_logratio = calc_prior_logratio(new_param, param);
+          prior_logratio = calc_prior_logratio(
+              mesh.alter_data.theta.tail_rows(1).t(), mesh.param_data.theta.tail_rows(1).t(), .001, .001); // sigmasq
+          
           jacobian  = calc_jacobian(new_param, param, set_unif_bounds);
           logaccept = new_loglik - current_loglik + 
-            //prior_logratio +
+            prior_logratio +
             jacobian;
           
+          
           if(false){
-            Rcpp::Rcout << "bounds: \n" << set_unif_bounds << endl;
-            Rcpp::Rcout << "new proposal: " << new_param << endl;
-            Rcpp::Rcout << "log accept: " << logaccept << " j:" << jacobian << endl;
+            Rcpp::Rcout << "current " << current_loglik << " parm: " << param.t();
+            Rcpp::Rcout << "new " << new_loglik << " proposal: " << new_param.t();
+            Rcpp::Rcout << "log accept: " << logaccept << " j:" << jacobian << " prior: " << prior_logratio << endl;
+
+            Rcpp::Rcout << "-- LogDens components:\n"
+                        << arma::accu(mesh.alter_data.logdetCi_comps) << " vs " << arma::accu(mesh.param_data.logdetCi_comps) << endl
+                        << arma::accu(mesh.alter_data.loglik_w_comps) << " vs " << arma::accu(mesh.param_data.loglik_w_comps) << endl
+                        << arma::accu(mesh.alter_data.ll_y) << " vs " << arma::accu(mesh.param_data.ll_y) << endl;
+            
+            
           }
           
           if(std::isnan(logaccept)){
@@ -356,7 +332,7 @@ Rcpp::List lmc_mgp_mcmc(
       }
       
       // --------- GIBBS STEPS ---------
-  
+      
       if(sample_w){
         start = std::chrono::steady_clock::now();
         mesh.gibbs_sample_w(mesh.param_data, true);
@@ -416,6 +392,7 @@ Rcpp::List lmc_mgp_mcmc(
         }
       }
       
+      
       if((m>0) & (mcmc > 100)){
         if(!(m % print_every)){
           interrupted = checkInterrupt();
@@ -429,7 +406,6 @@ Rcpp::List lmc_mgp_mcmc(
           adaptivemc.print_summary(time_tick, time_mcmc, m, mcmc);
           
           tick_mcmc = std::chrono::steady_clock::now();
-          
           Rprintf("  p(w|theta) = %.2f    p(y|...) = %.2f  \n  theta = ", mesh.param_data.loglik_w, mesh.logpost);
           for(int pp=0; pp<mesh.param_data.theta.n_elem; pp++){
             Rprintf("%.3f ", mesh.param_data.theta(pp));
@@ -451,9 +427,9 @@ Rcpp::List lmc_mgp_mcmc(
         tausq_mcmc.col(w_saved) = 1.0 / mesh.tausq_inv;
         b_mcmc.slice(w_saved) = mesh.Bcoeff;
         
-        theta_mcmc.slice(w_saved) = reparametrize_theta_back(mesh.param_data.theta, d);
+        theta_mcmc.slice(w_saved) = mesh.param_data.theta;
         // lambda here reconstructs based on 1/phi Matern reparametrization
-        
+        lambdastar_mcmc.slice(w_saved) = mesh.Lambda;
         lambda_mcmc.slice(w_saved) = reparametrize_lambda_back(mesh.Lambda, mesh.param_data.theta, d, mesh.matern.twonu);
         
         llsave(w_saved) = mesh.logpost;
@@ -485,6 +461,7 @@ Rcpp::List lmc_mgp_mcmc(
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
+      Rcpp::Named("lambdastar_mcmc") = lambdastar_mcmc,
       Rcpp::Named("paramsd") = adaptivemc.paramsd,
       Rcpp::Named("mcmc") = mcmc,
       Rcpp::Named("logpost") = llsave,

@@ -8,12 +8,13 @@ meshedgp <- function(y, x, coords, k=NULL,
                    n_thin = 1,
                    n_threads = 4,
                    print_every = NULL,
-                   settings    = list(adapting=T, forced_grid=NULL, saving=F, nu=0.5),
+                   settings    = list(adapting=T, forced_grid=NULL, saving=F),
                    prior       = list(beta=NULL, tausq=NULL,
                                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL,
-                                      nu = NULL,
+                                      phi=NULL, nu = NULL,
                                       matern_nu=F),
                    starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, w=NULL, 
+                                      nu = NULL,
                                       mcmcsd=.05, 
                                       mcmc_startfrom=0),
                    debug       = list(sample_beta=T, sample_tausq=T, 
@@ -64,12 +65,6 @@ meshedgp <- function(y, x, coords, k=NULL,
     mcmc_verbose     <- debug$verbose %>% set_default(F)
     mcmc_debug       <- debug$debug %>% set_default(F)
     saving <- settings$saving %>% set_default(F)
-    
-    if(is.null(settings$nu)){
-      matern_fix_twonu <- 0.5
-    } else {
-      matern_fix_twonu <- round(settings$nu * 2)
-    }
     
     dd             <- ncol(coords)
     p              <- ncol(x)
@@ -303,10 +298,49 @@ meshedgp <- function(y, x, coords, k=NULL,
     indexing_obs <- indexing_grid
   }
   
-  
   if(T){
     # prior and starting values for mcmc
-    matern_nu <- prior$matern_nu %>% set_default(F)
+    
+    # nu
+    if(is.null(prior$nu)){
+      matern_nu <- F
+      if(is.null(starting$nu)){
+        start_nu <- 0.5
+        matern_fix_twonu <- 1
+      } else {
+        start_nu <- starting$nu
+        if(start_nu %in% c(0.5, 1.5, 2.5)){
+          matern_fix_twonu <- 2 * start_nu
+        }
+      }
+    } else {
+      nu_limits <- prior$nu
+      if(diff(nu_limits) == 0){
+        matern_fix_twonu <- floor(nu_limits[1])*2 + 1
+        start_nu <- matern_fix_twonu
+        matern_nu <- F
+        strmessage <- paste0("nu set to ", start_nu)
+        message(strmessage)
+      } else {
+        if(is.null(starting$nu)){
+          start_nu <- mean(nu_limits)
+        } else {
+          start_nu <- starting$nu
+        }
+        matern_nu <- T
+        matern_fix_twonu <- 1 # not applicable
+      }
+    }
+    
+    if(is.null(prior$phi)){
+      stop("Need to specify the limits on the Uniform prior for phi via prior$phi.")
+    }
+    phi_limits <- prior$phi
+    if(is.null(starting$phi)){
+      start_phi <- mean(phi_limits)
+    } else {
+      start_phi <- starting$phi
+    }
     
     if(is.null(prior$beta)){
       beta_Vi <- diag(ncol(x)) * 1/100
@@ -320,17 +354,8 @@ meshedgp <- function(y, x, coords, k=NULL,
       tausq_ab <- prior$tausq
     }
     
-    if(is.null(prior$btmlim)){
-      btmlim <- 1e-2
-    } else {
-      btmlim <- prior$btmlim
-    }
-    
-    if(is.null(prior$toplim)){
-      toplim <- 1e2
-    } else {
-      toplim <- prior$toplim
-    }
+    btmlim <- 1e-3
+    toplim <- 1e3
     
     # starting values
     if(is.null(starting$beta)){
@@ -342,37 +367,52 @@ meshedgp <- function(y, x, coords, k=NULL,
     if(is.null(prior$set_unif_bounds)){
       if(dd == 2){
         if(matern_nu){
-          start_theta <- matrix(2, ncol=k, nrow=2) 
+          theta_names <- c("phi", "nu", "sigmasq")
+          npar <- length(theta_names)
           
-          if(is.null(prior$nu)){
-            nu_limits <- c(0.1, 3-1e-3)
-          } else {
-            nu_limits <- prior$nu
-          }
+          start_theta <- matrix(0, ncol=k, nrow=npar) 
+          set_unif_bounds <- matrix(0, nrow=npar*k, ncol=2)
           
-          set_unif_bounds <- matrix(0, nrow=2*k, ncol=2)
-          set_unif_bounds[1,1] <- btmlim
-          set_unif_bounds[1,2] <- toplim
-          set_unif_bounds[2*(1:k),] <- matrix(nu_limits,nrow=1) %x% matrix(1, nrow=k)
+          # phi
+          set_unif_bounds[seq(1, npar*k, npar),] <- matrix(phi_limits,nrow=1) %x% matrix(1, nrow=k)
+          start_theta[1,] <- start_phi
           
-          start_theta[2,] <- mean(nu_limits)
+          # nu
+          set_unif_bounds[seq(2, npar*k, npar),] <- matrix(nu_limits,nrow=1) %x% matrix(1, nrow=k)
+          start_theta[2,] <- start_nu
+          
+          # sigmasq --overpar
+          set_unif_bounds[seq(3, npar*k, npar),] <- matrix(c(btmlim, toplim),nrow=1) %x% matrix(1, nrow=k)
+          start_theta[3,] <- btmlim + 1
+          
         } else {
-          start_theta <- matrix(mean(c(btmlim, toplim)), ncol=k, nrow=1) 
+          theta_names <- c("phi", "sigmasq")
+          npar <- length(theta_names)
           
-          set_unif_bounds <- matrix(0, nrow=k, ncol=2)
-          set_unif_bounds[,1] <- btmlim
-          set_unif_bounds[,2] <- toplim
+          start_theta <- matrix(0, ncol=k, nrow=npar) 
+          
+          set_unif_bounds <- matrix(0, nrow=npar*k, ncol=2)
+          # phi
+          set_unif_bounds[seq(1, npar*k, npar),] <- matrix(phi_limits,nrow=1) %x% matrix(1, nrow=k)
+          start_theta[1,] <- start_phi
+          
+          # sigmasq --overpar
+          set_unif_bounds[seq(2, npar*k, npar),] <- matrix(c(btmlim, toplim),nrow=1) %x% matrix(1, nrow=k)
+          start_theta[2,] <- btmlim + 1
         }
-        
       } else {
+        theta_names <- c("a", "phi", "beta")
+        npar <- length(theta_names)
+        
         start_theta <- matrix(2, ncol=k, nrow=3) 
-        start_theta[3,] <- .5 # separability parameter
+        start_theta[3,] <- .5 # separability parameter beta
         
         set_unif_bounds <- matrix(0, nrow=3*k, ncol=2)
-        set_unif_bounds[,1] <- btmlim
-        set_unif_bounds[,2] <- toplim
-        set_unif_bounds[3*(1:k),] <- matrix(c(btmlim, 1-btmlim),nrow=1) %x% matrix(1, nrow=k)
+        # a and phi
+        set_unif_bounds[seq(1, npar*k, npar),] <- phi_limits
+        set_unif_bounds[seq(2, npar*k, npar),] <- phi_limits
         
+        set_unif_bounds[3*(1:k),] <- matrix(c(1e-5, 1-1e-5),nrow=1) %x% matrix(1, nrow=k)
       }
       
     } else {
@@ -395,8 +435,6 @@ meshedgp <- function(y, x, coords, k=NULL,
       }
     }
     
-    
-    
     if(is.null(starting$tausq)){
       start_tausq  <- rep(.1, q)
     } else {
@@ -405,7 +443,7 @@ meshedgp <- function(y, x, coords, k=NULL,
     
     if(is.null(starting$lambda)){
       start_lambda <- matrix(0, nrow=q, ncol=k)
-      diag(start_lambda) <- 10
+      diag(start_lambda) <- 10 #*** 10
     } else {
       start_lambda <- starting$lambda
     }
@@ -413,7 +451,7 @@ meshedgp <- function(y, x, coords, k=NULL,
     if(is.null(starting$lambda_mask)){
       lambda_mask <- matrix(0, nrow=q, ncol=k)
       lambda_mask[lower.tri(lambda_mask)] <- 1
-      diag(lambda_mask) <- 1
+      diag(lambda_mask) <- 1 #***
     } else {
       lambda_mask <- starting$lambda_mask
     }
