@@ -220,6 +220,7 @@ Rcpp::List lmc_mgp_mcmc(
   int mcmc_saved = 0; int w_saved = 0;
   //try {
     for(m=0; m<mcmc & !interrupted; m++){
+      //Rcpp::Rcout << "m: " << m << endl;
       
       mesh.predicting = false;
       mx = m-mcmc_burn;
@@ -351,7 +352,7 @@ Rcpp::List lmc_mgp_mcmc(
           }
         }
       }
-      
+    
       if(sample_lambda){
         start = std::chrono::steady_clock::now();
         mesh.deal_with_Lambda(mesh.param_data);
@@ -359,6 +360,16 @@ Rcpp::List lmc_mgp_mcmc(
         if(verbose_mcmc & verbose){
           Rcpp::Rcout << "[Lambda] " 
                       << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n"; 
+        }
+      }
+      
+      if(sample_tausq){
+        start = std::chrono::steady_clock::now();
+        mesh.deal_with_tausq(mesh.param_data, 2.01, 1);
+        end = std::chrono::steady_clock::now();
+        if(verbose_mcmc & verbose){
+          Rcpp::Rcout << "[tausq] " 
+                      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
         }
       }
       
@@ -372,15 +383,6 @@ Rcpp::List lmc_mgp_mcmc(
         }
       }
       
-      if(sample_tausq){
-        start = std::chrono::steady_clock::now();
-        mesh.deal_with_tausq(mesh.param_data);
-        end = std::chrono::steady_clock::now();
-        if(verbose_mcmc & verbose){
-          Rcpp::Rcout << "[tausq] " 
-                      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
-        }
-      }
       
       if(sample_tausq || sample_beta || sample_w || sample_lambda){
         start = std::chrono::steady_clock::now();
@@ -441,8 +443,10 @@ Rcpp::List lmc_mgp_mcmc(
           lw_mcmc(mcmc_saved) = mesh.LambdaHw;
           wgen_mcmc(mcmc_saved) = mesh.wgen; // remove me
           Rcpp::RNGScope scope;
-          yhat_mcmc(mcmc_saved) = mesh.XB + mesh.LambdaHw + 
-            pow(arma::kron(arma::trans(1.0/mesh.tausq_inv), arma::ones(n,1)) + mesh.param_data.Ddiag, .5) % arma::randn(n, q);
+          
+          yhat_mcmc(mcmc_saved) = mesh.XB + 
+            mesh.wU * mesh.Lambda.t() + 
+            arma::kron(arma::trans(pow(1.0/mesh.tausq_inv, .5)), arma::ones(n,1)) % arma::randn(n, q);
           mcmc_saved++;
         }
       }

@@ -38,7 +38,7 @@ void CviaKron_invsympd_(arma::cube& CCi,
                         const arma::mat& coords, const arma::uvec& indx, 
                         int k, const arma::mat& theta, MaternParams& matern);
   
-double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, 
+double CviaKron_HRi_(arma::cube& H, arma::cube& Ri,
                      const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
                      int k, const arma::mat& theta, MaternParams& matern);
@@ -48,7 +48,7 @@ double CviaKron_invsympd_wdet_(arma::cube& res,
                          int k, const arma::mat& theta, MaternParams& matern);
 
 void CviaKron_HRj_bdiag_(
-    arma::cube& Hj, arma::cube& Rj, 
+    arma::cube& Hj, arma::cube& Rj, arma::cube& Rij,
     const arma::cube& Kxxi_cache,
     const arma::mat& coords, const arma::uvec& indx, 
     const arma::uvec& naix, const arma::uvec& indy, 

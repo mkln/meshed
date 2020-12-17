@@ -18,14 +18,15 @@ meshedgp(y, x, coords,
   print_every = NULL,
   settings    = list(adapting=T, forced_grid=NULL, saving=F),
   prior       = list(beta=NULL, tausq=NULL,
-                      toplim = NULL, btmlim = NULL, set_unif_bounds=NULL,
-                      matern_nu=F),
+                    phi=NULL, nu = NULL,
+                    toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
   starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, w=NULL, 
-                      mcmcsd=.05, 
-                      mcmc_startfrom=0),
+                    nu = NULL,
+                    mcmcsd=.05, 
+                    mcmc_startfrom=0),
   debug       = list(sample_beta=T, sample_tausq=T, 
-                      sample_theta=T, sample_w=T, sample_lambda=T,
-                      verbose=F, debug=F)
+                    sample_theta=T, sample_w=T, sample_lambda=T,
+                    verbose=F, debug=F)
 )
 }
 \arguments{

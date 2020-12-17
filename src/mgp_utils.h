@@ -9,6 +9,12 @@ using namespace std;
 
 bool compute_block(bool predicting, int block_ct, bool rfc);
 
+struct MeshNonCtrDataLMC {
+  arma::vec ll_y;
+  double ll_y_all;
+  arma::cube DplusSi;
+  arma::vec DplusSi_ldet;
+};
 
 struct MeshDataLMC {
   arma::mat theta; 
@@ -25,8 +31,6 @@ struct MeshDataLMC {
   
   arma::mat wcore; 
   arma::mat loglik_w_comps;
-  arma::cube nr_wcore;
-  arma::vec nr_ldetci;
   
   arma::vec ll_y;
   
@@ -35,8 +39,13 @@ struct MeshDataLMC {
   
   arma::field<arma::cube> Hproject; // moves from w to observed coords
   arma::field<arma::cube> Rproject; // stores R for obs
+  arma::field<arma::cube> Riproject;
   //arma::field<arma::field<arma::mat> > LambdaH; //***
   arma::mat Ddiag; //***
+  
+  arma::cube DplusSi;
+  arma::cube DplusSi_c;
+  arma::vec DplusSi_ldet;
   //arma::field<arma::mat> KcxKxxi_obs; // ***
   
   // w cache

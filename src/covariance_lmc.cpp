@@ -638,7 +638,7 @@ double CviaKron_invsympd_wdet_(arma::cube& res,
 }
 
 void CviaKron_HRj_bdiag_(
-    arma::cube& Hj, arma::cube& Rj, 
+    arma::cube& Hj, arma::cube& Rj, arma::cube& Rij,
     const arma::cube& Kxxi_cache,
     const arma::mat& coords, const arma::uvec& indx, 
     const arma::uvec& naix, const arma::uvec& indy, 
@@ -665,6 +665,7 @@ void CviaKron_HRj_bdiag_(
         
         Hj.subcube(j, 0, ix, j, Hj.n_cols-1, ix) = Hloc;
         Rj(j, j, ix) = R(0,0) < 0 ? 0.0 : R(0,0);
+        Rij(j, j, ix) = R(0,0) < 1e-14 ? 0.0 : 1.0/R(0,0); //1e-10
       }
     }
   }
