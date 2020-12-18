@@ -507,12 +507,12 @@ LMCMeshGP::LMCMeshGP(
     tausq_mcmc_counter = 0;
     lambda_mcmc_counter = 0;
     
-    tausq_adapt = RAMAdapt(q, arma::eye(q,q)*.1, .25);
+    tausq_adapt = RAMAdapt(q, arma::eye(q,q)*.01, .25);
     tausq_unif_bounds = arma::join_horiz(1e-6 * arma::ones(q), 1e3 * arma::ones(q));
     
     // lambda prepare
     n_lambda_pars = arma::accu(Lambda_mask);
-    lambda_adapt = RAMAdapt(n_lambda_pars, arma::eye(n_lambda_pars, n_lambda_pars)*.1, .25);
+    lambda_adapt = RAMAdapt(n_lambda_pars, arma::eye(n_lambda_pars, n_lambda_pars)*.01, .25);
     
     lambda_sampling = arma::find(Lambda_mask == 1);
     lambda_unif_bounds = arma::zeros(n_lambda_pars, 2);
@@ -530,7 +530,7 @@ LMCMeshGP::LMCMeshGP(
     
     n_nnctr_pars = q + n_lambda_pars;
     lambdatausq_unif_bounds = arma::join_vert(tausq_unif_bounds, lambda_unif_bounds);
-    lambdatausq_adapt = RAMAdapt(n_nnctr_pars, arma::eye(n_nnctr_pars, n_nnctr_pars)*.1, .25);
+    lambdatausq_adapt = RAMAdapt(n_nnctr_pars, arma::eye(n_nnctr_pars, n_nnctr_pars)*.01, .25);
   }
   
   // NAs at blocks of outcome variables 
@@ -1317,7 +1317,9 @@ void LMCMeshGP::gibbs_sample_beta(){
   Rcpp::RNGScope scope;
   arma::mat bmat = arma::randn(p, q);
   
-  //arma::vec LambdaHw_available = LambdaHw.rows(na_ix_all);
+  // for forced grid we use non-reference samples 
+  arma::mat LHW = wU * Lambda.t();
+  
   for(int j=0; j<q; j++){
     arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * XtX(j) + Vi), "lower");
     arma::mat Sigma_chol_Bcoeff = arma::inv(arma::trimatl(Si_chol));
@@ -1338,7 +1340,8 @@ void LMCMeshGP::gibbs_sample_beta(){
 }
 
 void LMCMeshGP::deal_with_Lambda(MeshDataLMC& data){
-  if(forced_grid){
+  double u = R::runif(0,1);
+  if(forced_grid & (u > .5)){
     sample_nc_Lambda_fgrid(data);
   } else {
     sample_nc_Lambda_std();
@@ -1346,8 +1349,9 @@ void LMCMeshGP::deal_with_Lambda(MeshDataLMC& data){
 }
 
 void LMCMeshGP::deal_with_tausq(MeshDataLMC& data, double aprior=2.001, double bprior=1, bool ref_pardata=false){
+  double u = R::runif(0,1);
   // ref_pardata: set to true if this is called without calling deal_with_Lambda first
-  if(forced_grid){
+  if(forced_grid & (u > .5)){
     gibbs_sample_tausq_fgrid(data, aprior, bprior, ref_pardata);
   } else {
     gibbs_sample_tausq_std(aprior, bprior);
@@ -1520,12 +1524,13 @@ void LMCMeshGP::gibbs_sample_tausq_std(double aprior, double bprior){
   start = std::chrono::steady_clock::now();
   // note that at the available locations w already includes Lambda 
   
+  arma::mat LHW = wU * Lambda.t();
   
   logpost = 0;
   for(int j=0; j<q; j++){
     arma::mat yrr = y.submat(ix_by_q_a(j), oneuv*j) - 
       XB.submat(ix_by_q_a(j), oneuv*j) - 
-      LambdaHw.submat(ix_by_q_a(j), oneuv*j); //***
+      LHW.submat(ix_by_q_a(j), oneuv*j); //***
     
     double bcore = arma::conv_to<double>::from( yrr.t() * yrr );
     

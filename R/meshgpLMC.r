@@ -8,6 +8,7 @@ meshedgp <- function(y, x, coords, k=NULL,
                    n_thin = 1,
                    n_threads = 4,
                    print_every = NULL,
+                   predict_everywhere = F,
                    settings    = list(adapting=T, forced_grid=NULL, saving=F),
                    prior       = list(beta=NULL, tausq=NULL,
                                       phi=NULL, nu = NULL,
@@ -291,7 +292,11 @@ meshedgp <- function(y, x, coords, k=NULL,
     indexing_obs <- list()
     for(i in 1:length(indexing)){
       indexing_grid[[i]] <- indexing[[i]][which(indexing_grid_ids[[i]] == 1)]
-      indexing_obs[[i]] <- indexing[[i]]#[which(indexing_grid_ids[[i]] == 0)]
+      if(predict_everywhere){
+        indexing_obs[[i]] <- indexing[[i]]
+      } else {
+        indexing_obs[[i]] <- indexing[[i]][which(indexing_grid_ids[[i]] == 0)]
+      }
     }
   } else {
     indexing_grid <- indexing

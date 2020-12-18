@@ -16,6 +16,7 @@ meshedgp(y, x, coords,
   n_thin = 1,
   n_threads = 4,
   print_every = NULL,
+  predict_everywhere = F,
   settings    = list(adapting=T, forced_grid=NULL, saving=F),
   prior       = list(beta=NULL, tausq=NULL,
                     phi=NULL, nu = NULL,
@@ -59,6 +60,8 @@ This parameter is ignored if \code{settings$forced_grid = F} in which case the d
 \item{n_threads}{integer number of OpenMP threads. This is ineffective if \code{spmeshed} was not compiled with OpenMP support.}
 
 \item{print_every}{integer number of MCMC iterations separating each info message. The info message includes percentage completion, timing, estimated time remaining, MCMC acceptance, and current values of some unknowns.}
+
+\item{predict_everywhere}{bool used if settings$forced_grid=T. Should predictions be made at the reference grid locations? If not, predictions will be made only at the supplied NA values of Y.}
 
 \item{settings}{list: \code{settings$adapting} turns the adaptation of MCMC on/off, \code{settings$forced_grid} determines whether or not to use the data grid or a forced grid; if unspecified, the function will try to see what the data look like. Note: if \code{forced_grid=F} and \eqn{n} is very large and \eqn{coords} are irregularly spaced, then expect slowdowns in preprocessing and consider using \code{forced_grid=T} instead. \code{settings$saving} will save model data if set to \code{T} and MCMC can be automatically restarted using \code{meshedgp_restart}.}
 

@@ -266,7 +266,7 @@ Rcpp::List lmc_mgp_mcmc(
           current_loglik = tempr*mesh.param_data.loglik_w;
           
           prior_logratio = calc_prior_logratio(
-              mesh.alter_data.theta.tail_rows(1).t(), mesh.param_data.theta.tail_rows(1).t(), .001, .001); // sigmasq
+              mesh.alter_data.theta.tail_rows(1).t(), mesh.param_data.theta.tail_rows(1).t(), .0001, .0001); // sigmasq
           
           jacobian  = calc_jacobian(new_param, param, set_unif_bounds);
           logaccept = new_loglik - current_loglik + 
