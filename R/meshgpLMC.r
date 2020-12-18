@@ -291,7 +291,7 @@ meshedgp <- function(y, x, coords, k=NULL,
     indexing_obs <- list()
     for(i in 1:length(indexing)){
       indexing_grid[[i]] <- indexing[[i]][which(indexing_grid_ids[[i]] == 1)]
-      indexing_obs[[i]] <- indexing[[i]][which(indexing_grid_ids[[i]] == 0)]#[which(is.na(indexing_grid_ids[[i]]))]
+      indexing_obs[[i]] <- indexing[[i]]#[which(indexing_grid_ids[[i]] == 0)]
     }
   } else {
     indexing_grid <- indexing
@@ -319,14 +319,14 @@ meshedgp <- function(y, x, coords, k=NULL,
         matern_fix_twonu <- floor(nu_limits)*2 + 1
         start_nu <- matern_fix_twonu
         matern_nu <- F
-        strmessage <- paste0("nu set to ", start_nu)
+        strmessage <- paste0("nu set to ", start_nu/2)
         message(strmessage)
       } else {
         if(diff(nu_limits) == 0){
           matern_fix_twonu <- floor(nu_limits[1])*2 + 1
           start_nu <- matern_fix_twonu
           matern_nu <- F
-          strmessage <- paste0("nu set to ", start_nu)
+          strmessage <- paste0("nu set to ", start_nu/2)
           message(strmessage)
         } else {
           if(is.null(starting$nu)){

@@ -892,8 +892,8 @@ void LMCMeshGP::init_cache(){
     cx_and_kr_caching = kr_caching;
   }
   
-  if(verbose & debug){
-    Rcpp::Rcout << "Caching stats c: " << coords_caching.n_elem 
+  if(verbose & debug || true){
+    Rcpp::Rcout << "Caching c: " << coords_caching.n_elem 
                 << " k: " << kr_caching.n_elem << "\n";
   }
   message("[init_cache]");
