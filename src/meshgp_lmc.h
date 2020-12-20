@@ -1340,8 +1340,8 @@ void LMCMeshGP::gibbs_sample_beta(){
 }
 
 void LMCMeshGP::deal_with_Lambda(MeshDataLMC& data){
-  double u = R::runif(0,1);
-  if(forced_grid & (u > .5)){
+  bool randomize_update = (R::runif(0,1) > .5) || (y.n_rows < 50000);
+  if(forced_grid & randomize_update){
     sample_nc_Lambda_fgrid(data);
   } else {
     sample_nc_Lambda_std();
@@ -1349,9 +1349,9 @@ void LMCMeshGP::deal_with_Lambda(MeshDataLMC& data){
 }
 
 void LMCMeshGP::deal_with_tausq(MeshDataLMC& data, double aprior=2.001, double bprior=1, bool ref_pardata=false){
-  double u = R::runif(0,1);
+  bool randomize_update = (R::runif(0,1) > .5) || (y.n_rows < 50000);
   // ref_pardata: set to true if this is called without calling deal_with_Lambda first
-  if(forced_grid & (u > .5)){
+  if(forced_grid & randomize_update){
     gibbs_sample_tausq_fgrid(data, aprior, bprior, ref_pardata);
   } else {
     gibbs_sample_tausq_std(aprior, bprior);
@@ -1761,9 +1761,7 @@ void LMCMeshGP::gibbs_sample_w(MeshDataLMC& data, bool needs_update=true){
   
   Rcpp::RNGScope scope;
   rand_norm_mat = arma::randn(coords.n_rows, k);
-  
   start_overall = std::chrono::steady_clock::now();
-  
   arma::vec timing = arma::zeros(5);
   
   //start = std::chrono::steady_clock::now();
@@ -1780,7 +1778,7 @@ void LMCMeshGP::gibbs_sample_w(MeshDataLMC& data, bool needs_update=true){
   end = std::chrono::steady_clock::now();
   //timing(0) = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   
-  start = std::chrono::steady_clock::now();/*
+  start = std::chrono::steady_clock::now();
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
@@ -1788,7 +1786,8 @@ void LMCMeshGP::gibbs_sample_w(MeshDataLMC& data, bool needs_update=true){
     int r = reference_blocks(i);
     int u = block_names(r)-1;
     
-  }*/
+    update_block_w_cache(u, data, timing);
+  }
   end = std::chrono::steady_clock::now();
   timing(0) += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
   
@@ -1805,8 +1804,6 @@ void LMCMeshGP::gibbs_sample_w(MeshDataLMC& data, bool needs_update=true){
         // recompute conditional mean
         arma::uvec blockdims = arma::cumsum( indexing(u).n_elem * arma::ones<arma::uvec>(k) );
         blockdims = arma::join_vert(oneuv * 0, blockdims);
-        
-        update_block_w_cache(u, data, timing);
         
         arma::mat Smu_tot = data.Smu_start(u); //
         

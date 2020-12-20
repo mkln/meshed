@@ -91,6 +91,9 @@ This parameter is ignored if \code{settings$forced_grid = F} in which case the d
 \references{
   Peruzzi, M., Banerjee, S., and Finley, A.O. (2020)
   Highly Scalable Bayesian Geostatistical Modeling via Meshed Gaussian Processes on Partitioned Domains. \emph{Journal of the American Statistical Association}, in press. \url{https://doi.org/10.1080/01621459.2020.1833889}
+  
+  Peruzzi, M., Banerjee, S., Finley, A.O., and Dunson, D.B. (2021)
+  Grid-Parametrize-Split (GriPS) for boosting sampling efficiency of spatial regression models. \url{arXiv:TBD}
 }
 
 \author{
