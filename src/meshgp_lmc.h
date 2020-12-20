@@ -345,13 +345,9 @@ public:
   void gibbs_sample_tausq_std(double, double);
   void gibbs_sample_tausq_fgrid(MeshDataLMC& data, double, double, bool);
   
-  void noncentered_updates(MeshDataLMC& data, double, double);
-  void sample_nc_Lambda_tausq_fgrid(MeshDataLMC& data, double, double);
-  
   void logpost_refresh_after_gibbs(MeshDataLMC& data); //***
   
   void predict();
-  arma::mat sample_predict_error();
   
   double logpost;
   
@@ -1305,6 +1301,7 @@ bool LMCMeshGP::get_loglik_comps_w(MeshDataLMC& data){
   bool acceptable = refresh_cache(data);
   if(acceptable){
     acceptable = calc_ywlogdens(data);
+    return acceptable;
   } else {
     return acceptable;
   }
@@ -2002,30 +1999,6 @@ void LMCMeshGP::predict(){
   }
 }
 
-arma::mat LMCMeshGP::sample_predict_error(){
-  //message("[sample_predict_error] start.");
-  arma::mat err = arma::zeros(y.n_rows, q);
-  arma::mat rn1 = arma::randn(arma::size(err));
-  
-#ifdef _OPENMP
-#pragma omp parallel for 
-#endif
-  for(int i=0; i<n_blocks; i++){
-    int u = block_names(i) - 1;
-    for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
-      if(na_0_blocks(u)(ix) == 1){
-        // at least one missing
-        arma::mat Dtau = Lambda * param_data.Rproject(u).slice(ix) * Lambda.t() + 
-          arma::diagmat(1/tausq_inv);
-        arma::mat L = arma::chol(Dtau, "lower");
-        err.row(indexing_obs(u)(ix)) = rn1.row(indexing_obs(u)(ix)) * L.t();
-      }
-    }
-  }
-  //message("[sample_predict_error] done.");
-  return err;
-}
-
 void LMCMeshGP::theta_update(MeshDataLMC& data, const arma::mat& new_theta){
   message("[theta_update] Updating theta");
   data.theta = new_theta;
@@ -2042,100 +2015,4 @@ void LMCMeshGP::beta_update(const arma::vec& new_beta){
 void LMCMeshGP::accept_make_change(){
   std::swap(param_data, alter_data);
 }
-
-
-void LMCMeshGP::noncentered_updates(MeshDataLMC& data, double aprior=2.001, double bprior=1){
-  if(forced_grid){
-    sample_nc_Lambda_tausq_fgrid(data, aprior, bprior);
-  } else {
-    // gibbs steps for lambda and tausq
-    sample_nc_Lambda_std();
-    gibbs_sample_tausq_std(aprior, bprior);
-  }
-}
-
-void LMCMeshGP::sample_nc_Lambda_tausq_fgrid(MeshDataLMC& data, double aprior, double bprior){
-  message("[sample_nc_Lambda_tausq_fgrid] start (sampling via Robust adaptive Metropolis)");
-  start = std::chrono::steady_clock::now();
-  
-  n_nnctr_pars = q + n_lambda_pars;
-  lambdatausq_unif_bounds = arma::join_vert(tausq_unif_bounds, lambda_unif_bounds);
-  lambdatausq_adapt = RAMAdapt(n_nnctr_pars, arma::eye(n_nnctr_pars, n_nnctr_pars)*.1, .25);
-  
-  lambdatausq_adapt.count_proposal();
-  Rcpp::RNGScope scope;
-  
-  arma::vec U_update = arma::randn(n_nnctr_pars);
-  
-  arma::vec ltsq_vec_current = arma::join_vert(1.0/tausq_inv, Lambda.elem(lambda_sampling));
-  arma::vec ltsq_vec_proposal = par_huvtransf_back(par_huvtransf_fwd(ltsq_vec_current, lambdatausq_unif_bounds) + 
-    lambdatausq_adapt.paramsd * U_update, lambdatausq_unif_bounds);
-  
-  arma::vec new_tausq = ltsq_vec_proposal.head_rows(q);
-  arma::mat Lambda_proposal = Lambda;
-  Lambda_proposal.elem(lambda_sampling) = ltsq_vec_proposal.tail_rows(n_lambda_pars);
-  
-  arma::mat LambdaHw_proposal = w * Lambda_proposal.t();
-  
-#ifdef _OPENMP
-#pragma omp parallel for 
-#endif
-  for(int i = 0; i<n_ref_blocks; i++){
-    int r = reference_blocks(i);
-    int u = block_names(r)-1;
-    calc_DplusSi(u, alter_data, Lambda_proposal, 1/new_tausq);
-    update_lly(u, alter_data, LambdaHw_proposal);
-    //calc_DplusSi(u, param_data, tausq_inv);
-    update_lly(u, param_data, LambdaHw);
-  }
-  
-  arma::vec Lambda_prop_d = Lambda_proposal.diag();
-  arma::vec Lambda_d = Lambda.diag();
-  arma::mat L_prior_prec = .001 * arma::eye(Lambda_d.n_elem, Lambda_d.n_elem);
-  
-  double log_prior_ratio = arma::conv_to<double>::from(
-    -0.5*Lambda_prop_d.t() * L_prior_prec * Lambda_prop_d
-    +0.5*Lambda_d.t() * L_prior_prec * Lambda_d) +
-    calc_prior_logratio(new_tausq, 1.0/tausq_inv, aprior, bprior);;
-  
-  double new_logpost = arma::accu(alter_data.ll_y);
-  double start_logpost = arma::accu(param_data.ll_y);
-  
-  double jacobian  = calc_jacobian(ltsq_vec_proposal, ltsq_vec_current, lambdatausq_unif_bounds);
-  double logaccept = new_logpost - start_logpost + log_prior_ratio + jacobian;
-  
-  //double u = R::runif(0,1);//arma::randu();
-  bool accepted = do_I_accept(logaccept);
-  
-  if(accepted){
-    lambdatausq_adapt.count_accepted();
-    // accept the move
-    Lambda = Lambda_proposal;
-    LambdaHw = LambdaHw_proposal;
-    
-    tausq_inv = 1.0/new_tausq;
-    param_data.DplusSi = alter_data.DplusSi;
-    param_data.DplusSi_c = alter_data.DplusSi_c;
-    param_data.DplusSi_ldet = alter_data.DplusSi_ldet;
-    param_data.ll_y = alter_data.ll_y;
-    
-    logpost = new_logpost;
-  } else {
-    logpost = start_logpost;
-  }
-  
-  lambdatausq_adapt.update_ratios();
-  lambdatausq_adapt.adapt(U_update, exp(logaccept), lambda_mcmc_counter); 
-  lambda_mcmc_counter ++;
-  if(verbose & debug){
-    end = std::chrono::steady_clock::now();
-    Rcpp::Rcout << "[sample_nc_Lambda_tausq_fgrid] " << lambda_adapt.accept_ratio << " average acceptance rate, "
-                << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() 
-                << "us.\n";
-  }
-}
-
-
-
-
 
