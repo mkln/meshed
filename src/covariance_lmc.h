@@ -19,10 +19,6 @@ arma::mat CmaternInv(const arma::mat& x,
 // matern
 arma::mat matern(const arma::mat& x, const arma::mat& y, const double& phi, const double& nu, double * bessel_ws, bool same);
 
-// matern half integer correlation + reparametrization
-//[[Rcpp::export]]
-arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int numinushalf=0);
-
 //[[Rcpp::export]]
 arma::mat gneiting2002(const arma::mat& x, const arma::mat& y, 
                        const double& a, const double& c, const double& beta, bool same=false);
@@ -38,7 +34,7 @@ void CviaKron_invsympd_(arma::cube& CCi,
                         const arma::mat& coords, const arma::uvec& indx, 
                         int k, const arma::mat& theta, MaternParams& matern);
   
-double CviaKron_HRi_(arma::cube& H, arma::cube& Ri,
+double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, const arma::cube& Cxx,
                      const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
                      int k, const arma::mat& theta, MaternParams& matern);

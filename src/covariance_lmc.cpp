@@ -28,8 +28,11 @@ arma::mat CmaternInv(const arma::mat& x,
 
 
 // matern
-arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& phi, const double& nu, 
+void matern_internal_inplace(arma::mat& res, const arma::mat& x, const arma::mat& y, const double& phi, const double& nu, 
+                          const double& sigmasq, const double& reparam,
                  double * bessel_ws, const double& nugginside=1e-7,  bool same=false){
+  
+  double sigmasq_reparam = sigmasq / reparam;
   
   int threadid;
 #ifdef _OPENMP
@@ -37,9 +40,8 @@ arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& 
 #endif
   
   int bessel_ws_inc = 3; // nu+1 // increase?
-  double pow2_nu1_gammanu = pow(2.0, 1.0-nu) / R::gammafn(nu);
+  double pow2_nu1_gammanu_sigmasq_reparam = sigmasq_reparam * pow(2.0, 1.0-nu) / R::gammafn(nu);
   
-  arma::mat res = arma::zeros(x.n_rows, y.n_rows);
   if(same){
     for(int i=0; i<x.n_rows; i++){
       arma::rowvec cri = x.row(i);
@@ -47,10 +49,10 @@ arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& 
         arma::rowvec delta = cri - y.row(j);
         double hphi = arma::norm(delta) * phi;
         if(hphi > 0.0){
-          res(i, j) = pow(hphi, nu) * pow2_nu1_gammanu *
+          res(i, j) = pow(hphi, nu) * pow2_nu1_gammanu_sigmasq_reparam *
             R::bessel_k_ex(hphi, nu, 1.0, &bessel_ws[threadid*bessel_ws_inc]);
         } else {
-          res(i, j) = 1.0 + nugginside;
+          res(i, j) = sigmasq_reparam * (1.0 + nugginside);
         }
       }
     }
@@ -62,15 +64,15 @@ arma::mat matern_internal(const arma::mat& x, const arma::mat& y, const double& 
         arma::rowvec delta = cri - y.row(j);
         double hphi = arma::norm(delta) * phi;
         if(hphi > 0.0){
-          res(i, j) = pow(hphi, nu) * pow2_nu1_gammanu *
+          res(i, j) = pow(hphi, nu) * pow2_nu1_gammanu_sigmasq_reparam *
             R::bessel_k_ex(hphi, nu, 1.0, &bessel_ws[threadid*bessel_ws_inc]);
         } else {
-          res(i, j) = 1.0 + nugginside;
+          res(i, j) = sigmasq_reparam * (1.0 + nugginside);
         }
       }
     }
   }
-  return res;
+  //return res;
 }
 
 /*
@@ -115,10 +117,13 @@ arma::mat matern(const arma::mat& x, const arma::mat& y, const double& phi, cons
 }*/
 
 // matern covariance with nu = p + 1/2, and p=0,1,2
-arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int twonu){
+void matern_halfint_inplace(arma::mat& res, const arma::mat& x, const arma::mat& y, 
+                            const double& phi, 
+                            const double& sigmasq, const double& reparam,
+                            bool same, int twonu){
   // 0 based indexing
-  arma::mat res = arma::zeros(x.n_rows, y.n_rows);
-  double nugginside = 0;//1e-7;
+  double sigmasq_reparam = sigmasq/reparam;
+  
   if(same){
     for(int i=0; i<x.n_rows; i++){
       arma::rowvec cri = x.row(i);
@@ -127,18 +132,18 @@ arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& p
         double hphi = arma::norm(delta) * phi;
         if(hphi > 0.0){
           if(twonu == 1){
-            res(i, j) = exp(-hphi);
+            res(i, j) = sigmasq_reparam * exp(-hphi);
           } else {
             if(twonu == 3){
-              res(i, j) = exp(-hphi) * (1 + hphi);
+              res(i, j) = sigmasq_reparam * exp(-hphi) * (1 + hphi);
             } else {
               if(twonu == 5){
-                res(i, j) = (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
+                res(i, j) = sigmasq_reparam * (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
               }
             }
           }
         } else {
-          res(i, j) = 1.0 + nugginside;
+          res(i, j) = sigmasq_reparam;
         }
       }
     }
@@ -151,57 +156,23 @@ arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& p
         double hphi = arma::norm(delta) * phi;
         if(hphi > 0.0){
           if(twonu == 1){
-            res(i, j) = exp(-hphi);
+            res(i, j) = sigmasq_reparam * exp(-hphi);
           } else {
             if(twonu == 3){
-              res(i, j) = exp(-hphi) * (1 + hphi);
+              res(i, j) = sigmasq_reparam * exp(-hphi) * (1 + hphi);
             } else {
               if(twonu == 5){
-                res(i, j) = (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
+                res(i, j) = sigmasq_reparam * (1 + hphi + hphi*hphi / 3.0) * exp(-hphi);
               }
             }
           }
         } else {
-          res(i, j) = 1.0 + nugginside;
+          res(i, j) = sigmasq_reparam;
         }
       }
     }
   }
-  return res;
-  
-  
-  /*
-  if(same){
-    arma::mat pmag = arma::sum(x % x, 1);
-    int np = x.n_rows;
-    D = sqrt(abs(arma::repmat(pmag.t(), np, 1) + arma::repmat(pmag, 1, np) - 2 * x * x.t()));
-  } else {
-    arma::mat pmag = arma::sum(x % x, 1);
-    arma::mat qmag = arma::sum(y % y, 1);
-    int np = x.n_rows;
-    int nq = y.n_rows;
-    D = sqrt(abs(arma::repmat(qmag.t(), np, 1) + arma::repmat(pmag, 1, nq) - 2 * x * y.t()));
-  }
-  
-  if(twonu == 1){ // nu = 1/2, exponential covariance
-    return exp(-phi * D);
-  }
-  if(twonu == 3){ // nu = 3/2
-    arma::mat Dstar = phi * D;
-    Dstar = (1 + Dstar) % exp(-Dstar);
-    if(same){
-      Dstar.diag() += 1e-7;
-    }
-    return Dstar;
-  }
-  if(twonu == 5){ // nu = 5/2
-    arma::mat Dstar = phi * D;
-    Dstar = (1 + Dstar + pow(Dstar,2.0) / 3.0) % exp(-Dstar);
-    if(same){
-      Dstar.diag() += 1e-7;
-    }
-    return Dstar;
-  }*/
+  //return res;
 }
 
 
@@ -274,6 +245,8 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y,
                        MaternParams& matern, bool same){
   // these are not actually correlation functions because they are reparametrized to have 
   // C(0) = 1/spatial decay
+  arma::mat res = arma::zeros(x.n_rows, y.n_rows);
+  
   if(x.n_cols == 2){
     // spatial matern
     // reparametrized here
@@ -285,8 +258,9 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y,
       int nutimes2 = matern.twonu;
       double reparam = pow(phi, .0 + nutimes2);
       
-      return sigmasq * 
-        matern_halfint(x, y, phi, same, nutimes2)/reparam;
+      matern_halfint_inplace(res, x, y, phi, sigmasq, reparam, same, nutimes2);
+      
+      return res;
     } else {
       double phi = theta(0);
       double nu = theta(1);
@@ -299,8 +273,9 @@ arma::mat Correlationf(const arma::mat& x, const arma::mat& y,
       //return powerexp(x, y, phi, nu, same)/phi;
       // we divide by phi given the equivalence in 
       // zhang 2004, corrollary to Thm.2: 
-      return sigmasq * 
-        matern_internal(x, y, phi, nu, matern.bessel_ws, nugginside, same)/reparam;
+      matern_internal_inplace(res, x, y, phi, nu, sigmasq, reparam, matern.bessel_ws, nugginside, same);
+      
+      return res;
     }
     //return squaredexp(x, y, theta(0), same)/theta(0);
   } else {
@@ -586,30 +561,30 @@ arma::mat CviaKron_Rcholinv(const arma::mat& coords,
 // inplace functions
 
 
-double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, 
+double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, const arma::cube& Cxx,
                      const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
                      int k, const arma::mat& theta, MaternParams& matern){
   // inplace version of CviaKron_HRi
-  int dimx = indx.n_elem;
-  int dimy = indy.n_elem;
+  //int dimx = indx.n_elem;
+  //int dimy = indy.n_elem;
   
   arma::mat coordsx = coords.rows(indx);
   arma::mat coordsy = coords.rows(indy);
   double logdet=0;
   for(int j=0; j<k; j++){
-    arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), matern, true);
+    //arma::mat Cxx = Correlationf(coordsx, coordsx, theta.col(j), matern, true);
     arma::mat Cxy = Correlationf(coordsx, coordsy, theta.col(j), matern, false);
     arma::mat Cyy_i = arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), matern, true) );
     arma::mat Hloc = Cxy * Cyy_i;
     arma::mat Rloc_ichol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
-      Cxx - Hloc * Cxy.t()) , "lower")));
+      Cxx.slice(j) - Hloc * Cxy.t()) , "lower")));
     logdet += arma::accu(log(Rloc_ichol.diag()));
     
-    int firstrow = j*dimx;
-    int lastrow = (j+1)*dimx-1;
-    int firstcol = j*dimy;
-    int lastcol = (j+1)*dimy-1;
+    //int firstrow = j*dimx;
+    //int lastrow = (j+1)*dimx-1;
+    //int firstcol = j*dimy;
+    //int lastcol = (j+1)*dimy-1;
     if(indy.n_elem > 0){
       H.slice(j) = Hloc;//H.submat(firstrow, firstcol, lastrow, lastcol) = Hloc;
     }

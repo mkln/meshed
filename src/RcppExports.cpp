@@ -6,21 +6,6 @@
 
 using namespace Rcpp;
 
-// matern_halfint
-arma::mat matern_halfint(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int numinushalf);
-RcppExport SEXP _spmeshed_matern_halfint(SEXP xSEXP, SEXP ySEXP, SEXP phiSEXP, SEXP sameSEXP, SEXP numinushalfSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type y(ySEXP);
-    Rcpp::traits::input_parameter< const double& >::type phi(phiSEXP);
-    Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
-    Rcpp::traits::input_parameter< int >::type numinushalf(numinushalfSEXP);
-    rcpp_result_gen = Rcpp::wrap(matern_halfint(x, y, phi, same, numinushalf));
-    return rcpp_result_gen;
-END_RCPP
-}
 // gneiting2002
 arma::mat gneiting2002(const arma::mat& x, const arma::mat& y, const double& a, const double& c, const double& beta, bool same);
 RcppExport SEXP _spmeshed_gneiting2002(SEXP xSEXP, SEXP ySEXP, SEXP aSEXP, SEXP cSEXP, SEXP betaSEXP, SEXP sameSEXP) {
@@ -291,7 +276,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_spmeshed_matern_halfint", (DL_FUNC) &_spmeshed_matern_halfint, 5},
     {"_spmeshed_gneiting2002", (DL_FUNC) &_spmeshed_gneiting2002, 6},
     {"_spmeshed_Cov_matern", (DL_FUNC) &_spmeshed_Cov_matern, 8},
     {"_spmeshed_Cov_matern2", (DL_FUNC) &_spmeshed_Cov_matern2, 5},
