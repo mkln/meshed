@@ -995,7 +995,7 @@ void UniMeshGP::update_block_covpars(int u, MeshDataUni& data){
     arma::uvec cpx = arma::find(kr_caching == kr_cached_ix, 1, "first");
     data.w_cond_mean_K(u) = H_cache(cpx(0));
     data.w_cond_prec(u) = Ri_cache(cpx(0));
-    data.w_cond_prec_times_cmk(u) = RiH_cache(cpx(0));
+    
     //data.w_cond_prec_times_cmk(u) = data.w_cond_prec(u) * data.w_cond_mean_K(u);
     
     data.logdetCi_comps(u) = Ri_chol_logdet(cpx(0));
