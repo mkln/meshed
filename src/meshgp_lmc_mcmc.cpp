@@ -199,8 +199,12 @@ Rcpp::List lmc_mgp_mcmc(
   }
   
   bool acceptable = false;
-  acceptable = mesh.get_loglik_comps_w( mesh.param_data );
-  acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
+  
+  if(mcmc > 0){
+    acceptable = mesh.get_loglik_comps_w( mesh.param_data );
+    acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
+  }
+  
 
   double current_loglik = tempr*mesh.param_data.loglik_w;
   if(verbose & debug){

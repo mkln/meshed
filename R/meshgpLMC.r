@@ -506,6 +506,27 @@ meshedgp <- function(y, x, coords, k=NULL,
     dplyr::select(dplyr::contains("Var")) %>% 
     as.matrix()
   
+  
+  coords_renamer <- colnames(coords)
+  names(coords_renamer) <- orig_coords_colnames
+  
+  coordsdata <- simdata_in %>% 
+    dplyr::select(1:dd, .data$thegrid) %>%
+    dplyr::rename(!!!coords_renamer,
+                  forced_grid=.data$thegrid)
+  
+  ## checking
+  if(use_forced_grid){
+    checking <- coordsdata %>% left_join(coords_blocking) %>% 
+      group_by(block) %>% summarise(nfg = sum(forced_grid)) %>% filter(nfg==0)
+    if(nrow(checking) > 0){
+      stop("Partition is too fine for the current reference set. ")
+    }
+  }
+  
+  
+  
+  
   cat("Sending to MCMC > ")
   
   mcmc_run <- lmc_mgp_mcmc
@@ -607,13 +628,7 @@ meshedgp <- function(y, x, coords, k=NULL,
     saved <- "Model data not saved."
   }
   
-  coords_renamer <- colnames(coords)
-  names(coords_renamer) <- orig_coords_colnames
-  
-  returning <- list(coordsdata = simdata_in %>% 
-                      dplyr::select(1:dd, .data$thegrid) %>%
-                      dplyr::rename(!!!coords_renamer,
-                        forced_grid=.data$thegrid),
+  returning <- list(coordsdata = coordsdata,
                     savedata = saved,
                     coordsblocking = coords_blocking) %>% 
     c(results)

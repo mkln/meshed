@@ -1095,7 +1095,7 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
       try {
         if(block_ct_obs(u) > 0){
           int u_cached_ix = coords_caching_ix(u);
-          arma::uvec cx = arma::find( coords_caching == u_cached_ix );
+          arma::uvec cx = arma::find( coords_caching == u_cached_ix, 1, "first");
           arma::cube Cxx = CC_cache(cx(0));
           
           Ri_chol_logdet(i) = CviaKron_HRi_(H_cache(i), Ri_cache(i), Cxx,//Richol_cache(i),
@@ -1144,13 +1144,16 @@ void LMCMeshGP::update_block_covpars(int u, MeshDataLMC& data){
   }
   
   if(forced_grid){
+    
     int u_cached_ix = coords_caching_ix(u);
     arma::uvec cx = arma::find( coords_caching == u_cached_ix, 1, "first" );
-    CviaKron_HRj_bdiag_(data.Hproject(u), data.Rproject(u), data.Riproject(u),
-                        data.Kxxi_cache(cx(0)),
-                        coords, indexing_obs(u), 
-                        na_1_blocks(u), indexing(u), 
-                        k, data.theta, matern);
+
+      CviaKron_HRj_bdiag_(data.Hproject(u), data.Rproject(u), data.Riproject(u),
+                          data.Kxxi_cache(cx(0)),
+                          coords, indexing_obs(u), 
+                          na_1_blocks(u), indexing(u), 
+                          k, data.theta, matern);
+    
   }
   
   //message("[update_block_covpars] done.");

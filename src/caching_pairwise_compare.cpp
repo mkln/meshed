@@ -165,9 +165,9 @@ arma::uvec caching_pairwise_compare_uci(const arma::mat& coords,
 #endif
   for(int j=0; j<indexing.n_elem; j++){
     int u_target = names(j)-1;
-    if(ct_obs(u_target) == 0){
-      result(u_target) = u_target;
-    } else {
+    //if(ct_obs(u_target) == 0){
+    //  result(u_target) = u_target;
+    //} else {
       bool foundsame = false;
       //Rcpp::Rcout << "u_target: " << u_target << endl;
       for(int k=0; k<j; k++){ //blocks.n_elem; k++){
@@ -192,7 +192,7 @@ arma::uvec caching_pairwise_compare_uci(const arma::mat& coords,
       if(!foundsame){
         result(u_target) = u_target;
       }
-    }
+    //}
     
     
   }
