@@ -924,6 +924,9 @@ void LMCMeshGP::init_meshdata(const arma::mat& theta_in){
   param_data.AK_uP = arma::field<arma::field<arma::cube> >(n_blocks);
   //param_data.LambdaH_Ditau = arma::field<arma::field<arma::mat> >(n_blocks);
   
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks; i++){
     int u=block_names(i) - 1;
     param_data.w_cond_mean_K(i) = arma::zeros(indexing(i).n_elem, parents_indexing(i).n_elem, k);
