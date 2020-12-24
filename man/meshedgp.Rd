@@ -48,7 +48,7 @@ This grid is then partitioned using either \code{axis_partition} or \code{block_
 If unspecified, this is set so that the eventual grid size is close to \eqn{n}.
 This parameter is ignored if \code{settings$forced_grid = F} in which case the data are assumed to be on a grid.}
 
-\item{grid_custom}{list with elements \code{grid}, which is a data.frame with the user supplied grid of knots, and \code{axis_interval_partition}, which is the user supplied set of cuts for each coordinate axis. No checks are made on the validity of this grid. This parameter is ignored if \code{settings$forced_grid = F} in which case the data are assumed to be on a grid.}
+\item{grid_custom}{list with elements \code{grid} and \code{axis_interval_partition}. \code{grid} is a data.frame with the user supplied grid of knots. It is possible to include covariate values for the grid locations as additional columns, as long as their number matches \code{ncol(x) - this is useful to make raster images of predictions. \code{axis_interval_partition} is the user supplied set of cuts for each coordinate axis. No checks are made on the validity of this grid. This parameter is ignored if \code{settings$forced_grid = F} in which case the data are assumed to be on a grid.}
 
 \item{n_samples}{integer number of MCMC samples at which all the unknowns are stored (including the latent effects).}
 

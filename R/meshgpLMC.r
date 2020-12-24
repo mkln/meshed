@@ -22,23 +22,6 @@ meshedgp <- function(y, x, coords, k=NULL,
                                       verbose=F, debug=F)
                    ){
 
-  if(F){
-    #y <- ylmc
-    #X <- Xlmc 
-    #coords <- coordslmc
-    n_samples <- 5
-    n_burnin <- 1
-    n_thin <- 1
-    n_threads <- 10
-    settings    = list(adapting=T, forced_grid=NULL, saving=F)
-    prior       = list(beta=NULL, tausq=NULL, nu=NULL,
-                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL)
-    starting    = list(beta=NULL, tausq=NULL, theta=NULL, w=NULL, mcmc_startfrom=0, mcmcsd=.05)
-    debug       = list(sample_beta=T, sample_tausq=T, 
-                       sample_theta=T, sample_w=T, sample_lambda=T,
-                       verbose=F, debug=F, print_every=1)
-  }
-  
   # init
   cat("Bayesian Meshed GP regression model\n
     o --> o --> o
@@ -187,7 +170,11 @@ meshedgp <- function(y, x, coords, k=NULL,
       if(!is.null(grid_custom$grid)){
         grid <- grid_custom$grid
         gridcoords_lmc <- grid %>% as.data.frame()
-        colnames(gridcoords_lmc) <- paste0("Var", 1:ncol(grid))
+        colnames(gridcoords_lmc)[1:dd] <- colnames(coords)
+        if(ncol(grid) == dd + p){
+          # we have the covariate values at the reference grid, so let's use them to make predictions
+          colnames(gridcoords_lmc)[-(1:dd)] <- colnames(x)
+        }
       } else {
         gs <- round(nrow(coords)^(1/ncol(coords)))
         gsize <- if(is.null(grid_size)){ rep(gs, ncol(coords)) } else { grid_size }
