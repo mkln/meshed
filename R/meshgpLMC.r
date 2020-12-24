@@ -231,6 +231,7 @@ meshedgp <- function(y, x, coords, k=NULL,
     if(use_forced_grid){
       if(!is.null(grid_custom$axis_interval_partition)){
         fixed_thresholds <- grid_custom$axis_interval_partition
+        axis_partition <- lapply(fixed_thresholds, function(x) length(x) + 1)
       } else {
         gridded_coords <- simdata %>% dplyr::filter(.data$thegrid==1) %>% dplyr::select(dplyr::contains("Var")) %>% as.matrix()
         fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(gridded_coords[,i], axis_partition[i])) 
