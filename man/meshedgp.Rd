@@ -10,7 +10,7 @@ meshedgp(y, x, coords,
   axis_partition = NULL, 
   block_size = 30,
   grid_size = NULL,
-  grid = NULL,
+  grid_custom = NULL,
   n_samples = 1000,
   n_burnin = 100,
   n_thin = 1,
@@ -48,8 +48,7 @@ This grid is then partitioned using either \code{axis_partition} or \code{block_
 If unspecified, this is set so that the eventual grid size is close to \eqn{n}.
 This parameter is ignored if \code{settings$forced_grid = F} in which case the data are assumed to be on a grid.}
 
-\item{grid}{data.frame with user supplied grid of knots. No checks are made on the validity of this grid.
-This parameter is ignored if \code{settings$forced_grid = F} in which case the data are assumed to be on a grid.}
+\item{grid_custom}{list with elements \code{grid}, which is a data.frame with the user supplied grid of knots, and \code{axis_interval_partition}, which is the user supplied set of cuts for each coordinate axis. No checks are made on the validity of this grid. This parameter is ignored if \code{settings$forced_grid = F} in which case the data are assumed to be on a grid.}
 
 \item{n_samples}{integer number of MCMC samples at which all the unknowns are stored (including the latent effects).}
 

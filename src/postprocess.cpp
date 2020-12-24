@@ -20,13 +20,17 @@ arma::cube cube_tcrossprod(const arma::cube& x){
 }
 
 //[[Rcpp::export]]
-arma::mat summary_list_mean(const arma::field<arma::mat>& x){
+arma::mat summary_list_mean(const arma::field<arma::mat>& x, int num_threads=1){
   // all matrices in x must be the same size.
   int n = x.n_elem;
   int nrows = x(0).n_rows;
   int ncols = x(0).n_cols;
   
   arma::mat result = arma::zeros(nrows, ncols);
+  
+#ifdef _OPENMP
+  omp_set_num_threads(num_threads);
+#endif
   
 #ifdef _OPENMP
 #pragma omp parallel for 
@@ -88,13 +92,17 @@ double cqtile(arma::vec& v, double q){
 }
 
 //[[Rcpp::export]]
-arma::mat summary_list_q(const arma::field<arma::mat>& x, double q){
+arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int num_threads=1){
   // all matrices in x must be the same size.
   int n = x.n_elem;
   int nrows = x(0).n_rows;
   int ncols = x(0).n_cols;
   
   arma::mat result = arma::zeros(nrows, ncols);
+  
+#ifdef _OPENMP
+  omp_set_num_threads(num_threads);
+#endif
   
 #ifdef _OPENMP
 #pragma omp parallel for 

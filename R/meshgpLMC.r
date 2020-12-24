@@ -2,7 +2,7 @@ meshedgp <- function(y, x, coords, k=NULL,
                      axis_partition = NULL, 
                      block_size = 30,
                      grid_size=NULL,
-                     grid = NULL,
+                     grid_custom = NULL,
                    n_samples = 1000,
                    n_burnin = 100,
                    n_thin = 1,
@@ -184,7 +184,8 @@ meshedgp <- function(y, x, coords, k=NULL,
     cat("\n")
     if(use_forced_grid){ 
       # user showed intention to use fixed grid
-      if(!is.null(grid)){
+      if(!is.null(grid_custom$grid)){
+        grid <- grid_custom$grid
         gridcoords_lmc <- grid %>% as.data.frame()
         colnames(gridcoords_lmc) <- paste0("Var", 1:ncol(grid))
       } else {
@@ -228,11 +229,16 @@ meshedgp <- function(y, x, coords, k=NULL,
     
     # Domain partitioning and gibbs groups
     if(use_forced_grid){
-      gridded_coords <- simdata %>% dplyr::filter(.data$thegrid==1) %>% dplyr::select(dplyr::contains("Var")) %>% as.matrix()
-      fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(gridded_coords[,i], axis_partition[i])) 
+      if(!is.null(grid_custom$axis_interval_partition)){
+        fixed_thresholds <- grid_custom$axis_interval_partition
+      } else {
+        gridded_coords <- simdata %>% dplyr::filter(.data$thegrid==1) %>% dplyr::select(dplyr::contains("Var")) %>% as.matrix()
+        fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(gridded_coords[,i], axis_partition[i])) 
+      }
     } else {
       fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], axis_partition[i])) 
     }
+    
     
     # guaranteed to produce blocks using Mv
     system.time(fake_coords_blocking <- coords %>% 

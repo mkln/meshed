@@ -61,11 +61,11 @@ cube_tcrossprod <- function(x) {
     .Call(`_spmeshed_cube_tcrossprod`, x)
 }
 
-summary_list_mean <- function(x) {
-    .Call(`_spmeshed_summary_list_mean`, x)
+summary_list_mean <- function(x, num_threads = 1L) {
+    .Call(`_spmeshed_summary_list_mean`, x, num_threads)
 }
 
-summary_list_q <- function(x, q) {
-    .Call(`_spmeshed_summary_list_q`, x, q)
+summary_list_q <- function(x, q, num_threads = 1L) {
+    .Call(`_spmeshed_summary_list_q`, x, q, num_threads)
 }
 

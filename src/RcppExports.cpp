@@ -252,25 +252,27 @@ BEGIN_RCPP
 END_RCPP
 }
 // summary_list_mean
-arma::mat summary_list_mean(const arma::field<arma::mat>& x);
-RcppExport SEXP _spmeshed_summary_list_mean(SEXP xSEXP) {
+arma::mat summary_list_mean(const arma::field<arma::mat>& x, int num_threads);
+RcppExport SEXP _spmeshed_summary_list_mean(SEXP xSEXP, SEXP num_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(summary_list_mean(x));
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(summary_list_mean(x, num_threads));
     return rcpp_result_gen;
 END_RCPP
 }
 // summary_list_q
-arma::mat summary_list_q(const arma::field<arma::mat>& x, double q);
-RcppExport SEXP _spmeshed_summary_list_q(SEXP xSEXP, SEXP qSEXP) {
+arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int num_threads);
+RcppExport SEXP _spmeshed_summary_list_q(SEXP xSEXP, SEXP qSEXP, SEXP num_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type x(xSEXP);
     Rcpp::traits::input_parameter< double >::type q(qSEXP);
-    rcpp_result_gen = Rcpp::wrap(summary_list_q(x, q));
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(summary_list_q(x, q, num_threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -291,8 +293,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spmeshed_mesh_graph_hyper", (DL_FUNC) &_spmeshed_mesh_graph_hyper, 7},
     {"_spmeshed_lmc_mgp_mcmc", (DL_FUNC) &_spmeshed_lmc_mgp_mcmc, 36},
     {"_spmeshed_cube_tcrossprod", (DL_FUNC) &_spmeshed_cube_tcrossprod, 1},
-    {"_spmeshed_summary_list_mean", (DL_FUNC) &_spmeshed_summary_list_mean, 1},
-    {"_spmeshed_summary_list_q", (DL_FUNC) &_spmeshed_summary_list_q, 2},
+    {"_spmeshed_summary_list_mean", (DL_FUNC) &_spmeshed_summary_list_mean, 2},
+    {"_spmeshed_summary_list_q", (DL_FUNC) &_spmeshed_summary_list_q, 3},
     {NULL, NULL, 0}
 };
 
