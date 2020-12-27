@@ -7,18 +7,19 @@
 using namespace Rcpp;
 
 // gneiting2002
-arma::mat gneiting2002(const arma::mat& x, const arma::mat& y, const double& a, const double& c, const double& beta, bool same);
-RcppExport SEXP _spmeshed_gneiting2002(SEXP xSEXP, SEXP ySEXP, SEXP aSEXP, SEXP cSEXP, SEXP betaSEXP, SEXP sameSEXP) {
+arma::mat gneiting2002(const arma::mat& coords, const arma::uvec& ix, const arma::uvec& iy, const double& a, const double& c, const double& beta, bool same);
+RcppExport SEXP _spmeshed_gneiting2002(SEXP coordsSEXP, SEXP ixSEXP, SEXP iySEXP, SEXP aSEXP, SEXP cSEXP, SEXP betaSEXP, SEXP sameSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type ix(ixSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type iy(iySEXP);
     Rcpp::traits::input_parameter< const double& >::type a(aSEXP);
     Rcpp::traits::input_parameter< const double& >::type c(cSEXP);
     Rcpp::traits::input_parameter< const double& >::type beta(betaSEXP);
     Rcpp::traits::input_parameter< bool >::type same(sameSEXP);
-    rcpp_result_gen = Rcpp::wrap(gneiting2002(x, y, a, c, beta, same));
+    rcpp_result_gen = Rcpp::wrap(gneiting2002(coords, ix, iy, a, c, beta, same));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -278,7 +279,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_spmeshed_gneiting2002", (DL_FUNC) &_spmeshed_gneiting2002, 6},
+    {"_spmeshed_gneiting2002", (DL_FUNC) &_spmeshed_gneiting2002, 7},
     {"_spmeshed_Cov_matern", (DL_FUNC) &_spmeshed_Cov_matern, 8},
     {"_spmeshed_Cov_matern2", (DL_FUNC) &_spmeshed_Cov_matern2, 5},
     {"_spmeshed_Cov_matern_h", (DL_FUNC) &_spmeshed_Cov_matern_h, 5},

@@ -1,8 +1,8 @@
 #define ARMA_DONT_PRINT_ERRORS
 
+#include "mgp_lmc_utils.h"
 #include "meshgp_lmc.h"
 #include "interrupt_handler.h"
-#include "mgp_utils.h"
 
 arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arma::mat& theta, int d, int nutimes2){
   arma::mat reparametrizer; 
@@ -177,7 +177,7 @@ Rcpp::List lmc_mgp_mcmc(
   arma::mat tausq_mcmc = arma::zeros(q, mcmc_thin*mcmc_keep);
   arma::cube theta_mcmc = arma::zeros(param.n_elem/k, k, mcmc_thin*mcmc_keep);
   
-  arma::cube lambdastar_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
+  //arma::cube lambdastar_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   arma::cube lambda_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   
   arma::vec logaccept_mcmc = arma::zeros(mcmc);
@@ -221,9 +221,8 @@ Rcpp::List lmc_mgp_mcmc(
   start_all = std::chrono::steady_clock::now();
   int m=0; int mx=0; int num_chol_fails=0;
   int mcmc_saved = 0; int w_saved = 0;
-  //try {
+  try {
     for(m=0; m<mcmc & !interrupted; m++){
-      //Rcpp::Rcout << "m: " << m << endl;
       
       mesh.predicting = false;
       mx = m-mcmc_burn;
@@ -237,7 +236,7 @@ Rcpp::List lmc_mgp_mcmc(
         tick_mcmc = std::chrono::steady_clock::now();
       }
       
-      // --------- METROPOLIS STEP ---------
+      // --------- METROPOLIS for theta ---------
       start = std::chrono::steady_clock::now();
       if(sample_theta){
         adaptivemc.count_proposal();
@@ -251,13 +250,12 @@ Rcpp::List lmc_mgp_mcmc(
           adaptivemc.paramsd * U_update, set_unif_bounds);
         
         bool out_unif_bounds = unif_bounds(new_param, set_unif_bounds);
-        arma::mat theta_proposal = //arma::trans(
+        arma::mat theta_proposal = 
           arma::mat(new_param.memptr(), new_param.n_elem/k, k);
         
         mesh.theta_update(mesh.alter_data, theta_proposal);
         
         acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
-        
         
         bool accepted = false;
         double new_loglik = 0;
@@ -276,22 +274,7 @@ Rcpp::List lmc_mgp_mcmc(
             prior_logratio +
             jacobian;
           
-          
-          if(false){
-            Rcpp::Rcout << "current " << current_loglik << " parm: " << param.t();
-            Rcpp::Rcout << "new " << new_loglik << " proposal: " << new_param.t();
-            Rcpp::Rcout << "log accept: " << logaccept << " j:" << jacobian << " prior: " << prior_logratio << endl;
-
-            Rcpp::Rcout << "-- LogDens components:\n"
-                        << arma::accu(mesh.alter_data.logdetCi_comps) << " vs " << arma::accu(mesh.param_data.logdetCi_comps) << endl
-                        << arma::accu(mesh.alter_data.loglik_w_comps) << " vs " << arma::accu(mesh.param_data.loglik_w_comps) << endl
-                        << arma::accu(mesh.alter_data.ll_y) << " vs " << arma::accu(mesh.param_data.ll_y) << endl;
-            
-            
-          }
-          
           if(std::isnan(logaccept)){
-            Rcpp::Rcout << "Error: NaN logdensity in MCMC. Something went wrong\n"; 
             Rcpp::Rcout << new_param.t();
             Rcpp::Rcout << new_loglik << " " << current_loglik << " " << jacobian << endl;
             Rcpp::stop("Got NaN logdensity -- something went wrong.");
@@ -335,7 +318,7 @@ Rcpp::List lmc_mgp_mcmc(
                     << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
       }
       
-      // --------- GIBBS STEPS ---------
+      // ------------------
       
       if(sample_w){
         start = std::chrono::steady_clock::now();
@@ -386,7 +369,6 @@ Rcpp::List lmc_mgp_mcmc(
         }
       }
       
-      
       if(sample_tausq || sample_beta || sample_w || sample_lambda){
         start = std::chrono::steady_clock::now();
         mesh.logpost_refresh_after_gibbs(mesh.param_data);
@@ -396,7 +378,6 @@ Rcpp::List lmc_mgp_mcmc(
                       << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
         }
       }
-      
       
       if((m>0) & (mcmc > 100)){
         if(!(m % print_every)){
@@ -434,7 +415,7 @@ Rcpp::List lmc_mgp_mcmc(
         
         theta_mcmc.slice(w_saved) = mesh.param_data.theta;
         // lambda here reconstructs based on 1/phi Matern reparametrization
-        lambdastar_mcmc.slice(w_saved) = mesh.Lambda;
+        //lambdastar_mcmc.slice(w_saved) = mesh.Lambda;
         lambda_mcmc.slice(w_saved) = reparametrize_lambda_back(mesh.Lambda, mesh.param_data.theta, d, mesh.matern.twonu);
         
         llsave(w_saved) = mesh.logpost;
@@ -468,7 +449,6 @@ Rcpp::List lmc_mgp_mcmc(
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
-      Rcpp::Named("lambdastar_mcmc") = lambdastar_mcmc,
       Rcpp::Named("paramsd") = adaptivemc.paramsd,
       Rcpp::Named("mcmc") = mcmc,
       Rcpp::Named("logpost") = llsave,
@@ -478,7 +458,7 @@ Rcpp::List lmc_mgp_mcmc(
       Rcpp::Named("proposal_failures") = num_chol_fails
     );
   
-  /*} catch (...) {
+  } catch (...) {
     end_all = std::chrono::steady_clock::now();
     
     double mcmc_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_all - start_all).count();
@@ -498,6 +478,6 @@ Rcpp::List lmc_mgp_mcmc(
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
       Rcpp::Named("proposal_failures") = num_chol_fails
     );
-  }*/
+  }
 }
 

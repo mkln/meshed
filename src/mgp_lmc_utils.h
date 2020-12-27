@@ -6,7 +6,6 @@
 
 using namespace std;
 
-
 bool compute_block(bool predicting, int block_ct, bool rfc);
 
 
@@ -46,17 +45,20 @@ struct MeshDataUni {
   //arma::field<arma::field<arma::mat> > LambdaH_Ditau; // for forced grids;
 };
 
-
 struct MeshDataLMC {
   arma::mat theta; 
   
   arma::field<arma::cube> Kxxi_cache;
   
-  arma::field<arma::cube> w_cond_mean_K;
-  arma::field<arma::cube> w_cond_prec;
-  //arma::field<arma::cube> w_cond_precchol;
-  arma::field<arma::cube> w_cond_prec_times_cmk;
+  arma::field<arma::cube> H_cache;
+  arma::field<arma::cube> Ri_cache;
   
+  //arma::field<arma::cube> w_cond_mean_K;
+  //arma::field<arma::cube> w_cond_prec;
+  
+  std::vector<arma::cube *> w_cond_prec_ptr;
+  std::vector<arma::cube *> w_cond_mean_K_ptr;
+    
   arma::vec logdetCi_comps;
   double logdetCi;
   
@@ -89,9 +91,42 @@ arma::vec drowcol_uv(const arma::field<arma::uvec>& diag_blocks);
 
 arma::uvec field_v_concat_uv(arma::field<arma::uvec> const& fuv);
 
-arma::mat rwishart(unsigned int df, const arma::mat& S);
+void block_invcholesky_(arma::mat& X, const arma::uvec& upleft_cumblocksizes);
 
-arma::mat rinvwishart(unsigned int df, const arma::mat& S);
+void add_smu_parents_(arma::mat& result, 
+                             const arma::cube& condprec,
+                             const arma::cube& cmk,
+                             const arma::mat& wparents);
+
+
+arma::cube AKuT_x_R(arma::cube& result, const arma::cube& x, const arma::cube& y);
+
+
+
+void add_AK_AKu_multiply_(arma::mat& result,
+                                 const arma::cube& x, const arma::cube& y);
+
+arma::mat AK_vec_multiply(const arma::cube& x, const arma::mat& y);
+
+void add_lambda_crossprod(arma::mat& result, const arma::mat& X, int j, int q, int k, int blocksize);
+
+void add_LtLxD(arma::mat& result, const arma::mat& LjtLj, const arma::vec& Ddiagvec);
+
+
+arma::mat build_block_diagonal(const arma::cube& x);
+
+arma::cube cube_cols(const arma::cube& x, const arma::uvec& sel_cols);
+
+arma::mat ortho(const arma::mat& x);
+
+// ptr versions
+arma::cube cube_cols_ptr(const arma::cube* x, const arma::uvec& sel_cols);
+arma::cube AKuT_x_R_ptr(arma::cube& result, const arma::cube& x, const arma::cube* y);
+void add_smu_parents_ptr_(arma::mat& result, 
+                          const arma::cube* condprec,
+                          const arma::cube* cmk,
+                          const arma::mat& wparents);
+arma::mat build_block_diagonal_ptr(const arma::cube* x);
 
 #endif
 
