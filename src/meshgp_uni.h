@@ -118,9 +118,6 @@ public:
   arma::mat lambda_unif_bounds; // 1x2: lower and upper for off-diagonal
   RAMAdapt lambda_adapt;
   
-  int n_nnctr_pars;
-  arma::mat lambdatausq_unif_bounds; 
-  RAMAdapt lambdatausq_adapt;
   // ----------------
   
   
@@ -379,18 +376,14 @@ UniMeshGP::UniMeshGP(
         lambda_unif_bounds(i, 1) = 1e6;
       }
     }
-    //Rcpp::Rcout << lambda_unif_bounds;
     
-    n_nnctr_pars = q + n_lambda_pars;
-    lambdatausq_unif_bounds = arma::join_vert(tausq_unif_bounds, lambda_unif_bounds);
-    lambdatausq_adapt = RAMAdapt(n_nnctr_pars, arma::eye(n_nnctr_pars, n_nnctr_pars)*.01, .25);
   }
   
   // NAs at blocks of outcome variables 
   ix_by_q_a = arma::field<arma::uvec>(q);
   for(int j=0; j<q; j++){
     ix_by_q_a(j) = arma::find_finite(y.col(j));
-    Rcpp::Rcout << "Y(" << j+1 << ") : " << ix_by_q_a(j).n_elem << " observed locations.\n";
+    Rcpp::Rcout << "Y : " << ix_by_q_a(j).n_elem << " observed locations.\n";
   }
   
   

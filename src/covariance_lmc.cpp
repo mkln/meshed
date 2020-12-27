@@ -331,8 +331,6 @@ double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, const arma::cube& Cxx,
       
       H.slice(j) = Hloc;
     } else {
-      arma::mat Cxy = Correlationf(coords, indx, indy, 
-                                   theta.col(j), matern, false);
       Rloc_ichol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
         Cxx.slice(j)) , "lower")));
       logdet += arma::accu(log(Rloc_ichol.diag()));

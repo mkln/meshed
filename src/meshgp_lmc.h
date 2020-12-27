@@ -702,14 +702,13 @@ void LMCMeshGP::init_cache(){
 #endif
   for(int i = 0; i<n_blocks; i++){
     int u = block_names(i)-1;
+    arma::mat cmat = coords.rows(indexing(u));
     if(parents_indexing(u).n_elem > 0){
-      arma::mat cmat = coords.rows(indexing(u));
       arma::mat pmat = coords.rows(parents_indexing(u));
       arma::mat kr_mat_c = arma::join_vert(cmat, pmat);
-      
       kr_pairing(u) = kr_mat_c;
     } else {
-      kr_pairing(u) = arma::zeros(arma::size(parents_indexing(u)));
+      kr_pairing(u) = cmat;
     }
   }
   
