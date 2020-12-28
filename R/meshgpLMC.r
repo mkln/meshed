@@ -10,7 +10,7 @@ meshedgp <- function(y, x, coords, k=NULL,
                    print_every = NULL,
                    predict_everywhere = F,
                    settings    = list(adapting=T, forced_grid=NULL, saving=F),
-                   prior       = list(beta=NULL, tausq=NULL,
+                   prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                                       phi=NULL, nu = NULL,
                                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
                    starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, w=NULL, 
@@ -362,6 +362,12 @@ meshedgp <- function(y, x, coords, k=NULL,
       tausq_ab <- prior$tausq
     }
     
+    if(is.null(prior$sigmasq)){
+      sigmasq_ab <- c(1e-4, 1e-4)
+    } else {
+      sigmasq_ab <- prior$sigmasq
+    }
+    
     btmlim <- prior$btmlim %>% set_default(1e-3)
     toplim <- prior$toplim %>% set_default(1e3)
     
@@ -537,6 +543,7 @@ meshedgp <- function(y, x, coords, k=NULL,
                               beta_Vi, 
                               
                               tausq_ab,
+                              sigmasq_ab,
                           
                               matern_fix_twonu,
                               

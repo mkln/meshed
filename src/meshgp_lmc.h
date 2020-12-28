@@ -1343,8 +1343,7 @@ void LMCMeshGP::sample_nc_Lambda_std(){
     
     arma::mat Wcrossprod = WWj.t() * WWj; 
     
-    arma::mat Lprior_inv = tausq_inv(j) * 
-      arma::eye(WWj.n_cols, WWj.n_cols) * .001; 
+    arma::mat Lprior_inv = arma::eye(WWj.n_cols, WWj.n_cols); 
     
     arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * Wcrossprod + Lprior_inv
       ), "lower");
