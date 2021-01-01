@@ -45,10 +45,8 @@ arma::mat summary_list_mean(const arma::field<arma::mat>& x, int num_threads=1){
   for(int j=0; j<nrows*ncols; j++){
     arma::vec slices = arma::zeros(n);
     for(int i=0; i<n; i++){
-      if(x(i).n_rows == nrows){
         // we have stored something here
         slices(i) = x(i)(j);
-      }
     }
     result(j) = arma::mean(slices);
   }

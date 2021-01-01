@@ -484,6 +484,8 @@ Rcpp::List lmc_mgp_mcmc(
     return Rcpp::List::create(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("w_mcmc") = w_mcmc,
+      Rcpp::Named("lw_mcmc") = lw_mcmc,
+      Rcpp::Named("wgen_mcmc") = wgen_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
