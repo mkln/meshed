@@ -197,9 +197,9 @@ public:
   void sample_nc_Lambda_std(); // noncentered
   void sample_nc_Lambda_fgrid(MeshDataLMC& data);
   
-  void deal_with_tausq(MeshDataLMC& data, double, double, bool);
-  void gibbs_sample_tausq_std(double, double);
-  void gibbs_sample_tausq_fgrid(MeshDataLMC& data, double, double, bool);
+  void deal_with_tausq(MeshDataLMC& data, bool);
+  void gibbs_sample_tausq_std();
+  void gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool);
   
   void logpost_refresh_after_gibbs(MeshDataLMC& data); //***
   
@@ -1053,7 +1053,7 @@ void LMCMeshGP::calc_DplusSi(int u,
   if((k==1) & (q==1)){
     for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
       if(na_1_blocks(u)(ix) == 1){
-        arma::mat Dtau = Lam(0, 0) * Lam(0, 0) * data.Rproject(u).slice(ix) + 1/tsqi(0);
+        arma::mat Dtau = Lam(0, 0) * Lam(0, 0) * data.Rproject(u).slice(ix) + 1.0/tsqi(0);
         // fill 
         data.DplusSi_ldet(indexing_obs(u)(ix)) = - log(Dtau(0,0));
         data.DplusSi.slice(indexing_obs(u)(ix)) = 1.0/Dtau; // 1.0/ (L * L);
@@ -1238,12 +1238,12 @@ void LMCMeshGP::deal_with_Lambda(MeshDataLMC& data){
   }
 }
 
-void LMCMeshGP::deal_with_tausq(MeshDataLMC& data, double aprior=2.001, double bprior=1, bool ref_pardata=false){
+void LMCMeshGP::deal_with_tausq(MeshDataLMC& data, bool ref_pardata=false){
   // ref_pardata: set to true if this is called without calling deal_with_Lambda first
   if(forced_grid){
-    gibbs_sample_tausq_fgrid(data, aprior, bprior, ref_pardata);
+    gibbs_sample_tausq_fgrid(data, ref_pardata);
   } else {
-    gibbs_sample_tausq_std(aprior, bprior);
+    gibbs_sample_tausq_std();
   }
 }
 
@@ -1385,10 +1385,13 @@ void LMCMeshGP::sample_nc_Lambda_std(){
   }
 }
 
-void LMCMeshGP::gibbs_sample_tausq_std(double aprior, double bprior){
+void LMCMeshGP::gibbs_sample_tausq_std(){
   message("[gibbs_sample_tausq_std] start");
   start = std::chrono::steady_clock::now();
   // note that at the available locations w already includes Lambda 
+  
+  double aprior = tausq_ab(0);
+  double bprior = tausq_ab(1);
   
   arma::mat LHW = wU * Lambda.t();
   
@@ -1422,9 +1425,12 @@ void LMCMeshGP::gibbs_sample_tausq_std(double aprior, double bprior){
   
 }
 
-void LMCMeshGP::gibbs_sample_tausq_fgrid(MeshDataLMC& data, double aprior, double bprior, bool ref_pardata){
+void LMCMeshGP::gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata){
   message("[gibbs_sample_tausq_fgrid] start (sampling via Robust adaptive Metropolis)");
   start = std::chrono::steady_clock::now();
+  
+  double aprior = tausq_ab(0);
+  double bprior = tausq_ab(1);
   
   tausq_adapt.count_proposal();
   Rcpp::RNGScope scope;
@@ -1614,7 +1620,6 @@ void LMCMeshGP::gibbs_sample_w(MeshDataLMC& data, bool needs_update=true){
       if((block_ct_obs(u) > 0)){
         
         update_block_w_cache(u, data);
-        
         // recompute conditional mean
         arma::mat Smu_tot = data.Smu_start(u); //
         

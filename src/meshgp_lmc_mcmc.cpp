@@ -223,7 +223,7 @@ Rcpp::List lmc_mgp_mcmc(
   start_all = std::chrono::steady_clock::now();
   int m=0; int mx=0; int num_chol_fails=0;
   int mcmc_saved = 0; int w_saved = 0;
-  try {
+  //try {
     for(m=0; m<mcmc & !interrupted; m++){
       
       mesh.predicting = false;
@@ -256,9 +256,6 @@ Rcpp::List lmc_mgp_mcmc(
           arma::mat(new_param.memptr(), new_param.n_elem/k, k);
         
         mesh.theta_update(mesh.alter_data, theta_proposal);
-        
-        Rcpp::Rcout << "paramsd " << endl 
-                    << adaptivemc.paramsd << endl;
         
         acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
         
@@ -356,7 +353,7 @@ Rcpp::List lmc_mgp_mcmc(
       
       if(sample_tausq){
         start = std::chrono::steady_clock::now();
-        mesh.deal_with_tausq(mesh.param_data, 2.01, 1);
+        mesh.deal_with_tausq(mesh.param_data);
         end = std::chrono::steady_clock::now();
         if(verbose_mcmc & verbose){
           Rcpp::Rcout << "[tausq] " 
@@ -405,7 +402,7 @@ Rcpp::List lmc_mgp_mcmc(
         if(mx % mcmc_thin == 0){
           w_mcmc(mcmc_saved) = mesh.w;
           lw_mcmc(mcmc_saved) = mesh.LambdaHw;
-          wgen_mcmc(mcmc_saved) = mesh.wgen; // remove me
+          wgen_mcmc(mcmc_saved) = mesh.param_data.ll_y; // remove me
           Rcpp::RNGScope scope;
         
           yhat_mcmc(mcmc_saved) = mesh.XB + 
@@ -475,7 +472,7 @@ Rcpp::List lmc_mgp_mcmc(
       Rcpp::Named("proposal_failures") = num_chol_fails
     );
   
-  } catch (...) {
+  /*} catch (...) {
     end_all = std::chrono::steady_clock::now();
     
     double mcmc_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_all - start_all).count();
@@ -497,6 +494,6 @@ Rcpp::List lmc_mgp_mcmc(
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
       Rcpp::Named("proposal_failures") = num_chol_fails
     );
-  }
+  }*/
 }
 
