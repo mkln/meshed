@@ -64,7 +64,7 @@ arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks,
 
 arma::uvec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
                                      const arma::vec& names,
-                                     const arma::vec& ct_obs){
+                                     const arma::vec& ct_obs, bool cached){
   
   // result(x) = y
   // means
@@ -95,7 +95,7 @@ arma::uvec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
 #endif
   for(int j=0; j<blocks.n_elem; j++){
     int u_target = names(j)-1;
-    if(ct_obs(u_target) == 0){
+    if((!cached) || (ct_obs(u_target) == 0)){
       result(u_target) = u_target;
     } else {
       bool foundsame = false;
@@ -133,7 +133,7 @@ arma::uvec caching_pairwise_compare_uc(const arma::field<arma::mat>& blocks,
 arma::uvec caching_pairwise_compare_uci(const arma::mat& coords,
                                       const arma::field<arma::uvec>& indexing,
                                       const arma::vec& names,
-                                      const arma::vec& ct_obs){
+                                      const arma::vec& ct_obs, bool cached){
   
   // result(x) = y
   // means
@@ -165,7 +165,7 @@ arma::uvec caching_pairwise_compare_uci(const arma::mat& coords,
 #endif
   for(int j=0; j<indexing.n_elem; j++){
     int u_target = names(j)-1;
-    //if(ct_obs(u_target) == 0){
+    if(cached){ //ct_obs(u_target) == 0){
     //  result(u_target) = u_target;
     //} else {
       bool foundsame = false;
@@ -192,9 +192,9 @@ arma::uvec caching_pairwise_compare_uci(const arma::mat& coords,
       if(!foundsame){
         result(u_target) = u_target;
       }
-    //}
-    
-    
+    } else {
+      result(u_target) = u_target;
+    }
   }
   return result;
 }

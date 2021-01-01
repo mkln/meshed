@@ -103,6 +103,7 @@ Rcpp::List lmc_mgp_mcmc(
     
     bool adapting=false,
     
+    bool use_cache=true,
     bool forced_grid=true,
     
     bool verbose=false,
@@ -168,7 +169,7 @@ Rcpp::List lmc_mgp_mcmc(
                 start_w, beta, start_lambda, lambda_mask, start_theta, 1.0/tausq, 
                 beta_Vi, tausq_ab,
                 
-                true, forced_grid, 
+                use_cache, forced_grid, 
                 verbose, debug, num_threads);
 
   
@@ -255,6 +256,9 @@ Rcpp::List lmc_mgp_mcmc(
           arma::mat(new_param.memptr(), new_param.n_elem/k, k);
         
         mesh.theta_update(mesh.alter_data, theta_proposal);
+        
+        Rcpp::Rcout << "paramsd " << endl 
+                    << adaptivemc.paramsd << endl;
         
         acceptable = mesh.get_loglik_comps_w( mesh.alter_data );
         
@@ -380,6 +384,37 @@ Rcpp::List lmc_mgp_mcmc(
         }
       }
       
+      //save
+      logaccept_mcmc(m) = logaccept > 0 ? 0 : logaccept;
+      
+      arma::mat lambda_transf_back = reparametrize_lambda_back(mesh.Lambda, mesh.param_data.theta, d, mesh.matern.twonu);
+      
+      if(mx >= 0){
+        tausq_mcmc.col(w_saved) = 1.0 / mesh.tausq_inv;
+        b_mcmc.slice(w_saved) = mesh.Bcoeff;
+        
+        theta_mcmc.slice(w_saved) = mesh.param_data.theta;
+        // lambda here reconstructs based on 1/phi Matern reparametrization
+        //lambdastar_mcmc.slice(w_saved) = mesh.Lambda;
+        lambda_mcmc.slice(w_saved) = lambda_transf_back;
+          
+        llsave(w_saved) = mesh.logpost;
+        wllsave(w_saved) = mesh.param_data.loglik_w;
+        w_saved++;
+        
+        if(mx % mcmc_thin == 0){
+          w_mcmc(mcmc_saved) = mesh.w;
+          lw_mcmc(mcmc_saved) = mesh.LambdaHw;
+          wgen_mcmc(mcmc_saved) = mesh.wgen; // remove me
+          Rcpp::RNGScope scope;
+        
+          yhat_mcmc(mcmc_saved) = mesh.XB + 
+            mesh.wU * mesh.Lambda.t() + 
+            arma::kron(arma::trans(pow(1.0/mesh.tausq_inv, .5)), arma::ones(n,1)) % arma::randn(n, q);
+          mcmc_saved++;
+        }
+      }
+      
       if((m>0) & (mcmc > 100)){
         if(!(m % print_every)){
           interrupted = checkInterrupt();
@@ -399,41 +434,22 @@ Rcpp::List lmc_mgp_mcmc(
           }
           Rprintf("\n  tsq = ");
           for(int pp=0; pp<q; pp++){
-            Rprintf("%.3f ", 1.0/mesh.tausq_inv(pp));
+            Rprintf("%.6f ", 1.0/mesh.tausq_inv(pp));
+          }
+          arma::vec lvec = arma::vectorise(mesh.Lambda);
+          Rprintf("\n  lambdastar = ");
+          for(int pp=0; pp<lvec.n_elem; pp++){
+            Rprintf("%.3f ", lvec(pp));
+          }
+          lvec = arma::vectorise(lambda_transf_back);
+          Rprintf("\n  lambda = ");
+          for(int pp=0; pp<lvec.n_elem; pp++){
+            Rprintf("%.3f ", lvec(pp));
           }
           Rprintf("\n\n");
         } 
       } else {
         tick_mcmc = std::chrono::steady_clock::now();
-      }
-      
-      //save
-      logaccept_mcmc(m) = logaccept > 0 ? 0 : logaccept;
-      
-      if(mx >= 0){
-        tausq_mcmc.col(w_saved) = 1.0 / mesh.tausq_inv;
-        b_mcmc.slice(w_saved) = mesh.Bcoeff;
-        
-        theta_mcmc.slice(w_saved) = mesh.param_data.theta;
-        // lambda here reconstructs based on 1/phi Matern reparametrization
-        //lambdastar_mcmc.slice(w_saved) = mesh.Lambda;
-        lambda_mcmc.slice(w_saved) = reparametrize_lambda_back(mesh.Lambda, mesh.param_data.theta, d, mesh.matern.twonu);
-        
-        llsave(w_saved) = mesh.logpost;
-        wllsave(w_saved) = mesh.param_data.loglik_w;
-        w_saved++;
-        
-        if(mx % mcmc_thin == 0){
-          w_mcmc(mcmc_saved) = mesh.w;
-          lw_mcmc(mcmc_saved) = mesh.LambdaHw;
-          wgen_mcmc(mcmc_saved) = mesh.wgen; // remove me
-          Rcpp::RNGScope scope;
-          
-          yhat_mcmc(mcmc_saved) = mesh.XB + 
-            mesh.wU * mesh.Lambda.t() + 
-            arma::kron(arma::trans(pow(1.0/mesh.tausq_inv, .5)), arma::ones(n,1)) % arma::randn(n, q);
-          mcmc_saved++;
-        }
       }
     }
     

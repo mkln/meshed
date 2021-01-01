@@ -320,7 +320,7 @@ LMCMeshGP::LMCMeshGP(
   
   start_overall = std::chrono::steady_clock::now();
   
-  cached = true;
+  cached = use_cache;
   
   if(forced_grid){
     message("MGP on a latent grid");
@@ -447,17 +447,17 @@ LMCMeshGP::LMCMeshGP(
   make_gibbs_groups();
   
   //caching;
-  if(cached){
+  //if(cached){
     message("LMCMeshGP::LMCMeshGP : init_cache()");
     init_cache();
     fill_zeros_Kcache();
-  }
+  //}
   
   init_meshdata(theta_in);
   
   nThreads = num_threads;
   
-  int bessel_ws_inc = 3;
+  int bessel_ws_inc = 5;
   matern.bessel_ws = (double *) R_alloc(nThreads*bessel_ws_inc, sizeof(double));
   matern.twonu = matern_twonu_in;
   
@@ -689,7 +689,7 @@ void LMCMeshGP::init_cache(){
   
   message("[init_cache]");
   //coords_caching_ix = caching_pairwise_compare_uc(coords_blocks, block_names, block_ct_obs); // uses block_names(i)-1 !
-  coords_caching_ix = caching_pairwise_compare_uci(coords, indexing, block_names, block_ct_obs); // uses block_names(i)-1 !
+  coords_caching_ix = caching_pairwise_compare_uci(coords, indexing, block_names, block_ct_obs, cached); // uses block_names(i)-1 !
   coords_caching = arma::unique(coords_caching_ix);
   
   //parents_caching_ix = caching_pairwise_compare_uc(parents_coords, block_names, block_ct_obs);
@@ -712,7 +712,7 @@ void LMCMeshGP::init_cache(){
     }
   }
   
-  kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs);
+  kr_caching_ix = caching_pairwise_compare_uc(kr_pairing, block_names, block_ct_obs, cached);
   kr_caching = arma::unique(kr_caching_ix);
   
   starting_kr = 0;
@@ -1138,8 +1138,7 @@ void LMCMeshGP::logpost_refresh_after_gibbs(MeshDataLMC& data){
   }
   
   data.loglik_w = arma::accu(data.logdetCi_comps) + 
-    arma::accu(data.loglik_w_comps) + 
-    arma::accu(data.ll_y);
+    arma::accu(data.loglik_w_comps);// + arma::accu(data.ll_y); //***
   
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
@@ -1178,7 +1177,7 @@ bool LMCMeshGP::calc_ywlogdens(MeshDataLMC& data){
   //Rcpp::Rcout << "loglik_w_comps " << arma::accu(data.loglik_w_comps) << endl;
   
   data.loglik_w = arma::accu(data.logdetCi_comps) + 
-    arma::accu(data.loglik_w_comps) + arma::accu(data.ll_y);
+    arma::accu(data.loglik_w_comps);// + arma::accu(data.ll_y); //***
   
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
@@ -1232,8 +1231,7 @@ void LMCMeshGP::gibbs_sample_beta(){
 }
 
 void LMCMeshGP::deal_with_Lambda(MeshDataLMC& data){
-  bool randomize_update = (R::runif(0,1) > .5) || (y.n_rows < 50000);
-  if(forced_grid & randomize_update){
+  if(forced_grid){
     sample_nc_Lambda_fgrid(data);
   } else {
     sample_nc_Lambda_std();
@@ -1241,9 +1239,8 @@ void LMCMeshGP::deal_with_Lambda(MeshDataLMC& data){
 }
 
 void LMCMeshGP::deal_with_tausq(MeshDataLMC& data, double aprior=2.001, double bprior=1, bool ref_pardata=false){
-  bool randomize_update = (R::runif(0,1) > .5) || (y.n_rows < 50000);
   // ref_pardata: set to true if this is called without calling deal_with_Lambda first
-  if(forced_grid & randomize_update){
+  if(forced_grid){
     gibbs_sample_tausq_fgrid(data, aprior, bprior, ref_pardata);
   } else {
     gibbs_sample_tausq_std(aprior, bprior);
@@ -1284,7 +1281,7 @@ void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data){
 
   arma::vec Lambda_prop_d = Lambda_proposal.diag();
   arma::vec Lambda_d = Lambda.diag();
-  arma::mat L_prior_prec = 1 * arma::eye(Lambda_d.n_elem, Lambda_d.n_elem);
+  arma::mat L_prior_prec = 1e-6 * arma::eye(Lambda_d.n_elem, Lambda_d.n_elem);
   double log_prior_ratio = arma::conv_to<double>::from(
     -0.5*Lambda_prop_d.t() * L_prior_prec * Lambda_prop_d
     +0.5*Lambda_d.t() * L_prior_prec * Lambda_d);
@@ -1343,7 +1340,7 @@ void LMCMeshGP::sample_nc_Lambda_std(){
     
     arma::mat Wcrossprod = WWj.t() * WWj; 
     
-    arma::mat Lprior_inv = arma::eye(WWj.n_cols, WWj.n_cols); 
+    arma::mat Lprior_inv = 1e-6 * arma::eye(WWj.n_cols, WWj.n_cols); 
     
     arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * Wcrossprod + Lprior_inv
       ), "lower");

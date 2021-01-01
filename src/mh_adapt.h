@@ -9,25 +9,10 @@ const double rho_max = 2;
 const double rho_min = 5;
 
 
-inline bool do_I_accept(double logaccept){ //, string name_accept, string name_count, List mcmc_pars){
-  double u = R::runif(0,1);//arma::randu();
-  return exp(logaccept) > u;// 
-  /*
-  double acceptj = 1.0;
-  if(!arma::is_finite(logaccept)){
-    acceptj = 0.0;
-  } else {
-    if(logaccept < 0){
-      acceptj = exp(logaccept);
-    }
-  }
-  Rcpp::RNGScope scope;
-  double u = R::runif(0,1);//arma::randu();
-  if(u < acceptj){
-    return true;
-  } else {
-    return false;
-  }*/
+inline bool do_I_accept(double logaccept){
+  double u = R::runif(0,1);
+  bool answer = exp(logaccept) > u;
+  return answer;
 }
 
 inline double logistic(double x, double l=0, double u=1){
@@ -256,7 +241,7 @@ inline void RAMAdapt::adapt(const arma::vec& U, double alpha, int mc){
       started = true;
     }
     i = c-g0;
-    eta = min(1.0, (p+.0) * pow(i+1.0, -gamma));
+    eta = std::min(1.0, (p+.0) * pow(i+1.0, -gamma));
     alpha = std::min(1.0, alpha);
     
     if(started){

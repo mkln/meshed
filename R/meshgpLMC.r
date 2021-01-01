@@ -9,7 +9,7 @@ meshedgp <- function(y, x, coords, k=NULL,
                    n_threads = 4,
                    print_every = NULL,
                    predict_everywhere = F,
-                   settings    = list(adapting=T, forced_grid=NULL, saving=F),
+                   settings    = list(adapting=T, forced_grid=NULL, cache=NULL, saving=F),
                    prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                                       phi=NULL, nu = NULL,
                                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
@@ -144,6 +144,12 @@ meshedgp <- function(y, x, coords, k=NULL,
       }
     }
     
+    
+    use_cache <- settings$cache %>% set_default(T)
+    if(use_forced_grid & (!use_cache)){
+      warning("Using a forced grid with no cache is a waste of resources.")
+    }
+     
     # what are we sampling
     sample_w       <- debug$sample_w %>% set_default(T)
     sample_beta    <- debug$sample_beta %>% set_default(T)
@@ -566,6 +572,7 @@ meshedgp <- function(y, x, coords, k=NULL,
                               
                               mcmc_adaptive, # adapting
                               
+                              use_cache,
                               use_forced_grid,
                               
                               mcmc_verbose, mcmc_debug, # verbose, debug
