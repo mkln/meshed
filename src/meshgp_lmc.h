@@ -1138,7 +1138,7 @@ void LMCMeshGP::logpost_refresh_after_gibbs(MeshDataLMC& data){
   }
   
   data.loglik_w = arma::accu(data.logdetCi_comps) + 
-    arma::accu(data.loglik_w_comps);// + arma::accu(data.ll_y); //***
+    arma::accu(data.loglik_w_comps) + arma::accu(data.ll_y); //***
   
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
@@ -1177,7 +1177,7 @@ bool LMCMeshGP::calc_ywlogdens(MeshDataLMC& data){
   //Rcpp::Rcout << "loglik_w_comps " << arma::accu(data.loglik_w_comps) << endl;
   
   data.loglik_w = arma::accu(data.logdetCi_comps) + 
-    arma::accu(data.loglik_w_comps);// + arma::accu(data.ll_y); //***
+    arma::accu(data.loglik_w_comps) + arma::accu(data.ll_y); //***
   
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();

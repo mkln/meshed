@@ -22,11 +22,18 @@ arma::cube cube_tcrossprod(const arma::cube& x){
 //[[Rcpp::export]]
 arma::mat summary_list_mean(const arma::field<arma::mat>& x, int num_threads=1){
   // all matrices in x must be the same size.
-  int n = x.n_elem;
   int nrows = x(0).n_rows;
   int ncols = x(0).n_cols;
   
   arma::mat result = arma::zeros(nrows, ncols);
+  
+  // check how many list elements are nonempty
+  int n = 0;
+  for(int i=0; i<x.n_elem; i++){
+    if(x(i).n_rows > 0){
+      n ++;
+    }
+  }
   
 #ifdef _OPENMP
   omp_set_num_threads(num_threads);
@@ -38,7 +45,10 @@ arma::mat summary_list_mean(const arma::field<arma::mat>& x, int num_threads=1){
   for(int j=0; j<nrows*ncols; j++){
     arma::vec slices = arma::zeros(n);
     for(int i=0; i<n; i++){
-      slices(i) = x(i)(j);
+      if(x(i).n_rows == nrows){
+        // we have stored something here
+        slices(i) = x(i)(j);
+      }
     }
     result(j) = arma::mean(slices);
   }
@@ -94,11 +104,18 @@ double cqtile(arma::vec& v, double q){
 //[[Rcpp::export]]
 arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int num_threads=1){
   // all matrices in x must be the same size.
-  int n = x.n_elem;
   int nrows = x(0).n_rows;
   int ncols = x(0).n_cols;
   
   arma::mat result = arma::zeros(nrows, ncols);
+  
+  // check how many list elements are nonempty
+  int n = 0;
+  for(int i=0; i<x.n_elem; i++){
+    if(x(i).n_rows > 0){
+      n ++;
+    }
+  }
   
 #ifdef _OPENMP
   omp_set_num_threads(num_threads);
