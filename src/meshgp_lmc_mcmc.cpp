@@ -402,7 +402,7 @@ Rcpp::List lmc_mgp_mcmc(
         if(mx % mcmc_thin == 0){
           w_mcmc(mcmc_saved) = mesh.w;
           lw_mcmc(mcmc_saved) = mesh.LambdaHw;
-          wgen_mcmc(mcmc_saved) = mesh.param_data.ll_y; // remove me
+          wgen_mcmc(mcmc_saved) = mesh.wgen; // remove me
           Rcpp::RNGScope scope;
         
           yhat_mcmc(mcmc_saved) = mesh.XB + 
