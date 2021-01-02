@@ -354,7 +354,7 @@ LMCMeshGP::LMCMeshGP(
     lambda_mcmc_counter = 0;
     
     tausq_adapt = RAMAdapt(q, arma::eye(q,q)*.05, .25);
-    tausq_unif_bounds = arma::join_horiz(1e-12 * arma::ones(q), 1e3 * arma::ones(q));
+    tausq_unif_bounds = arma::join_horiz(0 * arma::ones(q), 1e3 * arma::ones(q));
     
     // lambda prepare
     n_lambda_pars = arma::accu(Lambda_mask);
@@ -366,10 +366,10 @@ LMCMeshGP::LMCMeshGP(
       arma::uvec rc = arma::ind2sub( arma::size(Lambda), lambda_sampling(i) );
       if(rc(0) == rc(1)){
         lambda_unif_bounds(i, 0) = 0;
-        lambda_unif_bounds(i, 1) = 1e6;
+        lambda_unif_bounds(i, 1) = 1e10;
       } else {
-        lambda_unif_bounds(i, 0) = -1e6;
-        lambda_unif_bounds(i, 1) = 1e6;
+        lambda_unif_bounds(i, 0) = -1e10;
+        lambda_unif_bounds(i, 1) = 1e10;
       }
     }
   }
