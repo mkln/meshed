@@ -363,13 +363,16 @@ meshedgp <- function(y, x, coords, k=NULL,
     }
     
     if(is.null(prior$tausq)){
-      tausq_ab <- c(2.01, 1)
+      tausq_ab <- c(1, 0)
     } else {
       tausq_ab <- prior$tausq
+      if(length(tausq_ab) == 1){
+        tausq_ab <- c(tausq_ab[1], 0)
+      }
     }
     
     if(is.null(prior$sigmasq)){
-      sigmasq_ab <- c(1e-4, 1e-4)
+      sigmasq_ab <- c(2, 1)
     } else {
       sigmasq_ab <- prior$sigmasq
     }

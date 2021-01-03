@@ -20,6 +20,10 @@ using namespace std;
 
 const double hl2pi = -.5 * log(2.0 * M_PI);
 
+double log_halfcauchy(double x, double d){
+  return - 0.5 * (d + 1.0) * log(1.0 + x*x / d);
+}
+
 class LMCMeshGP {
 public:
   // meta
@@ -1281,7 +1285,8 @@ void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data){
 
   arma::vec Lambda_prop_d = Lambda_proposal.diag();
   arma::vec Lambda_d = Lambda.diag();
-  arma::mat L_prior_prec = 1e-6 * arma::eye(Lambda_d.n_elem, Lambda_d.n_elem);
+  arma::mat L_prior_prec = //1e-6 * 
+    arma::eye(Lambda_d.n_elem, Lambda_d.n_elem);
   double log_prior_ratio = arma::conv_to<double>::from(
     -0.5*Lambda_prop_d.t() * L_prior_prec * Lambda_prop_d
     +0.5*Lambda_d.t() * L_prior_prec * Lambda_d);
@@ -1290,7 +1295,11 @@ void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data){
     double start_logpost = arma::accu(param_data.ll_y);
     
     double jacobian  = calc_jacobian(lambda_vec_proposal, lambda_vec_current, lambda_unif_bounds);
-    double logaccept = new_logpost - start_logpost + log_prior_ratio + jacobian;
+    double logaccept = 
+      new_logpost - 
+      start_logpost + 
+      log_prior_ratio + 
+      jacobian;
     
     //double u = R::runif(0,1);//arma::randu();
     bool accepted = do_I_accept(logaccept);
@@ -1340,7 +1349,8 @@ void LMCMeshGP::sample_nc_Lambda_std(){
     
     arma::mat Wcrossprod = WWj.t() * WWj; 
     
-    arma::mat Lprior_inv = 1e-6 * arma::eye(WWj.n_cols, WWj.n_cols); 
+    arma::mat Lprior_inv = //1e-6 * 
+      arma::eye(WWj.n_cols, WWj.n_cols); 
     
     arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * Wcrossprod + Lprior_inv
       ), "lower");
@@ -1432,12 +1442,19 @@ void LMCMeshGP::gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata){
   double aprior = tausq_ab(0);
   double bprior = tausq_ab(1);
   
+  //arma::vec tau = sqrt(1.0/tausq_inv);
+  
   tausq_adapt.count_proposal();
   Rcpp::RNGScope scope;
-  arma::vec new_tausq = 1.0/tausq_inv;
+  
   arma::vec U_update = arma::randn(q);
-  new_tausq = par_huvtransf_back(par_huvtransf_fwd(1.0/tausq_inv, tausq_unif_bounds) + 
+  
+  arma::vec new_tausq = 
+    par_huvtransf_back(par_huvtransf_fwd(1.0/tausq_inv, tausq_unif_bounds) + 
     tausq_adapt.paramsd * U_update, tausq_unif_bounds);
+  
+  //arma::vec new_tau = tau + tausq_adapt.paramsd * U_update;
+  //arma::vec new_tausq = new_tau % new_tau;
   
 #ifdef _OPENMP
 #pragma omp parallel for 
@@ -1459,7 +1476,21 @@ void LMCMeshGP::gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata){
   double new_logpost = arma::accu(alter_data.ll_y);
   double start_logpost = arma::accu(param_data.ll_y);
   
-  double prior_logratio = calc_prior_logratio(new_tausq, 1.0/tausq_inv, aprior, bprior);
+  double prior_logratio = 0;
+  
+  //for(int i=0; i<q; i++){
+  //  prior_logratio += - log(new_tausq(i)) - log(tausq_inv(i));
+  //  prior_logratio += log_halfcauchy(new_tau(i), aprior) - log_halfcauchy(tau(i), aprior);
+  //}
+  
+  if(aprior != 0){
+    //prior_logratio = calc_prior_logratio(new_tausq, 1.0/tausq_inv, aprior, bprior);
+    
+    for(int i=0; i<q; i++){
+      prior_logratio += aprior * (- log(new_tausq(i)) - log(tausq_inv(i)));
+    }
+  }
+  
   double jacobian  = calc_jacobian(new_tausq, 1.0/tausq_inv, tausq_unif_bounds);
   double logaccept = new_logpost - start_logpost + 
     prior_logratio +
@@ -1484,7 +1515,8 @@ void LMCMeshGP::gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata){
   tausq_mcmc_counter ++;
   if(verbose & debug){
     end = std::chrono::steady_clock::now();
-    Rcpp::Rcout << "[gibbs_sample_tausq_fgrid] " << tausq_adapt.accept_ratio << " average acceptance rate, "
+    Rcpp::Rcout << "[gibbs_sample_tausq_fgrid] " << 
+      tausq_adapt.accept_ratio << " average acceptance rate, "
                 << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() 
                 << "us.\n";
   }
