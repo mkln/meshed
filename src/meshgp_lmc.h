@@ -1285,7 +1285,7 @@ void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data){
 
   arma::vec Lambda_prop_d = Lambda_proposal.diag();
   arma::vec Lambda_d = Lambda.diag();
-  arma::mat L_prior_prec = //1e-6 * 
+  arma::mat L_prior_prec = 1e-6 * 
     arma::eye(Lambda_d.n_elem, Lambda_d.n_elem);
   double log_prior_ratio = arma::conv_to<double>::from(
     -0.5*Lambda_prop_d.t() * L_prior_prec * Lambda_prop_d
@@ -1349,7 +1349,7 @@ void LMCMeshGP::sample_nc_Lambda_std(){
     
     arma::mat Wcrossprod = WWj.t() * WWj; 
     
-    arma::mat Lprior_inv = //1e-6 * 
+    arma::mat Lprior_inv = 1e-6 * 
       arma::eye(WWj.n_cols, WWj.n_cols); 
     
     arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * Wcrossprod + Lprior_inv
@@ -1487,7 +1487,8 @@ void LMCMeshGP::gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata){
     //prior_logratio = calc_prior_logratio(new_tausq, 1.0/tausq_inv, aprior, bprior);
     
     for(int i=0; i<q; i++){
-      prior_logratio += aprior * (- log(new_tausq(i)) - log(tausq_inv(i)));
+      prior_logratio += aprior * 
+        (- log(new_tausq(i)) - log(tausq_inv(i)));
     }
   }
   
