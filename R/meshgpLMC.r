@@ -548,8 +548,9 @@ meshedgp <- function(y, x, coords, k=NULL,
                               set_unif_bounds,
                               beta_Vi, 
                               
-                              tausq_ab,
+                          
                               sigmasq_ab,
+                              tausq_ab,
                           
                               matern_fix_twonu,
                               
