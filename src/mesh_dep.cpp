@@ -159,7 +159,7 @@ arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<ar
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for(int j=0; j<coords.n_cols; j++){
+  for(int j=0; j<thresholds.n_elem; j++){
     arma::vec cja = coords.col(j);
     arma::vec thresholds_col = thresholds(j);
     resultmat.col(j) = turbocolthreshold(coords.col(j), thresholds_col);

@@ -74,7 +74,7 @@ arma::mat Cov_matern(const arma::mat& x, const arma::mat& y,
 arma::mat Cov_matern2(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int twonu){
   // 0 based indexing
   arma::mat res = arma::zeros(x.n_rows, y.n_rows);
-  double nugginside = 1e-7;
+  double nugginside = 0;
   if(same){
     for(int i=0; i<x.n_rows; i++){
       arma::rowvec cri = x.row(i);

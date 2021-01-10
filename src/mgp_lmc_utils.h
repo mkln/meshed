@@ -53,9 +53,6 @@ struct MeshDataLMC {
   arma::field<arma::cube> H_cache;
   arma::field<arma::cube> Ri_cache;
   
-  //arma::field<arma::cube> w_cond_mean_K;
-  //arma::field<arma::cube> w_cond_prec;
-  
   std::vector<arma::cube *> w_cond_prec_ptr;
   std::vector<arma::cube *> w_cond_mean_K_ptr;
     
