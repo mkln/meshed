@@ -615,7 +615,7 @@ void LMCMeshGP::na_study(){
   
   message("[na_study] step 1.");
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i=0; i<n_blocks;i++){
     arma::mat yvec = y.rows(indexing_obs(i));
@@ -702,7 +702,7 @@ void LMCMeshGP::init_cache(){
   
   arma::field<arma::mat> kr_pairing(n_blocks);
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_blocks; i++){
     int u = block_names(i)-1;
@@ -771,7 +771,7 @@ void LMCMeshGP::init_meshdata(const arma::mat& theta_in){
   param_data.AK_uP = arma::field<arma::field<arma::cube> >(n_blocks);
   
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i=0; i<n_blocks; i++){
     int u=block_names(i) - 1;
@@ -850,7 +850,7 @@ void LMCMeshGP::init_indexing(){
 
   message("[init_indexing] parent_indexing");
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
@@ -871,7 +871,7 @@ void LMCMeshGP::init_finalize(){
   arma::field<arma::uvec> dim_by_parent(n_blocks);
   
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i=0; i<n_blocks; i++){ // all blocks
     int u = block_names(i)-1; // block name
@@ -939,7 +939,7 @@ bool LMCMeshGP::refresh_cache(MeshDataLMC& data){
   }
   
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int it=0; it<cx_and_kr_caching.n_elem; it++){
     int i = 0;
@@ -1127,7 +1127,7 @@ void LMCMeshGP::logpost_refresh_after_gibbs(MeshDataLMC& data){
   }
   
 #ifdef _OPENMP
-  //***#pragma omp parallel for 
+  #pragma omp parallel for 
 #endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
@@ -1164,7 +1164,7 @@ bool LMCMeshGP::calc_ywlogdens(MeshDataLMC& data){
   
   //start = std::chrono::steady_clock::now();
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
@@ -1269,7 +1269,7 @@ void LMCMeshGP::sample_nc_Lambda_fgrid(MeshDataLMC& data){
   arma::mat LambdaHw_proposal = w * Lambda_proposal.t();
   
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
@@ -1457,7 +1457,7 @@ void LMCMeshGP::gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata){
   //arma::vec new_tausq = new_tau % new_tau;
   
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
@@ -1652,7 +1652,7 @@ void LMCMeshGP::gibbs_sample_w(MeshDataLMC& data, bool needs_update=true){
   
   for(int g=0; g<n_gibbs_groups; g++){
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
@@ -1754,7 +1754,7 @@ void LMCMeshGP::predict(){
   if(predict_group_exists == 1){
     message("[predict] start ");
 #ifdef _OPENMP
-//***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
     for(int i=0; i<u_predicts.n_elem; i++){ //*** subset to blocks with NA
       int u = u_predicts(i);// u_predicts(i);
