@@ -277,7 +277,11 @@ Rcpp::List lmc_mgp_mcmc(
           logaccept = new_loglik - current_loglik + 
             prior_logratio +
             jacobian;
-          
+          // 
+          // Rcpp::Rcout << "logdetCi_comps: " << arma::accu(mesh.alter_data.logdetCi_comps) - arma::accu(mesh.param_data.logdetCi_comps) << endl;
+          // Rcpp::Rcout << "loglik_w_comps: " << arma::accu(mesh.alter_data.loglik_w_comps) - arma::accu(mesh.param_data.loglik_w_comps) << endl;
+          // Rcpp::Rcout << "ll_y: " << arma::accu(mesh.alter_data.ll_y) - arma::accu(mesh.param_data.ll_y) << endl;
+          // 
           if(std::isnan(logaccept)){
             Rcpp::Rcout << new_param.t();
             Rcpp::Rcout << new_loglik << " " << current_loglik << " " << jacobian << endl;
@@ -456,6 +460,12 @@ Rcpp::List lmc_mgp_mcmc(
     double mcmc_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_all - start_all).count();
     Rcpp::Rcout << "MCMC done [" << mcmc_time/1000.0 <<  "s]\n";
     
+    // 
+    // Rcpp::Named("p_logdetCi_comps") = mesh.param_data.logdetCi_comps,
+    //   Rcpp::Named("a_logdetCi_comps") = mesh.alter_data.logdetCi_comps,
+    //   Rcpp::Named("p_wcore") = mesh.param_data.wcore,
+    //   Rcpp::Named("a_wcore") = mesh.alter_data.wcore
+    //   
     return Rcpp::List::create(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("w_mcmc") = w_mcmc,

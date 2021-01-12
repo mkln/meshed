@@ -276,6 +276,20 @@ void CviaKron_invsympd_(arma::cube& CCi,
   }
 }
 
+void inv_det_via_chol(arma::mat& xinv, double& ldet, const arma::mat& x){
+  arma::mat xchol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(x) , "lower")));
+  ldet = arma::accu(log(xchol.diag()));
+  xinv = xchol.t() * xchol;
+}
+
+void inv_det_via_qr(arma::mat& xinv, double& ldet, const arma::mat& x){
+  arma::mat Q;
+  arma::mat R;
+  arma::qr(Q, R, x);
+  
+  xinv = arma::inv(arma::trimatu(R)) * Q.t();
+  ldet = - 0.5 * arma::accu(log(abs(R.diag())));
+}
 
 double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, const arma::cube& Cxx,
                      const arma::mat& coords, 
@@ -284,24 +298,41 @@ double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, const arma::cube& Cxx,
   
   double logdet=0;
   for(int j=0; j<k; j++){
-    arma::mat Rloc_ichol;
+    arma::mat Rinverted;
     if(indy.n_elem > 0){
       arma::mat Cxy = Correlationf(coords, indx, indy, 
                                    theta.col(j), matern, false);
       arma::mat Cyy_i = arma::inv_sympd( Correlationf(coords, indy, indy, 
                                                       theta.col(j), matern, true) );
       arma::mat Hloc = Cxy * Cyy_i;
-      Rloc_ichol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
-        Cxx.slice(j) - Hloc * Cxy.t()) , "lower")));
-      logdet += arma::accu(log(Rloc_ichol.diag()));
+      arma::mat Targmat = Cxx.slice(j) - Hloc * Cxy.t();
       
+      // ? sometimes ill conditioned? -- condition number
+      if((matern.twonu > 1) || (theta.n_rows > 2)){
+        Targmat.diag() += 1e-10;
+      }
+      // Rloc_ichol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(Targmat) , "lower")));
+      // logdet += arma::accu(log(Rloc_ichol.diag()));
+
+      double temp_ldet = 0;
+      //arma::mat Temp;
+      //inv_det_via_qr(Rinverted, temp_ldet, Targmat);
+      inv_det_via_chol(Rinverted, temp_ldet, Targmat);
+      
+      logdet += temp_ldet;
+    
       H.slice(j) = Hloc;
     } else {
-      Rloc_ichol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
-        Cxx.slice(j)) , "lower")));
-      logdet += arma::accu(log(Rloc_ichol.diag()));
+      arma::mat Targmat = Cxx.slice(j);
+      // Rloc_ichol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
+      //   Targmat) , "lower")));
+      // logdet += arma::accu(log(Rloc_ichol.diag()));
+      // 
+      double temp_ldet = 0;
+      inv_det_via_chol(Rinverted, temp_ldet, Targmat);
+      logdet += temp_ldet;
     }
-    Ri.slice(j) = Rloc_ichol.t() * Rloc_ichol;
+    Ri.slice(j) = Rinverted;//
   }
   return logdet;
 }
