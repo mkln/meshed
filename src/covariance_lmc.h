@@ -6,6 +6,8 @@ using namespace std;
 
 
 struct MaternParams {
+  bool using_ps;
+  bool estimating_nu;
   double * bessel_ws;
   int twonu;
 };
@@ -25,10 +27,6 @@ arma::mat gneiting2002(const arma::mat& coords, const arma::uvec& ix, const arma
 
 arma::mat Correlationf(const arma::mat& coords, const arma::uvec& ix, const arma::uvec& iy, 
                        const arma::vec& theta, MaternParams& matern, bool same);
-
-//arma::mat CviaKron(const arma::mat& coords, 
-//                   const arma::uvec& indx, const arma::uvec& indy,
-//                   int k, const arma::mat& theta, MaternParams& matern, bool same=false);
 
 // inplace functions
 void CviaKron_invsympd_(arma::cube& CCi, 

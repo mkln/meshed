@@ -4,7 +4,11 @@
 #include "meshgp_lmc.h"
 #include "interrupt_handler.h"
 
-arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arma::mat& theta, int d, int nutimes2){
+arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arma::mat& theta, int d, int nutimes2, bool use_ps=true){
+  if(!use_ps){
+    return Lambda_in;
+  }
+  
   arma::mat reparametrizer; 
   if(d == 3){
     // exponential reparametrization of gneiting's ? 
@@ -30,7 +34,11 @@ arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arma::mat&
   return Lambda_in * reparametrizer;
 }
 
-arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in, const arma::mat& theta, int d, int nutimes2){
+arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in, const arma::mat& theta, int d, int nutimes2, bool use_ps=true){
+  if(!use_ps){
+    return Lambda_in;
+  }
+  
   arma::mat reparametrizer;
   if(d == 3){
     // exponential
@@ -105,6 +113,7 @@ Rcpp::List lmc_mgp_mcmc(
     
     bool use_cache=true,
     bool forced_grid=true,
+    bool use_ps=true,
     
     bool verbose=false,
     bool debug=false,
@@ -154,7 +163,7 @@ Rcpp::List lmc_mgp_mcmc(
   
   arma::mat metropolis_sd = mcmcsd;
   
-  arma::mat start_lambda = reparametrize_lambda_forward(lambda, theta, d, matern_twonu);
+  arma::mat start_lambda = reparametrize_lambda_forward(lambda, theta, d, matern_twonu, use_ps);
   
   arma::mat start_theta = theta;
   Rcpp::Rcout << "start theta \n" << theta;
@@ -169,7 +178,7 @@ Rcpp::List lmc_mgp_mcmc(
                 start_w, beta, start_lambda, lambda_mask, start_theta, 1.0/tausq, 
                 beta_Vi, tausq_ab,
                 
-                use_cache, forced_grid, 
+                use_cache, forced_grid, use_ps,
                 verbose, debug, num_threads);
 
   
@@ -390,7 +399,7 @@ Rcpp::List lmc_mgp_mcmc(
       //save
       logaccept_mcmc(m) = logaccept > 0 ? 0 : logaccept;
       
-      arma::mat lambda_transf_back = reparametrize_lambda_back(mesh.Lambda, mesh.param_data.theta, d, mesh.matern.twonu);
+      arma::mat lambda_transf_back = reparametrize_lambda_back(mesh.Lambda, mesh.param_data.theta, d, mesh.matern.twonu, use_ps);
       
       if(mx >= 0){
         tausq_mcmc.col(w_saved) = 1.0 / mesh.tausq_inv;
@@ -439,16 +448,19 @@ Rcpp::List lmc_mgp_mcmc(
           for(int pp=0; pp<q; pp++){
             Rprintf("%.6f ", 1.0/mesh.tausq_inv(pp));
           }
-          arma::vec lvec = arma::vectorise(mesh.Lambda);
-          Rprintf("\n  lambdastar = ");
-          for(int pp=0; pp<lvec.n_elem; pp++){
-            Rprintf("%.3f ", lvec(pp));
+          if(use_ps){
+            arma::vec lvec = arma::vectorise(mesh.Lambda);
+            Rprintf("\n  lambdastar = ");
+            for(int pp=0; pp<lvec.n_elem; pp++){
+              Rprintf("%.3f ", lvec(pp));
+            }
+            lvec = arma::vectorise(lambda_transf_back);
+            Rprintf("\n  lambda = ");
+            for(int pp=0; pp<lvec.n_elem; pp++){
+              Rprintf("%.3f ", lvec(pp));
+            }
           }
-          lvec = arma::vectorise(lambda_transf_back);
-          Rprintf("\n  lambda = ");
-          for(int pp=0; pp<lvec.n_elem; pp++){
-            Rprintf("%.3f ", lvec(pp));
-          }
+          
           Rprintf("\n\n");
         } 
       } else {

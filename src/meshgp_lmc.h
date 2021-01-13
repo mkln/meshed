@@ -259,6 +259,7 @@ public:
     
     bool use_cache,
     bool use_forced_grid,
+    bool use_ps,
     
     bool verbose_in,
     bool debugging,
@@ -307,6 +308,7 @@ LMCMeshGP::LMCMeshGP(
   
   bool use_cache=true,
   bool use_forced_grid=false,
+  bool use_ps=true,
   
   bool verbose_in=false,
   bool debugging=false,
@@ -464,6 +466,8 @@ LMCMeshGP::LMCMeshGP(
   int bessel_ws_inc = 5;
   matern.bessel_ws = (double *) R_alloc(nThreads*bessel_ws_inc, sizeof(double));
   matern.twonu = matern_twonu_in;
+  matern.using_ps = use_ps;
+  matern.estimating_nu = matern_estim;
   
   // predict_initialize
   message("predict initialize");
@@ -1178,8 +1182,6 @@ bool LMCMeshGP::calc_ywlogdens(MeshDataLMC& data){
     }
   }
   
-  //Rcpp::Rcout << "loglik_w_comps " << arma::accu(data.loglik_w_comps) << endl;
-  
   data.loglik_w = arma::accu(data.logdetCi_comps) + 
     arma::accu(data.loglik_w_comps) + arma::accu(data.ll_y); //***
   
@@ -1478,14 +1480,7 @@ void LMCMeshGP::gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata){
   
   double prior_logratio = 0;
   
-  //for(int i=0; i<q; i++){
-  //  prior_logratio += - log(new_tausq(i)) - log(tausq_inv(i));
-  //  prior_logratio += log_halfcauchy(new_tau(i), aprior) - log_halfcauchy(tau(i), aprior);
-  //}
-  
   if(aprior != 0){
-    //prior_logratio = calc_prior_logratio(new_tausq, 1.0/tausq_inv, aprior, bprior);
-    
     for(int i=0; i<q; i++){
       prior_logratio += aprior * 
         (- log(new_tausq(i)) - log(tausq_inv(i)));

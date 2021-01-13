@@ -227,13 +227,16 @@ arma::mat Correlationf(
   if(coords.n_cols == 2){
     // spatial matern
     // reparametrized here
-    if(theta.n_rows == 2){
+    if(!matern.estimating_nu){
       // exponential
       double phi = theta(0);
       double sigmasq = theta(1);
       
       int nutimes2 = matern.twonu;
-      double reparam = pow(phi, .0 + nutimes2);
+      double reparam = 1.0; 
+      if(matern.using_ps){
+        reparam = pow(phi, .0 + nutimes2);
+      }
       
       matern_halfint_inplace(res, coords, ix, iy, phi, sigmasq, reparam, same, nutimes2);
       
@@ -243,27 +246,26 @@ arma::mat Correlationf(
       double nu = theta(1);
       double sigmasq = theta(2);
       
-      double reparam = pow(phi, 2.0*nu);
+      double reparam = 1.0;
+      if(matern.using_ps){
+        // we divide by phi given the equivalence in 
+        // zhang 2004, corrollary to Thm.2
+        reparam = pow(phi, 2.0*nu);
+      }
       
       double nugginside = 0;//1e-7;
       
       //powerexp_inplace(res, coords, ix, iy, phi, nu, sigmasq, reparam, same);
-      
-      // we divide by phi given the equivalence in 
-      // zhang 2004, corrollary to Thm.2: 
       matern_internal_inplace(res, coords, ix, iy, phi, nu, 
                   sigmasq, reparam, matern.bessel_ws, nugginside, same);
       
       return res;
     }
-    //return squaredexp(x, y, theta(0), same)/theta(0);
   } else {
     // theta 0: temporal decay, 
     // theta 1: spatial decay,
     // theta 2: separability
-    // reparametrized here
-    
-    return gneiting2002(coords, ix, iy, theta(0), theta(1), theta(2), same)/theta(1);
+    return gneiting2002(coords, ix, iy, theta(0), theta(1), theta(2), same);
   }
 }
 
@@ -287,7 +289,7 @@ void inv_det_via_qr(arma::mat& xinv, double& ldet, const arma::mat& x){
   arma::mat R;
   arma::qr(Q, R, x);
   
-  xinv = arma::inv(arma::trimatu(R)) * Q.t();
+  xinv = arma::symmatu(arma::inv(arma::trimatu(R)) * Q.t());
   ldet = - 0.5 * arma::accu(log(abs(R.diag())));
 }
 
@@ -308,9 +310,9 @@ double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, const arma::cube& Cxx,
       arma::mat Targmat = Cxx.slice(j) - Hloc * Cxy.t();
       
       // ? sometimes ill conditioned? -- condition number
-      if((matern.twonu > 1) || (theta.n_rows > 2)){
-        Targmat.diag() += 1e-10;
-      }
+      //if((matern.twonu > 1) || (theta.n_rows > 2)){
+        //Targmat.diag() += 1e-10;
+      //}
       // Rloc_ichol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(Targmat) , "lower")));
       // logdet += arma::accu(log(Rloc_ichol.diag()));
 
@@ -324,11 +326,8 @@ double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, const arma::cube& Cxx,
       H.slice(j) = Hloc;
     } else {
       arma::mat Targmat = Cxx.slice(j);
-      // Rloc_ichol = arma::inv(arma::trimatl(arma::chol( arma::symmatu(
-      //   Targmat) , "lower")));
-      // logdet += arma::accu(log(Rloc_ichol.diag()));
-      // 
       double temp_ldet = 0;
+      //inv_det_via_qr(Rinverted, temp_ldet, Targmat);
       inv_det_via_chol(Rinverted, temp_ldet, Targmat);
       logdet += temp_ldet;
     }

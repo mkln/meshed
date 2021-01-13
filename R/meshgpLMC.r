@@ -9,7 +9,7 @@ meshedgp <- function(y, x, coords, k=NULL,
                    n_threads = 4,
                    print_every = NULL,
                    predict_everywhere = F,
-                   settings    = list(adapting=T, forced_grid=NULL, cache=NULL, saving=F),
+                   settings    = list(adapting=T, forced_grid=NULL, cache=NULL, ps=T, saving=F),
                    prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                                       phi=NULL, nu = NULL,
                                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
@@ -48,6 +48,7 @@ meshedgp <- function(y, x, coords, k=NULL,
     mcmc_verbose     <- debug$verbose %>% set_default(F)
     mcmc_debug       <- debug$debug %>% set_default(F)
     saving <- settings$saving %>% set_default(F)
+    use_ps <- settings$ps %>% set_default(T)
     
     dd             <- ncol(coords)
     p              <- ncol(x)
@@ -578,6 +579,7 @@ meshedgp <- function(y, x, coords, k=NULL,
                               
                               use_cache,
                               use_forced_grid,
+                              use_ps,
                               
                               mcmc_verbose, mcmc_debug, # verbose, debug
                               mcmc_print_every, # print all iter
