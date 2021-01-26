@@ -1,0 +1,85 @@
+#include "meshed.h"
+
+using namespace std;
+
+void Meshed::metrop_theta(){
+  message("[metrop_theta] start");
+  
+  theta_adapt.count_proposal();
+  
+  arma::vec param = arma::vectorise(param_data.theta);
+  arma::vec new_param = arma::vectorise(param_data.theta);
+  
+  Rcpp::RNGScope scope;
+  arma::vec U_update = arma::randn(new_param.n_elem);
+  
+  // theta
+  new_param = par_huvtransf_back(par_huvtransf_fwd(param, theta_unif_bounds) + 
+    theta_adapt.paramsd * U_update, theta_unif_bounds);
+  
+  bool out_unif_bounds = unif_bounds(new_param, theta_unif_bounds);
+  
+  arma::mat theta_proposal = 
+    arma::mat(new_param.memptr(), new_param.n_elem/k, k);
+  
+  alter_data.theta = theta_proposal;
+  
+  bool acceptable = get_loglik_comps_w( alter_data );
+  
+  bool accepted = false;
+  double logaccept = 0;
+  double current_loglik = 0;
+  double new_loglik = 0;
+  double prior_logratio = 0;
+  double jacobian = 0;
+  
+  if(acceptable){
+    new_loglik = alter_data.loglik_w;
+    current_loglik = param_data.loglik_w;
+    
+    prior_logratio = calc_prior_logratio(
+        alter_data.theta.tail_rows(1).t(), param_data.theta.tail_rows(1).t(), 2, 1); // sigmasq
+    
+    jacobian  = calc_jacobian(new_param, param, theta_unif_bounds);
+    logaccept = new_loglik - current_loglik + 
+      prior_logratio +
+      jacobian;
+    // 
+    // Rcpp::Rcout << "logdetCi_comps: " << arma::accu(msp.alter_data.logdetCi_comps) - arma::accu(msp.param_data.logdetCi_comps) << endl;
+    // Rcpp::Rcout << "loglik_w_comps: " << arma::accu(msp.alter_data.loglik_w_comps) - arma::accu(msp.param_data.loglik_w_comps) << endl;
+    // Rcpp::Rcout << "ll_y: " << arma::accu(msp.alter_data.ll_y) - arma::accu(msp.param_data.ll_y) << endl;
+    // 
+
+    accepted = do_I_accept(logaccept);
+  } else {
+    accepted = false;
+    //num_chol_fails ++;
+    if(verbose & debug){
+      Rcpp::Rcout << "[warning] numerical failure at MH proposal -- auto rejected\n";
+    }
+  }
+  
+  if(accepted){
+    theta_adapt.count_accepted();
+    
+    accept_make_change();
+    param_data.theta = theta_proposal;
+    
+    if(debug & verbose){
+      Rcpp::Rcout << "[theta] accepted (log accept. " << logaccept << ")\n";;
+    }
+  } else {
+    if(debug & verbose){
+      Rcpp::Rcout << "[theta] rejected (log accept. " << logaccept << ")\n";;
+    }
+  }
+  
+  theta_adapt.update_ratios();
+  
+  if(theta_adapt_active){
+    theta_adapt.adapt(U_update, acceptable*exp(logaccept), theta_mcmc_counter); 
+  }
+  theta_mcmc_counter++;
+  
+  message("[metrop_theta] end");
+}

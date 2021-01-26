@@ -1,15 +1,61 @@
-#include "mgp_lmc_utils.h"
+#ifndef MGP_UTILS 
+#define MGP_UTILS
+
+#include "RcppArmadillo.h"
+
+
 using namespace std;
 
+struct MeshDataLMC {
+  arma::mat theta; 
+  arma::vec nu;
+  
+  // x coordinates here
+  // p parents coordinates
+  
+  arma::field<arma::cube> CC_cache; // C(x,x)
+  arma::field<arma::cube> Kxxi_cache; // Ci(x,x)
+  arma::field<arma::cube> H_cache; // C(x,p) Ci(p,p)
+  arma::field<arma::cube> Ri_cache; // ( C(x,x) - C(x,p)Ci(p,p)C(p,x) )^{-1}
+  arma::field<arma::cube> Kppi_cache; // Ci(p,p)
+  arma::vec Ri_chol_logdet;
+  
+  std::vector<arma::cube *> w_cond_prec_ptr;
+  std::vector<arma::cube *> w_cond_mean_K_ptr;
+  std::vector<arma::cube *> w_cond_prec_parents_ptr;
+  
+  arma::vec logdetCi_comps;
+  double logdetCi;
+  
+  arma::mat wcore; 
+  arma::mat loglik_w_comps;
+  
+  arma::vec ll_y;
+  
+  double loglik_w; // will be pml
+  double ll_y_all;
+  
+  arma::field<arma::cube> Hproject; // moves from w to observed coords
+  arma::field<arma::cube> Rproject; // stores R for obs
+  arma::field<arma::cube> Riproject;
+  
+  arma::cube DplusSi;
+  arma::cube DplusSi_c;
+  arma::vec DplusSi_ldet;
+  
+  // w cache
+  arma::field<arma::mat> Sigi_chol;
+  arma::field<arma::mat> Smu_start;
+  
+  arma::field<arma::field<arma::cube> > AK_uP;
+  //arma::field<arma::field<arma::mat> > LambdaH_Ditau; // for forced grids;
+};
 
-
-bool compute_block(bool predicting, int block_ct, bool rfc){
+inline bool compute_block(bool predicting, int block_ct, bool rfc){
   return predicting == false? (block_ct > 0) : predicting;;
 }
 
-
-
-arma::vec drowcol_uv(const arma::field<arma::uvec>& diag_blocks){
+inline arma::vec drowcol_uv(const arma::field<arma::uvec>& diag_blocks){
   int M=diag_blocks.n_elem;
   arma::vec drow = arma::zeros(M+1);
   for(int i=0; i<M; i++){
@@ -19,7 +65,7 @@ arma::vec drowcol_uv(const arma::field<arma::uvec>& diag_blocks){
   return drow;
 }
 
-arma::uvec field_v_concat_uv(arma::field<arma::uvec> const& fuv){
+inline arma::uvec field_v_concat_uv(arma::field<arma::uvec> const& fuv){
   // takes a field of matrices (same n cols) and outputs a single matrix concatenating all
   arma::vec ddims = drowcol_uv(fuv);
   arma::uvec result = arma::zeros<arma::uvec>(ddims(fuv.n_elem));
@@ -31,8 +77,7 @@ arma::uvec field_v_concat_uv(arma::field<arma::uvec> const& fuv){
   return result;
 }
 
-
-void block_invcholesky_(arma::mat& X, const arma::uvec& upleft_cumblocksizes){
+inline void block_invcholesky_(arma::mat& X, const arma::uvec& upleft_cumblocksizes){
   // inplace
   // this function computes inv(chol(X)) when 
   // X is a block matrix in which the upper left block itself is block diagonal
@@ -71,10 +116,10 @@ void block_invcholesky_(arma::mat& X, const arma::uvec& upleft_cumblocksizes){
   X.submat(n_upleft, n_upleft, X.n_rows-1, X.n_rows-1) = invcholSchur;
 }
 
-void add_smu_parents_(arma::mat& result, 
-                             const arma::cube& condprec,
-                             const arma::cube& cmk,
-                             const arma::mat& wparents){
+inline void add_smu_parents_(arma::mat& result, 
+                      const arma::cube& condprec,
+                      const arma::cube& cmk,
+                      const arma::mat& wparents){
   int n_blocks = condprec.n_slices;
   int bsize = condprec.n_rows;
   for(int i=0; i<n_blocks; i++){
@@ -84,10 +129,10 @@ void add_smu_parents_(arma::mat& result,
   }
 }
 
-void add_smu_parents_ptr_(arma::mat& result, 
-                      const arma::cube* condprec,
-                      const arma::cube* cmk,
-                      const arma::mat& wparents){
+inline void add_smu_parents_ptr_(arma::mat& result, 
+                          const arma::cube* condprec,
+                          const arma::cube* cmk,
+                          const arma::mat& wparents){
   int n_blocks = (*condprec).n_slices;
   int bsize = (*condprec).n_rows;
   for(int i=0; i<n_blocks; i++){
@@ -98,7 +143,7 @@ void add_smu_parents_ptr_(arma::mat& result,
 }
 
 
-arma::cube AKuT_x_R(arma::cube& result, const arma::cube& x, const arma::cube& y){ 
+inline arma::cube AKuT_x_R(arma::cube& result, const arma::cube& x, const arma::cube& y){ 
   //arma::cube result = arma::zeros(x.n_cols, y.n_cols, x.n_slices);
   for(int i=0; i<x.n_slices; i++){
     result.slice(i) = arma::trans(x.slice(i)) * y.slice(i); 
@@ -106,7 +151,7 @@ arma::cube AKuT_x_R(arma::cube& result, const arma::cube& x, const arma::cube& y
   return result;
 }
 
-arma::cube AKuT_x_R_ptr(arma::cube& result, const arma::cube& x, const arma::cube* y){ 
+inline arma::cube AKuT_x_R_ptr(arma::cube& result, const arma::cube& x, const arma::cube* y){ 
   //arma::cube result = arma::zeros(x.n_cols, y.n_cols, x.n_slices);
   for(int i=0; i<x.n_slices; i++){
     result.slice(i) = arma::trans(x.slice(i)) * (*y).slice(i); 
@@ -114,19 +159,19 @@ arma::cube AKuT_x_R_ptr(arma::cube& result, const arma::cube& x, const arma::cub
   return result;
 }
 
-void add_AK_AKu_multiply_(arma::mat& result,
-                                 const arma::cube& x, const arma::cube& y){
+inline void add_AK_AKu_multiply_(arma::mat& result,
+                          const arma::cube& x, const arma::cube& y){
   int n_blocks = x.n_slices;
   int bsize = x.n_rows;
   for(int i=0; i<n_blocks; i++){
     //result.submat(outerdims(i), outerdims(i), 
     //              outerdims(i+1)-1, outerdims(i+1)-1) +=
     result.submat(i*bsize, i*bsize, (i+1)*bsize-1, (i+1)*bsize-1) += 
-                    x.slice(i) * y.slice(i);
+      x.slice(i) * y.slice(i);
   }
 }
 
-arma::mat AK_vec_multiply(const arma::cube& x, const arma::mat& y){ 
+inline arma::mat cube_times_mat(const arma::cube& x, const arma::mat& y){ 
   arma::mat result = arma::zeros(x.n_rows, y.n_cols);
   int n_blocks = x.n_slices;
   for(int i=0; i<n_blocks; i++){
@@ -135,7 +180,16 @@ arma::mat AK_vec_multiply(const arma::cube& x, const arma::mat& y){
   return result;
 }
 
-void add_lambda_crossprod(arma::mat& result, const arma::mat& X, int j, int q, int k, int blocksize){
+inline arma::mat AK_vec_multiply(const arma::cube& x, const arma::mat& y){ 
+  arma::mat result = arma::zeros(x.n_rows, y.n_cols);
+  int n_blocks = x.n_slices;
+  for(int i=0; i<n_blocks; i++){
+    result.col(i) = x.slice(i) * y.col(i);
+  }
+  return result;
+}
+
+inline void add_lambda_crossprod(arma::mat& result, const arma::mat& X, int j, int q, int k, int blocksize){
   // X has blocksize rows and k*blocksize columns
   // we want to output X.t() * X
   //arma::mat result = arma::zeros(X.n_cols, X.n_cols);
@@ -158,7 +212,7 @@ void add_lambda_crossprod(arma::mat& result, const arma::mat& X, int j, int q, i
   }
 }
 
-void add_LtLxD(arma::mat& result, const arma::mat& LjtLj, const arma::vec& Ddiagvec){
+inline void add_LtLxD(arma::mat& result, const arma::mat& LjtLj, const arma::vec& Ddiagvec){
   // computes LjtLj %x% diag(Ddiagvec)
   //arma::mat result = arma::zeros(LjtLj.n_rows * Ddiagvec.n_elem, LjtLj.n_cols * Ddiagvec.n_elem);
   int blockx = Ddiagvec.n_elem;
@@ -179,7 +233,7 @@ void add_LtLxD(arma::mat& result, const arma::mat& LjtLj, const arma::vec& Ddiag
   }
 }
 
-arma::mat build_block_diagonal_ptr(const arma::cube* x){
+inline arma::mat build_block_diagonal_ptr(const arma::cube* x){
   int nrow = (*x).n_rows;
   int nslice = (*x).n_slices;
   arma::mat result = arma::zeros(nrow * nslice, nrow * nslice);
@@ -190,7 +244,7 @@ arma::mat build_block_diagonal_ptr(const arma::cube* x){
   return result;
 }
 
-arma::mat build_block_diagonal(const arma::cube& x){
+inline arma::mat build_block_diagonal(const arma::cube& x){
   int nrow = x.n_rows;
   int nslice = x.n_slices;
   arma::mat result = arma::zeros(nrow * nslice, nrow * nslice);
@@ -202,7 +256,7 @@ arma::mat build_block_diagonal(const arma::cube& x){
 }
 
 
-arma::cube cube_cols(const arma::cube& x, const arma::uvec& sel_cols){
+inline arma::cube cube_cols(const arma::cube& x, const arma::uvec& sel_cols){
   arma::cube result = arma::zeros(x.n_rows, sel_cols.n_elem, x.n_slices);
   for(int i=0; i<x.n_slices; i++){
     result.slice(i) = x.slice(i).cols(sel_cols);
@@ -210,7 +264,7 @@ arma::cube cube_cols(const arma::cube& x, const arma::uvec& sel_cols){
   return result;
 }
 
-arma::cube cube_cols_ptr(const arma::cube* x, const arma::uvec& sel_cols){
+inline arma::cube cube_cols_ptr(const arma::cube* x, const arma::uvec& sel_cols){
   arma::cube result = arma::zeros((*x).n_rows, sel_cols.n_elem, (*x).n_slices);
   for(int i=0; i<(*x).n_slices; i++){
     result.slice(i) = (*x).slice(i).cols(sel_cols);
@@ -218,6 +272,17 @@ arma::cube cube_cols_ptr(const arma::cube* x, const arma::uvec& sel_cols){
   return result;
 }
 
-arma::mat ortho(const arma::mat& x){
+inline arma::cube subcube_ptr(const arma::cube* x, const arma::uvec& sel_rows, const arma::uvec& sel_cols){
+  arma::cube result = arma::zeros(sel_rows.n_elem, sel_cols.n_elem, (*x).n_slices);
+  for(int i=0; i<(*x).n_slices; i++){
+    result.slice(i) = (*x).slice(i).submat(sel_rows, sel_cols);
+  }
+  return result;
+}
+
+inline arma::mat ortho(const arma::mat& x){
   return arma::eye(arma::size(x)) - x * arma::inv_sympd(arma::symmatu(x.t() * x)) * x.t();
 }
+
+
+#endif

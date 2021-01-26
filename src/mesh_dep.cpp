@@ -170,7 +170,8 @@ arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<ar
 //[[Rcpp::export]]
 Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr, 
                           const arma::uvec& Mv, 
-                          bool verbose=true){
+                          bool verbose=true,
+                          bool both_spatial_axes=true){
   // coords_layering is a matrix
   // Var1 Var2 [Var3] L1 L2 [L3] layer na_which
   // layers_descr = coords_layering %>% select(-contains("Var")) 
@@ -255,18 +256,21 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
       for(int j=1; j<Mv(1)+1; j++){
         int layern = Qm(i-1, j-1);
         if(layern != -1){
-          if(j < Mv(1)){
-            arma::vec q1 = arma::vectorise(Qm.submat(i-1, j,  
-                                                     i-1, Jmax));
-            
-            arma::uvec locator_sub_ijh_1 = arma::find(q1 != -1);
-            if(locator_sub_ijh_1.n_elem > 0){
-              int prop_layern = q1(locator_sub_ijh_1(0));
-              children(layern-1)(0) = prop_layern-1;
-              parents(prop_layern-1)(0) = layern-1;
+          
+          if(both_spatial_axes){
+            if(j < Mv(1)){
+              arma::vec q1 = arma::vectorise(Qm.submat(i-1, j,  
+                                                       i-1, Jmax));
+              
+              arma::uvec locator_sub_ijh_1 = arma::find(q1 != -1);
+              if(locator_sub_ijh_1.n_elem > 0){
+                int prop_layern = q1(locator_sub_ijh_1(0));
+                children(layern-1)(0) = prop_layern-1;
+                parents(prop_layern-1)(0) = layern-1;
+              }
             }
           }
-          
+        
           if(i < Mv(0)){
             arma::vec q2 = Qm.submat(i,    j-1, 
                                      Imax, j-1);
@@ -278,6 +282,8 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
               parents(prop_layern-1)(1) = layern-1;
             }
           }
+          
+          
         }
       }
     }
@@ -308,16 +314,20 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
         arma::uvec loc2after = arma::find(nne2 > ijh(0));
         
         parents(layern-1) = arma::zeros(4) -1;
-        if(loc1before.n_elem > 0){
-          arma::uvec nne1_before = nne1(loc1before);
-          parents(layern-1)(0) = arma::conv_to<int>::from(
-            axis1(nne1_before.tail(1)) - 1);
+        
+        if(both_spatial_axes){
+          if(loc1before.n_elem > 0){
+            arma::uvec nne1_before = nne1(loc1before);
+            parents(layern-1)(0) = arma::conv_to<int>::from(
+              axis1(nne1_before.tail(1)) - 1);
+          }
+          if(loc1after.n_elem > 0){
+            arma::uvec nne1_after  = nne1(loc1after);
+            parents(layern-1)(1) = arma::conv_to<int>::from(
+              axis1(nne1_after.head(1)) - 1);
+          }
         }
-        if(loc1after.n_elem > 0){
-          arma::uvec nne1_after  = nne1(loc1after);
-          parents(layern-1)(1) = arma::conv_to<int>::from(
-            axis1(nne1_after.head(1)) - 1);
-        }
+        
         if(loc2before.n_elem > 0){
           arma::uvec nne2_before = nne2(loc2before);
           parents(layern-1)(2) = arma::conv_to<int>::from(
@@ -328,6 +338,8 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
           parents(layern-1)(3) = arma::conv_to<int>::from(
             axis2(nne2_after.head(1)) - 1);
         }
+        
+        
       } 
     }
     end = std::chrono::steady_clock::now();
@@ -479,16 +491,19 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
           parents(layern-1)(1) = arma::conv_to<int>::from(
             axis1(nne1_after.head(1)) - 1);
         }
-        if(loc2before.n_elem > 0){
-          arma::uvec nne2_before = nne2(loc2before);
-          parents(layern-1)(2) = arma::conv_to<int>::from(
-            axis2(nne2_before.tail(1)) - 1);
+        if(both_spatial_axes){
+          if(loc2before.n_elem > 0){
+            arma::uvec nne2_before = nne2(loc2before);
+            parents(layern-1)(2) = arma::conv_to<int>::from(
+              axis2(nne2_before.tail(1)) - 1);
+          }
+          if(loc2after.n_elem > 0){
+            arma::uvec nne2_after  = nne2(loc2after);
+            parents(layern-1)(3) = arma::conv_to<int>::from(
+              axis2(nne2_after.head(1)) - 1);
+          }
         }
-        if(loc2after.n_elem > 0){
-          arma::uvec nne2_after  = nne2(loc2after);
-          parents(layern-1)(3) = arma::conv_to<int>::from(
-            axis2(nne2_after.head(1)) - 1);
-        }
+        
         if(loc3before.n_elem > 0){
           arma::uvec nne3_before = nne3(loc3before); 
           parents(layern-1)(4) = arma::conv_to<int>::from(

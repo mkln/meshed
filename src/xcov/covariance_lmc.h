@@ -1,9 +1,11 @@
 #define ARMA_DONT_PRINT_ERRORS
 
+#ifndef XCOV_LMC 
+#define XCOV_LMC
+
 #include <RcppArmadillo.h>
 
 using namespace std;
-
 
 struct MaternParams {
   bool using_ps;
@@ -11,12 +13,6 @@ struct MaternParams {
   double * bessel_ws;
   int twonu;
 };
-
-
-arma::mat CmaternInv(const arma::mat& x,
-                     const double& sigmasq,
-                     const double& effrange, const double& nu, 
-                     const double& tausq);
 
 // matern
 arma::mat matern(const arma::mat& x, const arma::mat& y, const double& phi, const double& nu, double * bessel_ws, bool same);
@@ -33,7 +29,8 @@ void CviaKron_invsympd_(arma::cube& CCi,
                         const arma::mat& coords, const arma::uvec& indx, 
                         int k, const arma::mat& theta, MaternParams& matern);
   
-double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, const arma::cube& Cxx,
+double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, arma::cube& Kppi, 
+                     const arma::cube& Cxx,
                      const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
                      int k, const arma::mat& theta, MaternParams& matern);
@@ -62,3 +59,6 @@ void CviaKron_HRj_chol_bdiag(
     const arma::uvec& naix,
     const arma::mat& coords, const arma::uvec& indx, const arma::uvec& indy, 
     int k, const arma::mat& theta, MaternParams& matern);
+
+
+#endif

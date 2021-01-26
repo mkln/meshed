@@ -1,0 +1,312 @@
+#define ARMA_DONT_PRINT_ERRORS
+
+#ifndef MESHEDSP 
+#define MESHEDSP
+
+#include <RcppArmadillo.h>
+
+#include "../distributions/truncmvnorm.h"
+#include "../mcmc/mh_adapt.h"
+#include "../mcmc/hmcnuts.h"
+#include "../utils/caching_pairwise_compare.h"
+#include "../utils/mesh_utils.h"
+#include "../utils/mesh_lmc_utils.h"
+#include "../xcov/covariance_lmc.h"
+
+class Meshed {
+public:
+  
+  arma::uvec familyid;
+  std::string latent;
+  bool gibbs_or_hmc;
+  
+  // meta
+  int n; // number of locations, total
+  int p; // number of covariates
+  int q; // number of outcomes
+  int k; // number of factors
+  int dd; // dimension
+  int n_blocks; // number of blocks
+  
+  // data
+  arma::mat y;
+  arma::mat X;
+  arma::mat Z;
+  
+  arma::mat coords;
+  
+  arma::uvec reference_blocks; // named
+  int n_ref_blocks;
+  
+  // indexing info
+  arma::field<arma::uvec> indexing; 
+  arma::field<arma::uvec> indexing_obs;
+  arma::field<arma::uvec> parents_indexing; 
+  //arma::field<arma::uvec> children_indexing;
+  
+  // NA data -- indicator vectors
+  // at least one of q available
+  arma::field<arma::uvec> na_1_blocks; 
+  // at least one of q missing
+  arma::field<arma::uvec> na_0_blocks; 
+  // indices of avails
+  arma::field<arma::uvec> na_ix_blocks;
+  arma::umat na_mat;
+  
+  // variable data
+  arma::field<arma::uvec> ix_by_q_a; // storing indices using only available data
+  
+  int n_loc_ne_blocks;
+  
+  // regression
+  arma::mat Lambda;
+  arma::umat Lambda_mask; // 1 where we want lambda to be nonzero
+  arma::mat LambdaHw; // part of the regression mean explained by the latent process
+  arma::mat wU; // nonreference locations
+  
+  arma::mat XB; // by outcome
+  
+  arma::field<arma::mat> XtX;
+  arma::mat Vi; 
+  arma::mat Vim;
+  arma::vec bprim;
+  
+  // dependence
+  arma::field<arma::sp_mat> Ib;
+  arma::field<arma::uvec>   parents; // i = parent block names for i-labeled block (not ith block)
+  arma::field<arma::uvec>   children; // i = children block names for i-labeled block (not ith block)
+  arma::vec                 block_names; //  i = block name (+1) of block i. all dependence based on this name
+  //arma::uvec                ref_block_names;
+  arma::vec                 block_groups; // same group = sample in parallel given all others
+  arma::vec                 block_ct_obs; // 0 if no available obs in this block, >0=count how many available
+  int                       n_gibbs_groups;
+  arma::field<arma::vec>    u_by_block_groups;
+  int                       predict_group_exists;
+  
+  arma::uvec                u_predicts;
+  arma::vec                 block_groups_labels;
+  // for each block's children, which columns of parents of c is u? and which instead are of other parents
+  arma::field<arma::field<arma::field<arma::uvec> > > u_is_which_col_f; 
+  
+  arma::uvec oneuv;
+  double hl2pi;
+    
+  // params
+  arma::mat w;
+  arma::mat Bcoeff; // sampled
+  
+  // covariance info
+  int nThreads;
+  MaternParams matern;
+  
+  // setup
+  bool predicting;
+  bool cached;
+  bool forced_grid;
+  
+  bool verbose;
+  bool debug;
+  
+  void message(string s);
+  
+  // predictions
+  arma::field<arma::cube> Hpred;
+  arma::field<arma::mat> Rcholpred;
+  
+  // init / indexing
+  void init_indexing();
+  void na_study();
+  void make_gibbs_groups();
+  void init_gibbs_index();
+  void init_matern(int num_threads, int matern_twonu_in, bool use_ps);
+  
+  // init / caching obj
+  void init_cache();
+  
+  // caching
+  MeshDataLMC param_data; 
+  MeshDataLMC alter_data;
+  
+  void init_meshdata(const arma::mat&);
+  bool refresh_cache(MeshDataLMC& data);
+  void update_block_covpars(int u, MeshDataLMC& data);
+  void update_block_wlogdens(int, MeshDataLMC& data);
+  bool get_loglik_comps_w(MeshDataLMC& data);
+  
+  arma::uvec coords_caching; 
+  arma::uvec coords_caching_ix;
+  //arma::uvec parents_caching;
+  //arma::uvec parents_caching_ix;
+  arma::uvec kr_caching;
+  arma::uvec kr_caching_ix;
+  arma::uvec cx_and_kr_caching; // merge of coords and kr
+  
+  arma::uvec findkr;
+  arma::uvec findcc;
+  
+  int starting_kr;
+  
+  // timers
+  std::chrono::steady_clock::time_point start_overall;
+  std::chrono::steady_clock::time_point start;
+  std::chrono::steady_clock::time_point end;
+  std::chrono::steady_clock::time_point end_overall;
+  
+  double logpost;
+  
+  // changing the values, no sampling;
+  //void theta_update(MeshDataLMC&, const arma::mat&);
+  void beta_update(const arma::vec&);
+  void tausq_update(double);
+  
+  // RAMA for theta
+  void metrop_theta();
+  bool theta_adapt_active;
+  int theta_mcmc_counter;
+  RAMAdapt theta_adapt;
+  arma::mat theta_unif_bounds;
+  arma::mat theta_metrop_sd;
+  void accept_make_change();
+  
+  // --------------------------------------------------------------- from Gaussian
+  
+  arma::mat rand_norm_mat;
+
+  // tausq 
+  arma::vec tausq_ab;
+  arma::vec tausq_inv; // tausq for the l=q variables
+  
+  // MCMC
+  // ModifiedPP-like updates for tausq -- used if not forced_grid
+  int tausq_mcmc_counter;
+  int lambda_mcmc_counter;
+  RAMAdapt tausq_adapt;
+  arma::mat tausq_unif_bounds;
+  
+  int n_lambda_pars;
+  arma::uvec lambda_sampling;
+  arma::mat lambda_unif_bounds; // 1x2: lower and upper for off-diagonal
+  RAMAdapt lambda_adapt;
+  
+  void init_gaussian();
+  void update_lly(int, MeshDataLMC&, const arma::mat& LamHw);
+  void calc_DplusSi(int, MeshDataLMC& data, const arma::mat& Lam, const arma::vec& tsqi);
+  void update_block_w_cache(int, MeshDataLMC& data);
+  void sample_nonreference_w(int, MeshDataLMC& data, const arma::mat& );
+  void refresh_w_cache(MeshDataLMC& data);
+  
+  void deal_with_w(MeshDataLMC& data);
+  void gibbs_sample_w(MeshDataLMC& data);
+  
+  bool calc_ywlogdens(MeshDataLMC& data);
+  
+  void deal_with_beta();
+  void gibbs_sample_beta();
+  
+  void deal_with_Lambda(MeshDataLMC& data);
+  void sample_nc_Lambda_std(); // noncentered
+  void sample_nc_Lambda_fgrid(MeshDataLMC& data);
+  arma::vec sample_Lambda_row(int j);
+  void sample_hmc_Lambda();
+  
+  void deal_with_tausq(MeshDataLMC& data, bool ref_pardata=false);
+  void gibbs_sample_tausq_std();
+  void gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata);
+  
+  void logpost_refresh_after_gibbs(MeshDataLMC& data); //***
+  
+  void predict();
+  void predicty();
+  arma::mat yhat;
+  
+  // --------------------------------------------------------------- from SP
+  
+  // need to adjust these
+  int npars;
+  //int nugget_in;
+  arma::mat offsets;
+  //arma::vec Zw; // used for prediction at all locations
+  //arma::uvec mv_id;
+  //arma::uvec qvblock_c;
+  //arma::uvec mvtype_by_q; // variable types of the variables
+  //arma::field<arma::uvec> ix_by_q;
+  // block membership
+  //arma::uvec blocking;
+  //arma::uvec ref_block_names;
+  //arma::uvec na_ix_all;
+  
+  
+  
+  std::vector<MVDistParamsBeta> available_data; // std::vector
+  std::vector<AdaptE> beta_nuts; // std::vector
+  arma::uvec beta_nuts_started;
+  
+  std::vector<MVDistParamsBeta> lambda_hmc_blocks; // std::vector
+  std::vector<AdaptE> lambda_hmc_adapt; // std::vector
+  arma::uvec lambda_hmc_started;
+  
+  //arma::uvec mv_type;
+  //arma::uvec nongaussian_outcomes;
+  //arma::uvec gaussian_outcomes;
+  //int num_nongaussian_outcomes;
+  
+  //std::string family;
+  std::vector<MVDistParamsW> hmc_dist_params;
+  arma::vec hmc_eps;
+  std::vector<AdaptE> hmc_eps_adapt;
+  arma::uvec hmc_eps_started_adapting;
+  
+  void init_hmc();
+  void hmc_sample_beta();
+  void hmc_sample_lambda();
+  void hmc_sample_w(MeshDataLMC& data);
+  
+  // --------------------------------------------------------------- constructors
+  
+  Meshed(){};
+  Meshed(
+    const arma::mat& y_in, 
+    const arma::uvec& familyid,
+    std::string latent,
+    
+    const arma::mat& X_in, 
+    
+    const arma::mat& coords_in, 
+    
+    int k_in,
+    
+    const arma::field<arma::uvec>& parents_in,
+    const arma::field<arma::uvec>& children_in,
+    
+    const arma::vec& block_names_in,
+    const arma::vec& block_groups_in,
+    
+    const arma::field<arma::uvec>& indexing_in,
+    const arma::field<arma::uvec>& indexing_obs_in,
+    
+    int matern_twonu_in,
+    
+    const arma::mat& w_in,
+    const arma::mat& beta_in,
+    const arma::mat& lambda_in,
+    const arma::umat& lambda_mask_in,
+    const arma::mat& theta_in,
+    const arma::vec& tausq_inv_in,
+    
+    const arma::mat& beta_Vi_in,
+    const arma::vec& tausq_ab_in,
+    
+    bool adapting_theta,
+    const arma::mat& metrop_theta_sd,
+    const arma::mat& metrop_theta_bounds,
+    
+    bool use_cache,
+    bool use_forced_grid,
+    bool use_ps,
+    
+    bool verbose_in,
+    bool debugging,
+    int num_threads);
+};
+
+#endif

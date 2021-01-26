@@ -67,7 +67,8 @@ mesh_graph_build <- function(coords_blocking, Mv, verbose=T){
   }
   blocks_descr <- unique(cbl) %>% as.matrix()
   
-  graphed <- mesh_graph_cpp(blocks_descr, Mv, verbose)
+  dag_both_axes <- T
+  graphed <- mesh_graph_cpp(blocks_descr, Mv, verbose, dag_both_axes)
   
   block_ct_obs <- coords_blocking %>% 
     dplyr::group_by(.data$block) %>% 

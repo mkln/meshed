@@ -1,4 +1,4 @@
-meshedgp <- function(y, x, coords, k=NULL,
+meshed <- function(y, x, coords, k=NULL,
                      axis_partition = NULL, 
                      block_size = 30,
                      grid_size=NULL,
@@ -9,6 +9,8 @@ meshedgp <- function(y, x, coords, k=NULL,
                    n_threads = 4,
                    print_every = NULL,
                    predict_everywhere = F,
+                   family = "gaussian",
+                   latent = "gaussian",
                    settings    = list(adapting=T, forced_grid=NULL, cache=NULL, ps=T, saving=F),
                    prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                                       phi=NULL, nu = NULL,
@@ -97,6 +99,17 @@ meshedgp <- function(y, x, coords, k=NULL,
     
     q              <- ncol(y)
     k              <- ifelse(is.null(k), q, k)
+    
+    # family id 
+    family <- if(length(family)==1){rep(family, q)} else {family}
+    family_in <- data.frame(family=family)
+    available_families <- data.frame(id=0:2, family=c("gaussian", "poisson", "binomial"))
+    family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %$% id
+    
+    if(!(latent %in% c("gaussian", "student"))){
+      stop("Latent process not recognized. Choose 'gaussian' or 'student'")
+    }
+    
     # for spatial data: matern or expon, for spacetime: gneiting 2002 
     #n_par_each_process <- ifelse(dd==2, 1, 3) 
     
@@ -275,6 +288,10 @@ meshedgp <- function(y, x, coords, k=NULL,
   children                     <- parents_children[["children"]] 
   block_names                  <- parents_children[["names"]] 
   block_groups                 <- parents_children[["groups"]]#[order(block_names)]
+  
+  # these two lines remove the DAG and make all blocks independent
+  #parents %<>% lapply(function(x) x[x==-1]) 
+  #children %<>% lapply(function(x) x[x==-1])
   
   suppressMessages(simdata_in <- coords_blocking %>% #cbind(data.frame(ix=cbix)) %>% 
     dplyr::select(-na_which) %>% dplyr::left_join(simdata))
@@ -539,10 +556,10 @@ meshedgp <- function(y, x, coords, k=NULL,
   
   cat("Sending to MCMC > ")
   
-  mcmc_run <- lmc_mgp_mcmc
+  mcmc_run <- meshed_mcmc
   
   comp_time <- system.time({
-      results <- mcmc_run(y, x, coords, k,
+      results <- mcmc_run(y, family_id, latent, x, coords, k,
                               
                               parents, children, 
                               block_names, block_groups,
@@ -644,6 +661,8 @@ meshedgp <- function(y, x, coords, k=NULL,
   
   returning <- list(coordsdata = coordsdata,
                     savedata = saved,
+                    parents = parents,
+                    children = children,
                     coordsblocking = coords_blocking) %>% 
     c(results)
   return(returning) 

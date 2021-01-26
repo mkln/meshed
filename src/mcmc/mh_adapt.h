@@ -1,14 +1,5 @@
 #include <RcppArmadillo.h>
 
-
-const double EPS = 0.1; // 0.01
-const double tau_accept = 0.234; // target
-const double g_exp = .01;
-const int g0 = 500; // iterations before starting adaptation
-const double rho_max = 2;
-const double rho_min = 5;
-
-
 inline bool do_I_accept(double logaccept){
   double u = R::runif(0,1);
   bool answer = exp(logaccept) > u;
@@ -49,14 +40,31 @@ inline arma::vec par_transf_back(arma::vec par){
 
 inline arma::vec par_huvtransf_fwd(arma::vec par, const arma::mat& set_unif_bounds){
   for(int j=0; j<par.n_elem; j++){
-    par(j) = logit(par(j), set_unif_bounds(j, 0), set_unif_bounds(j, 1));
+    
+    if( (set_unif_bounds(j, 0) > -arma::datum::inf) || (set_unif_bounds(j, 1) < arma::datum::inf) ){
+      if(set_unif_bounds(j, 1) == arma::datum::inf){
+        // lognormal proposal
+        par(j) = log(par(j));
+      } else {
+        // logit normal proposal
+        par(j) = logit(par(j), set_unif_bounds(j, 0), set_unif_bounds(j, 1));
+      }
+    }
   }
   return par;
 }
 
 inline arma::vec par_huvtransf_back(arma::vec par, const arma::mat& set_unif_bounds){
   for(int j=0; j<par.n_elem; j++){
-    par(j) = logistic(par(j), set_unif_bounds(j, 0), set_unif_bounds(j, 1));
+    if( (set_unif_bounds(j, 0) > -arma::datum::inf) || (set_unif_bounds(j, 1) < arma::datum::inf) ){
+      if(set_unif_bounds(j, 1) == arma::datum::inf){
+        // lognormal proposal
+        par(j) = exp(par(j));
+      } else {
+        // logit normal proposal
+        par(j) = logistic(par(j), set_unif_bounds(j, 0), set_unif_bounds(j, 1));
+      }
+    }
   }
   return par;
 }
@@ -108,9 +116,18 @@ inline double calc_jacobian(const arma::vec& new_param, const arma::vec& param,
   
   double jac = 0;
   for(int j=0; j<param.n_elem; j++){
-    jac += normal_proposal_logitscale(param(j), set_unif_bounds(j, 0), set_unif_bounds(j, 1)) -
-      normal_proposal_logitscale(new_param(j), set_unif_bounds(j, 0), set_unif_bounds(j, 1));
+    if( (set_unif_bounds(j, 0) > -arma::datum::inf) || (set_unif_bounds(j, 1) < arma::datum::inf) ){
+      if(set_unif_bounds(j, 1) == arma::datum::inf){
+        // lognormal proposal
+        jac += lognormal_proposal_logscale(new_param(j), param(j));
+      } else {
+        // logit normal proposal
+        jac += normal_proposal_logitscale(param(j), set_unif_bounds(j, 0), set_unif_bounds(j, 1)) -
+          normal_proposal_logitscale(new_param(j), set_unif_bounds(j, 0), set_unif_bounds(j, 1));
+      }
+    }
   }
+  
   return jac;
 }
 

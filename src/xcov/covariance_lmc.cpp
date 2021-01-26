@@ -293,7 +293,8 @@ void inv_det_via_qr(arma::mat& xinv, double& ldet, const arma::mat& x){
   ldet = - 0.5 * arma::accu(log(abs(R.diag())));
 }
 
-double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, const arma::cube& Cxx,
+double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, arma::cube& Kppi, 
+                     const arma::cube& Cxx,
                      const arma::mat& coords, 
                      const arma::uvec& indx, const arma::uvec& indy, 
                      int k, const arma::mat& theta, MaternParams& matern){
@@ -306,6 +307,7 @@ double CviaKron_HRi_(arma::cube& H, arma::cube& Ri, const arma::cube& Cxx,
                                    theta.col(j), matern, false);
       arma::mat Cyy_i = arma::inv_sympd( Correlationf(coords, indy, indy, 
                                                       theta.col(j), matern, true) );
+      Kppi.slice(j) = Cyy_i;
       arma::mat Hloc = Cxy * Cyy_i;
       arma::mat Targmat = Cxx.slice(j) - Hloc * Cxy.t();
       
