@@ -3,11 +3,14 @@
 #ifndef MESHEDSP 
 #define MESHEDSP
 
+// uncomment to disable openmp on compilation
+//#undef _OPENMP
+
 #include <RcppArmadillo.h>
 
 #include "../distributions/truncmvnorm.h"
 #include "../mcmc/mh_adapt.h"
-#include "../mcmc/hmcnuts.h"
+#include "../mcmc/hmc_sample.h"
 #include "../utils/caching_pairwise_compare.h"
 #include "../utils/mesh_utils.h"
 #include "../utils/mesh_lmc_utils.h"
@@ -17,8 +20,6 @@ class Meshed {
 public:
   
   arma::uvec familyid;
-  std::string latent;
-  bool gibbs_or_hmc;
   
   // meta
   int n; // number of locations, total
@@ -92,6 +93,10 @@ public:
   double hl2pi;
     
   // params
+  arma::mat yhat;
+  arma::mat offsets;
+  arma::mat rand_norm_mat;
+  
   arma::mat w;
   arma::mat Bcoeff; // sampled
   
@@ -119,20 +124,21 @@ public:
   void make_gibbs_groups();
   void init_gibbs_index();
   void init_matern(int num_threads, int matern_twonu_in, bool use_ps);
-  
-  // init / caching obj
+  void init_for_mcmc();
   void init_cache();
+  void init_meshdata(const arma::mat&);
   
-  // caching
+  // caching for theta updates
   MeshDataLMC param_data; 
   MeshDataLMC alter_data;
   
-  void init_meshdata(const arma::mat&);
+  // Theta
   bool refresh_cache(MeshDataLMC& data);
   void update_block_covpars(int u, MeshDataLMC& data);
   void update_block_wlogdens(int, MeshDataLMC& data);
   bool get_loglik_comps_w(MeshDataLMC& data);
   
+  // - caching
   arma::uvec coords_caching; 
   arma::uvec coords_caching_ix;
   //arma::uvec parents_caching;
@@ -146,12 +152,7 @@ public:
   
   int starting_kr;
   
-  // timers
-  std::chrono::steady_clock::time_point start_overall;
-  std::chrono::steady_clock::time_point start;
-  std::chrono::steady_clock::time_point end;
-  std::chrono::steady_clock::time_point end_overall;
-  
+
   double logpost;
   
   // changing the values, no sampling;
@@ -170,7 +171,6 @@ public:
   
   // --------------------------------------------------------------- from Gaussian
   
-  arma::mat rand_norm_mat;
 
   // tausq 
   arma::vec tausq_ab;
@@ -195,71 +195,67 @@ public:
   void sample_nonreference_w(int, MeshDataLMC& data, const arma::mat& );
   void refresh_w_cache(MeshDataLMC& data);
   
+  // W
+  bool w_do_hmc;
+  bool w_hmc_rm;
   void deal_with_w(MeshDataLMC& data);
   void gibbs_sample_w(MeshDataLMC& data);
+  void hmc_sample_w(MeshDataLMC& data);
+  std::vector<NodeDataW> w_node;
+  arma::vec hmc_eps;
+  std::vector<AdaptE> hmc_eps_adapt;
+  arma::uvec hmc_eps_started_adapting;
+  
+  
   
   bool calc_ywlogdens(MeshDataLMC& data);
   
+  // Beta
   void deal_with_beta();
-  void gibbs_sample_beta();
+  void hmc_sample_beta();
+  std::vector<NodeDataB> beta_node; // std::vector
+  std::vector<AdaptE> beta_hmc_adapt; // std::vector
+  arma::uvec beta_hmc_started;
   
+  // Lambda
   void deal_with_Lambda(MeshDataLMC& data);
   void sample_nc_Lambda_std(); // noncentered
   void sample_nc_Lambda_fgrid(MeshDataLMC& data);
   arma::vec sample_Lambda_row(int j);
   void sample_hmc_Lambda();
+  std::vector<NodeDataB> lambda_node; // std::vector
+  std::vector<AdaptE> lambda_hmc_adapt; // std::vector
+  arma::uvec lambda_hmc_started;
   
+  // Tausq
   void deal_with_tausq(MeshDataLMC& data, bool ref_pardata=false);
   void gibbs_sample_tausq_std();
   void gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata);
   
   void logpost_refresh_after_gibbs(MeshDataLMC& data); //***
   
+  // Predictions for W and Y
   void predict();
   void predicty();
-  arma::mat yhat;
   
   // --------------------------------------------------------------- from SP
   
   // need to adjust these
   int npars;
   //int nugget_in;
-  arma::mat offsets;
-  //arma::vec Zw; // used for prediction at all locations
-  //arma::uvec mv_id;
-  //arma::uvec qvblock_c;
-  //arma::uvec mvtype_by_q; // variable types of the variables
-  //arma::field<arma::uvec> ix_by_q;
-  // block membership
-  //arma::uvec blocking;
-  //arma::uvec ref_block_names;
-  //arma::uvec na_ix_all;
   
   
   
-  std::vector<MVDistParamsBeta> available_data; // std::vector
-  std::vector<AdaptE> beta_nuts; // std::vector
-  arma::uvec beta_nuts_started;
   
-  std::vector<MVDistParamsBeta> lambda_hmc_blocks; // std::vector
-  std::vector<AdaptE> lambda_hmc_adapt; // std::vector
-  arma::uvec lambda_hmc_started;
   
-  //arma::uvec mv_type;
-  //arma::uvec nongaussian_outcomes;
-  //arma::uvec gaussian_outcomes;
-  //int num_nongaussian_outcomes;
   
-  //std::string family;
-  std::vector<MVDistParamsW> hmc_dist_params;
-  arma::vec hmc_eps;
-  std::vector<AdaptE> hmc_eps_adapt;
-  arma::uvec hmc_eps_started_adapting;
   
-  void init_hmc();
-  void hmc_sample_beta();
-  void hmc_sample_lambda();
-  void hmc_sample_w(MeshDataLMC& data);
+  // --------------------------------------------------------------- timers
+  std::chrono::steady_clock::time_point start_overall;
+  std::chrono::steady_clock::time_point start;
+  std::chrono::steady_clock::time_point end;
+  std::chrono::steady_clock::time_point end_overall;
+  
   
   // --------------------------------------------------------------- constructors
   
@@ -267,7 +263,6 @@ public:
   Meshed(
     const arma::mat& y_in, 
     const arma::uvec& familyid,
-    std::string latent,
     
     const arma::mat& X_in, 
     

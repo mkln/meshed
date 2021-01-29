@@ -3,14 +3,13 @@
 using namespace std;
 
 void Meshed::deal_with_w(MeshDataLMC& data){
-  
   Rcpp::RNGScope scope;
   rand_norm_mat = arma::randn(coords.n_rows, k);
   
-  if(false & (gibbs_or_hmc == false)){
-    gibbs_sample_w(data);
-  } else {
+  if(w_do_hmc){
     hmc_sample_w(data);
+  } else {
+    gibbs_sample_w(data);
   }
 }
   
@@ -156,14 +155,11 @@ void Meshed::gibbs_sample_w(MeshDataLMC& data){
   }
   //Rcpp::Rcout << "Lambda from:  " << Lambda_orig(0, 0) << " to  " << Lambda(0, 0) << endl;
   
-  
   start_overall = std::chrono::steady_clock::now();
-  
-  
   
   for(int g=0; g<n_gibbs_groups; g++){
 #ifdef _OPENMP
-    //***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
     for(int i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
@@ -237,12 +233,158 @@ void Meshed::gibbs_sample_w(MeshDataLMC& data){
   }
 }
 
+void Meshed::hmc_sample_w(MeshDataLMC& data){
+  if(verbose & debug){
+    Rcpp::Rcout << "[hmc_sample_w] " << endl;
+  }
+  
+  start_overall = std::chrono::steady_clock::now();
+  double part1 = 0;
+  double part2 = 0;
+  
+  int mala_timer = 0;
+  
+  arma::mat offset_for_w = offsets + XB;
+  
+  for(int g=0; g<n_gibbs_groups; g++){
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+    for(int i=0; i<u_by_block_groups(g).n_elem; i++){
+      int u = u_by_block_groups(g)(i);
+      
+      if((block_ct_obs(u) > 0)){
+        
+        //Rcpp::Rcout << "u :  " << u << endl;
+        w_node.at(u).update_mv(offset_for_w, 1.0/tausq_inv, Lambda);
+        
+        if(parents(u).n_elem > 0){
+          //w_node.at(u).Kxxi = (*data.w_cond_prec_parents_ptr.at(u));
+          w_node.at(u).Kcx = data.w_cond_mean_K_ptr.at(u);
+          //w_node.at(u).w_parents = w.rows(parents_indexing(u));
+        }
+        
+        if(forced_grid){
+          w_node.at(u).Hproject = &data.Hproject(u);
+        }
+        //message("step 3");
+        w_node.at(u).Ri = data.w_cond_prec_ptr.at(u);
+        
+        if(parents_indexing(u).n_rows > 0){
+          w_node.at(u).Kcxpar = arma::zeros((*w_node.at(u).Kcx).n_rows, k);
+          for(int j=0; j<k; j++){
+            w_node.at(u).Kcxpar.col(j) = (*w_node.at(u).Kcx).slice(j) * w.submat(parents_indexing(u), oneuv*j);//w_node.at(u).w_parents.col(j);
+          }
+        } else {
+          w_node.at(u).Kcxpar = arma::zeros(0,0);
+        }
+          
+        //w_node.at(u).woKoowo = arma::zeros(k, w_node.at(u).num_children);
+        
+        //Rcpp::Rcout << "Ri : " << arma::size((*w_node.at(u).Ri)) << endl;
+        
+        for(int c=0; c<w_node.at(u).num_children; c++ ){
+          int child = children(u)(c);
+          //Rcpp::Rcout << "child [" << child << "]\n";
+          arma::uvec c_ix = indexing(child);
+          arma::uvec pofc_ix = parents_indexing(child);
+          
+          arma::uvec pofc_ix_x = u_is_which_col_f(u)(c)(0);
+          arma::uvec pofc_ix_other = u_is_which_col_f(u)(c)(1);
+          
+          arma::mat w_childs_parents = w.rows(pofc_ix);
+          arma::mat w_otherparents = w_childs_parents.rows(pofc_ix_other);
+          
+          
+          //Rcpp::Rcout << "step 1 " << endl;
+          // store
+          //start = std::chrono::steady_clock::now();
+          //w_node.at(u).dim_of_pars_of_children(c) = parents_indexing(child).n_rows;
+          w_node.at(u).w_child(c) = w.rows(c_ix);
+          w_node.at(u).Ri_of_child(c) = data.w_cond_prec_ptr.at(child);
+          w_node.at(u).Kcx_x(c) = cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), pofc_ix_x);
+          
+          //Rcpp::Rcout << "hmc_sample_w " << arma::size(w_node.at(u).Kcx_x(c)) << endl;
+          
+          if(w_otherparents.n_rows > 0){
+            arma::cube Kcx_other = //(*param_data.w_cond_mean_K.at(child)).cols(pofc_ix_other);
+              cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), pofc_ix_other);
+            
+            w_node.at(u).Kco_wo(c) = cube_times_mat(Kcx_other, w_otherparents);
+            //w_node.at(u).woKoowo.col(c).fill(0);
+          } else {
+            w_node.at(u).Kco_wo(c) = arma::zeros(0,0);
+          }
+          //Rcpp::Rcout << "child done " << endl;
+        }
+        
+        // -----------------------------------------------
+          
+        arma::mat w_current = w.rows(indexing(u));
+        
+        // adapting eps
+        hmc_eps_adapt.at(u).step();
+        if((hmc_eps_started_adapting(u) == 0) & (hmc_eps_adapt.at(u).i==10)){
+          // wait a few iterations before starting adaptation
+          //message("find reasonable");
+          hmc_eps(u) = find_reasonable_stepsize(w_current, w_node.at(u));
+          //message("found reasonable");
+          AdaptE new_adapting_scheme(hmc_eps(u), 1e6);
+          hmc_eps_adapt.at(u) = new_adapting_scheme;
+          hmc_eps_started_adapting(u) = 1;
+        }
+        
+        //Rcpp::Rcout << "begin mala " << endl;
+        start = std::chrono::steady_clock::now();
+        
+        //
+        arma::mat w_temp = sample_one_mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u), w_hmc_rm, true, false); 
+        end = std::chrono::steady_clock::now();
+        mala_timer += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        //Rcpp::Rcout << "end mala" << endl;
+        
+        hmc_eps(u) = hmc_eps_adapt.at(u).eps;
+        
+        //Rcpp::Rcout << "store: " << arma::size(w_temp) << endl;
+        //Rcpp::Rcout << arma::size(w) << " " << arma::size(wU) << endl;
+        
+        w.rows(indexing(u)) = w_temp;//arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
+        wU.rows(indexing(u)) = w.rows(indexing(u));
+        
+        if(forced_grid){
+          for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+            if(na_1_blocks(u)(ix) == 1){
+              arma::mat wtemp = arma::sum(arma::trans(data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u)))), 0);
+              
+              w.row(indexing_obs(u)(ix)) = wtemp;
+              wU.row(indexing_obs(u)(ix)) = wtemp;
+              //LambdaHw.row(indexing_obs(u)(ix)) = w.row(indexing_obs(u)(ix)) * Lambda.t();
+            }
+          }
+        }
+        //Rcpp::Rcout << "done sampling "<< endl;
+
+      }
+    }
+  }
+  LambdaHw = w * Lambda.t();
+  
+  if(verbose & debug){
+    end_overall = std::chrono::steady_clock::now();
+    Rcpp::Rcout << "[hmc_sample_w] "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()
+                << "us. " << "\n";
+    Rcpp::Rcout << "mala: " << mala_timer << endl;
+  }
+  
+}
+
 void Meshed::predict(){
   start_overall = std::chrono::steady_clock::now();
   if(predict_group_exists == 1){
     message("[predict] start ");
 #ifdef _OPENMP
-    //***#pragma omp parallel for 
+    #pragma omp parallel for 
 #endif
     for(int i=0; i<u_predicts.n_elem; i++){ //*** subset to blocks with NA
       int u = u_predicts(i);// u_predicts(i);
@@ -281,7 +423,7 @@ void Meshed::predict(){
       }
       
       //Rcpp::Rcout << "done" << endl;
-
+      
       
     }
     
@@ -314,206 +456,4 @@ void Meshed::predicty(){
       yhat.col(j) = vrbern(1.0/(1.0 + exp(-linear_predictor)));
     }
   }
-}
-
-void Meshed::hmc_sample_w(MeshDataLMC& data){
-  if(verbose & debug){
-    Rcpp::Rcout << "[hmc_sample_w] " << endl;
-  }
-  
-  start_overall = std::chrono::steady_clock::now();
-  double part1 = 0;
-  double part2 = 0;
-  
-  int nuts_timer = 0;
-  int copy_timer = 0;
-  
-  arma::mat offset_for_w = offsets + XB;
-  
-  for(int g=0; g<n_gibbs_groups; g++){
-#ifdef _OPENMP
-    //***#pragma omp parallel for 
-#endif
-    for(int i=0; i<u_by_block_groups(g).n_elem; i++){
-      int u = u_by_block_groups(g)(i);
-      
-      if((block_ct_obs(u) > 0)){
-        
-        //if(compute_block(predicting, hmc_dist_params.at(u).block_ct_obs, rfc_dep)){
-        
-        //Rcpp::Rcout << u << " step 1" << endl;
-        //if(hmc_dist_params.at(u).block_ct_obs > 0){ // sample using nuts 
-        //message("non-pure prediction block");
-        //arma::mat offset_for_w = offsets.rows(indexing(u)) + XB.rows(indexing(u));
-        
-        //message("step 2");
-        //start = std::chrono::steady_clock::now();
-        
-        hmc_dist_params.at(u).update_mv(offset_for_w, 1.0/tausq_inv, Lambda);
-        
-        
-        
-        if(parents(u).n_elem > 0){
-          hmc_dist_params.at(u).Kxxi = (*data.w_cond_prec_parents_ptr.at(u));
-          hmc_dist_params.at(u).Kcx = (*data.w_cond_mean_K_ptr.at(u));
-          hmc_dist_params.at(u).w_parents = w.rows(parents_indexing(u));
-          
-        }
-        
-        if(forced_grid){
-          hmc_dist_params.at(u).Hproject = data.Hproject(u);
-        }
-        //message("step 3");
-        hmc_dist_params.at(u).Ri = (*data.w_cond_prec_ptr.at(u));
-        //hmc_dist_params.at(u).p_ix = parents_indexing(u);
-        
-        hmc_dist_params.at(u).nu = data.nu;
-        //end = std::chrono::steady_clock::now();
-        //copy_timer += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-        
-        //Rcpp::Rcout << "stored pointer values " << endl;
-        
-        hmc_dist_params.at(u).parKxxpar = arma::zeros(k);
-          
-        if(parents_indexing(u).n_rows > 0){
-          hmc_dist_params.at(u).Kcxpar = arma::zeros(hmc_dist_params.at(u).Kcx.n_rows, k);
-          for(int j=0; j<k; j++){
-            if(latent == "student"){
-              hmc_dist_params.at(u).parKxxpar(j) = arma::conv_to<double>::from(
-                hmc_dist_params.at(u).w_parents.col(j).t() * 
-                  hmc_dist_params.at(u).Kxxi.slice(j) * 
-                  hmc_dist_params.at(u).w_parents.col(j));
-            }
-            hmc_dist_params.at(u).Kcxpar.col(j) = hmc_dist_params.at(u).Kcx.slice(j) * hmc_dist_params.at(u).w_parents.col(j);
-          }
-          
-        } else {
-          hmc_dist_params.at(u).parKxxpar.fill(-1);
-        }
-          
-        hmc_dist_params.at(u).woKoowo = arma::zeros(k, hmc_dist_params.at(u).num_children);
-        
-        for(int c=0; c<hmc_dist_params.at(u).num_children; c++ ){
-          int child = children(u)(c);
-          //Rcpp::Rcout << "child [" << child << "]\n";
-          arma::uvec c_ix = indexing(child);
-          arma::uvec pofc_ix = parents_indexing(child);
-          
-          arma::uvec pofc_ix_x = u_is_which_col_f(u)(c)(0);
-          arma::uvec pofc_ix_other = u_is_which_col_f(u)(c)(1);
-          
-          arma::mat w_childs_parents = w.rows(pofc_ix);
-          arma::mat w_otherparents = w_childs_parents.rows(pofc_ix_other);
-          
-          
-          //Rcpp::Rcout << "step 1 " << endl;
-          // store
-          //start = std::chrono::steady_clock::now();
-          hmc_dist_params.at(u).dim_of_pars_of_children(c) = parents_indexing(child).n_rows;
-          hmc_dist_params.at(u).w_child(c) = w.rows(c_ix);
-          hmc_dist_params.at(u).Ri_of_child(c) = (*data.w_cond_prec_ptr.at(child));
-          hmc_dist_params.at(u).Kcx_x(c) = cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), pofc_ix_x);
-          arma::cube Kcx_other = //(*param_data.w_cond_mean_K.at(child)).cols(pofc_ix_other);
-            cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), pofc_ix_other);
-          //end = std::chrono::steady_clock::now();
-          //copy_timer += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-          
-          hmc_dist_params.at(u).Kco_wo(c) = cube_times_mat(Kcx_other, w_otherparents);
-          
-          //Rcpp::Rcout << "step 2 " << endl;
-          arma::cube Kxxi_other;
-          if(latent == "student"){
-            Kxxi_other = subcube_ptr(data.w_cond_prec_parents_ptr.at(child),
-                                     pofc_ix_other, pofc_ix_other);
-            arma::cube Kxxi_xo = subcube_ptr(data.w_cond_prec_parents_ptr.at(child),
-                                             pofc_ix_x, pofc_ix_other);
-            hmc_dist_params.at(u).Kxxi_x(c) = subcube_ptr(data.w_cond_prec_parents_ptr.at(child),
-                               pofc_ix_x, pofc_ix_x);
-            hmc_dist_params.at(u).Kxo_wo(c) = cube_times_mat(Kxxi_xo, w_otherparents);
-          }
-          
-          
-          //Rcpp::Rcout << "step 3 " << endl;
-          if(w_otherparents.n_rows > 0){
-            if(latent == "student"){
-              for(int j=0; j<k; j++){
-                hmc_dist_params.at(u).woKoowo(j, c) = arma::conv_to<double>::from(
-                  w_otherparents.col(j).t() * Kxxi_other.slice(j) * w_otherparents.col(j));
-              }
-              
-            }
-            if(latent == "gaussian"){
-              hmc_dist_params.at(u).woKoowo.col(c).fill(0);
-            }
-          } else {
-            hmc_dist_params.at(u).woKoowo.col(c).fill(-1);
-          }
-        }
-        
-        // -----------------------------------------------
-          
-        //end = std::chrono::steady_clock::now();
-        //part1 += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-        //message("3 block");
-        // HMC/NUTS steps
-        //message("step 5");
-        
-        arma::mat w_current = w.rows(indexing(u));
-        
-        // adapting eps
-        hmc_eps_adapt.at(u).step();
-        if((hmc_eps_started_adapting(u) == 0) & (hmc_eps_adapt.at(u).i==10)){
-          // wait a few iterations before starting adaptation
-          //message("find reasonable");
-          hmc_eps(u) = find_reasonable_stepsize(w_current, hmc_dist_params.at(u));
-          //message("found reasonable");
-          AdaptE new_adapting_scheme(hmc_eps(u), 1e6);
-          hmc_eps_adapt.at(u) = new_adapting_scheme;
-          hmc_eps_started_adapting(u) = 1;
-        }
-        
-        
-        arma::mat w_temp;
-        //if(w_sampling_method == "nuts"){
-          //Rcpp::Rcout << "sampling nuts" << endl;
-          //w_temp = sample_one_nuts_cpp(w_current, hmc_dist_params.at(u), hmc_eps_adapt.at(u)); 
-        //} else {
-          //Rcpp::Rcout << "mala " << endl;
-          //Rcpp::Rcout << arma::size(w_current) << endl;
-          w_temp = sample_one_mala_cpp(w_current, hmc_dist_params.at(u), hmc_eps_adapt.at(u), true, true); 
-          //Rcpp::Rcout << " done mala " << endl;
-        //}
-        
-        hmc_eps(u) = hmc_eps_adapt.at(u).eps;
-        
-        w.rows(indexing(u)) = w_temp;//arma::trans(arma::mat(w_temp.memptr(), q, w_temp.n_elem/q));
-        wU.rows(indexing(u)) = w.rows(indexing(u));
-        
-        if(forced_grid){
-          for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
-            if(na_1_blocks(u)(ix) == 1){
-              arma::mat wtemp = arma::sum(arma::trans(data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u)))), 0);
-              
-              w.row(indexing_obs(u)(ix)) = wtemp;
-              wU.row(indexing_obs(u)(ix)) = wtemp;
-              //LambdaHw.row(indexing_obs(u)(ix)) = w.row(indexing_obs(u)(ix)) * Lambda.t();
-            }
-          }
-        }
-        
-      
-      }
-    }
-  }
-  LambdaHw = w * Lambda.t();
-  
-  if(verbose & debug){
-    end_overall = std::chrono::steady_clock::now();
-    Rcpp::Rcout << "[hmc_sample_w] "
-                << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()
-                << "us. " << "\n";
-    Rcpp::Rcout << "-- of which " << nuts_timer << " from nuts " << endl;
-    Rcpp::Rcout << "-- of which " << copy_timer << " from copying " << endl;
-  }
-  
 }

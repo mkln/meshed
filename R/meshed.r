@@ -10,7 +10,6 @@ meshed <- function(y, x, coords, k=NULL,
                    print_every = NULL,
                    predict_everywhere = F,
                    family = "gaussian",
-                   latent = "gaussian",
                    settings    = list(adapting=T, forced_grid=NULL, cache=NULL, ps=T, saving=F),
                    prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                                       phi=NULL, nu = NULL,
@@ -106,8 +105,9 @@ meshed <- function(y, x, coords, k=NULL,
     available_families <- data.frame(id=0:2, family=c("gaussian", "poisson", "binomial"))
     family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %$% id
     
-    if(!(latent %in% c("gaussian", "student"))){
-      stop("Latent process not recognized. Choose 'gaussian' or 'student'")
+    latent <- "gaussian"
+    if(!(latent %in% c("gaussian"))){
+      stop("Latent process not recognized. Choose 'gaussian'")
     }
     
     # for spatial data: matern or expon, for spacetime: gneiting 2002 
@@ -559,7 +559,7 @@ meshed <- function(y, x, coords, k=NULL,
   mcmc_run <- meshed_mcmc
   
   comp_time <- system.time({
-      results <- mcmc_run(y, family_id, latent, x, coords, k,
+      results <- mcmc_run(y, family_id, x, coords, k,
                               
                               parents, children, 
                               block_names, block_groups,

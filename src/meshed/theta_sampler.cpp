@@ -44,6 +44,7 @@ void Meshed::metrop_theta(){
     logaccept = new_loglik - current_loglik + 
       prior_logratio +
       jacobian;
+    
     // 
     // Rcpp::Rcout << "logdetCi_comps: " << arma::accu(msp.alter_data.logdetCi_comps) - arma::accu(msp.param_data.logdetCi_comps) << endl;
     // Rcpp::Rcout << "loglik_w_comps: " << arma::accu(msp.alter_data.loglik_w_comps) - arma::accu(msp.param_data.loglik_w_comps) << endl;
@@ -66,12 +67,17 @@ void Meshed::metrop_theta(){
     param_data.theta = theta_proposal;
     
     if(debug & verbose){
-      Rcpp::Rcout << "[theta] accepted (log accept. " << logaccept << ")\n";;
+      Rcpp::Rcout << "[theta] accepted (log accept. " << logaccept << " : " << new_loglik << " " << current_loglik << 
+        " " << prior_logratio << " " << jacobian << ")\n";
     }
   } else {
     if(debug & verbose){
-      Rcpp::Rcout << "[theta] rejected (log accept. " << logaccept << ")\n";;
+      Rcpp::Rcout << "[theta] rejected (log accept. " << logaccept << " : " << new_loglik << " " << current_loglik << 
+        " " << prior_logratio << " " << jacobian << ")\n";
     }
+  }
+  if(std::isnan(logaccept)){
+    Rcpp::stop("NaN in logdensity");
   }
   
   theta_adapt.update_ratios();

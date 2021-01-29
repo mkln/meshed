@@ -3,13 +3,15 @@
 using namespace std;
 
 void Meshed::deal_with_Lambda(MeshDataLMC& data){
-  sample_hmc_Lambda();
-  
-  // if(false & forced_grid){
-  //   sample_nc_Lambda_fgrid(data);
-  // } else {
-  //   sample_nc_Lambda_std();
-  // }
+  if(arma::any(familyid > 0)){
+    sample_hmc_Lambda();
+  } else {
+    if(forced_grid){
+      sample_nc_Lambda_fgrid(data);
+    } else {
+      sample_nc_Lambda_std();
+    }
+  }
 }
 
 void Meshed::sample_nc_Lambda_fgrid(MeshDataLMC& data){
@@ -191,9 +193,7 @@ void Meshed::sample_nc_Lambda_std(){
   }
 }
 
-
 void Meshed::sample_hmc_Lambda(){
-  
   message("[sample_hmc_Lambda] starting");
   start = std::chrono::steady_clock::now();
   
@@ -210,21 +210,19 @@ void Meshed::sample_hmc_Lambda(){
       arma::vec xb_obs = XB(ix_by_q_a(j), oneuv * j);
       arma::vec offsets_for_lambda = offsets_obs + xb_obs;
       
-      
       // build W
-      
-      
       // filter: choose value of spatial processes at locations of Yj that are available
       arma::mat WWj = wU.submat(ix_by_q_a(j), subcols); // acts as X //*********
       //wmean.submat(ix_by_q_a(j), subcols); // acts as X
       
       arma::mat Wcrossprod = WWj.t() * WWj; 
       
-      arma::mat Vi = arma::eye(WWj.n_cols, WWj.n_cols); 
+      arma::mat Vi = 1 * arma::eye(WWj.n_cols, WWj.n_cols); 
       arma::vec Vim = arma::zeros(WWj.n_cols);
       
-      lambda_hmc_blocks.at(j).update_mv(offsets_for_lambda, 1.0/tausq_inv(j), Vim, Vi);
-      lambda_hmc_blocks.at(j).X = WWj;
+      lambda_node.at(j).update_mv(offsets_for_lambda, 1.0/tausq_inv(j), Vim, Vi);
+      lambda_node.at(j).X = WWj;
+      lambda_node.at(j).XtX = Wcrossprod;
       
       arma::vec curLrow = arma::trans(Lambda.submat(oneuv*j, subcols));
 
@@ -235,7 +233,7 @@ void Meshed::sample_hmc_Lambda(){
         // wait a few iterations before starting adaptation
         //Rcpp::Rcout << "reasonable stepsize " << endl;
         
-        double lambda_eps = find_reasonable_stepsize(curLrow, lambda_hmc_blocks.at(j));
+        double lambda_eps = find_reasonable_stepsize(curLrow, lambda_node.at(j));
         //Rcpp::Rcout << "adapting scheme starting " << endl;
         AdaptE new_adapting_scheme(lambda_eps, 1e6);
         lambda_hmc_adapt.at(j) = new_adapting_scheme;
@@ -243,8 +241,11 @@ void Meshed::sample_hmc_Lambda(){
         //Rcpp::Rcout << "done initiating adapting scheme" << endl;
       }
       
-      arma::vec sampled = sample_one_mala_cpp(curLrow, lambda_hmc_blocks.at(j), lambda_hmc_adapt.at(j), true, true); 
+      arma::vec sampled = sample_one_mala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), true, true, debug); 
+      
       Lambda.submat(oneuv*j, subcols) = sampled.t();
+      
+      //Rcpp::Rcout << sampled.t();
       
     }
     

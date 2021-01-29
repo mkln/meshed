@@ -10,8 +10,7 @@
 Rcpp::List meshed_mcmc(
     const arma::mat& y, 
     const arma::uvec& family,
-    std::string latent,
-
+    
     const arma::mat& X, 
     
     const arma::mat& coords, 
@@ -112,7 +111,7 @@ Rcpp::List meshed_mcmc(
   arma::mat start_theta = theta;
   Rcpp::Rcout << "start theta \n" << theta;
   
-  Meshed msp(y, family, latent,
+  Meshed msp(y, family,
             X, coords, k,
                 parents, children, layer_names, layer_gibbs_group,
                 
@@ -128,12 +127,6 @@ Rcpp::List meshed_mcmc(
                 
                 use_cache, forced_grid, use_ps,
                 verbose, debug, num_threads);
-  
-  //if(msp.gibbs_or_hmc == false){
-    msp.init_gaussian();
-  //} else {
-    msp.init_hmc();
-  //}
   
   
   arma::vec param = arma::vectorise(msp.param_data.theta);
@@ -321,7 +314,9 @@ Rcpp::List meshed_mcmc(
           }
           Rprintf("\n  tsq = ");
           for(int pp=0; pp<q; pp++){
-            Rprintf("%.6f ", 1.0/msp.tausq_inv(pp));
+            if(msp.familyid(pp) == 0){
+              Rprintf("(%d) %.6f ", pp+1, 1.0/msp.tausq_inv(pp));
+            }
           }
           if(use_ps){
             arma::vec lvec = arma::vectorise(msp.Lambda);
