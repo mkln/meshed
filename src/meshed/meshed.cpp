@@ -160,17 +160,13 @@ Meshed::Meshed(
   init_matern(num_threads, matern_twonu_in, use_ps);
   
   message("LambdaHw initialize");
-  LambdaHw = arma::zeros(coords.n_rows, q); 
+  LambdaHw = w * Lambda.t(); // arma::zeros(coords.n_rows, q); 
   wU = w;
-  for(int i=0; i<n_blocks; i++){
-    int u = block_names(i) - 1;
-    LambdaHw.rows(indexing_obs(u)) = w.rows(indexing_obs(u)) * 
-      Lambda.t();
-  }
   
   if(arma::all(familyid == 0) & forced_grid){
     init_gaussian();
   } 
+  
   init_for_mcmc();
   
   if(verbose & debug){
@@ -993,8 +989,10 @@ void Meshed::init_for_mcmc(){
   lambda_hmc_started = arma::zeros<arma::uvec>(q);
   
   arma::mat LHW = w * Lambda.t();
+  
+  Rcpp::Rcout << arma::size(LHW) << endl;
+  
   for(int j=0; j<q; j++){
-    // Beta
     arma::vec yj_obs = y( ix_by_q_a(j), oneuv * j );
     arma::mat X_obs = X.rows(ix_by_q_a(j));
     arma::mat offsets_obs = offsets(ix_by_q_a(j), oneuv * j);
@@ -1003,19 +1001,16 @@ void Meshed::init_for_mcmc(){
     arma::vec offsets_for_beta = offsets_obs + lw_obs;
     int family = familyid(j);
     
-    //Rcpp::Rcout << "initializing NodeDataB for " << j << endl;
-    NodeDataB new_beta_block(yj_obs, offsets_for_beta, 
-                                        X_obs, family);
+    // Beta
+    NodeDataB new_beta_block(yj_obs, offsets_for_beta, X_obs, family);
     beta_node.push_back(new_beta_block);
     
-    //Rcpp::Rcout << "initializing AdaptE for " << j << endl;
     AdaptE new_beta_hmc_adapt(.05, 0);
     beta_hmc_adapt.push_back(new_beta_hmc_adapt);
     
     beta_hmc_started(j) = 0;
     
     // Lambda
-    
     NodeDataB new_lambda_block(yj_obs, offsets_for_beta, X_obs, family);
     lambda_node.push_back(new_lambda_block);
     
@@ -1023,8 +1018,8 @@ void Meshed::init_for_mcmc(){
     lambda_hmc_adapt.push_back(new_lambda_adapt);
   }
   
-  w_do_hmc = true; //arma::any(familyid > 0);
-  w_hmc_rm = false;
+  w_do_hmc = arma::any(familyid > 0);
+  w_hmc_rm = true;
   if(w_do_hmc){
     w_node.reserve(n_blocks); // for w
     hmc_eps = .025 * arma::ones(n_blocks);

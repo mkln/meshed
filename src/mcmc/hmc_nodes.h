@@ -452,6 +452,7 @@ inline arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
 }
 
 
+
 class NodeDataB : public NodeData {
 public:
   int family; // for beta
@@ -493,7 +494,6 @@ public:
   //using MVDistParams::gradient_logfullcondit;
 };
 
-
 inline NodeDataB::NodeDataB(){
   n=-1;
 }
@@ -526,7 +526,7 @@ inline void NodeDataB::initialize(){
     XtX = X.t() * X;
     Sig = arma::inv_sympd(Vw_i + XtX); //
     Sig_i_tchol = arma::trans( arma::inv(arma::trimatl(arma::chol(Sig, "lower"))) );
-    M = arma::eye(n, n);//M = Sig;
+    M = arma::eye(arma::size(Sig));//M = Sig;
     Michol = M;//Sig_i_tchol;
   } 
 }
