@@ -33,7 +33,7 @@ void Meshed::sample_nc_Lambda_fgrid(MeshDataLMC& data){
   arma::mat LambdaHw_proposal = w * Lambda_proposal.t();
   
 #ifdef _OPENMP
-  //***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
@@ -62,7 +62,7 @@ void Meshed::sample_nc_Lambda_fgrid(MeshDataLMC& data){
     double logaccept = 
       new_logpost - 
       start_logpost + 
-      log_prior_ratio + 
+      //log_prior_ratio + 
       jacobian;
     // 
     // Rcpp::Rcout << "bounds " << endl;

@@ -312,10 +312,20 @@ Rcpp::List meshed_mcmc(
           for(int pp=0; pp<msp.param_data.theta.n_elem; pp++){
             Rprintf("%.3f ", msp.param_data.theta(pp));
           }
-          Rprintf("\n  tsq = ");
-          for(int pp=0; pp<q; pp++){
-            if(msp.familyid(pp) == 0){
-              Rprintf("(%d) %.6f ", pp+1, 1.0/msp.tausq_inv(pp));
+          if(arma::any(msp.familyid == 0)){
+            Rprintf("\n  tsq = ");
+            for(int pp=0; pp<q; pp++){
+              if(msp.familyid(pp) == 0){
+                Rprintf("(%d) %.6f ", pp+1, 1.0/msp.tausq_inv(pp));
+              }
+            }
+          }
+          if(arma::any(msp.familyid == 3)){
+            Rprintf("\n  tsq (beta_b) = ");
+            for(int pp=0; pp<q; pp++){
+              if(msp.familyid(pp) == 3){
+                Rprintf("(%d) %.6f ", pp+1, msp.tausq_inv(pp));
+              }
             }
           }
           if(use_ps){

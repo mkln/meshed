@@ -4,11 +4,12 @@
 #define MESHEDSP
 
 // uncomment to disable openmp on compilation
-//#undef _OPENMP
+#undef _OPENMP
 
 #include <RcppArmadillo.h>
 
 #include "../distributions/truncmvnorm.h"
+#include "../distributions/vecrandom.h"
 #include "../mcmc/mh_adapt.h"
 #include "../mcmc/hmc_sample.h"
 #include "../utils/caching_pairwise_compare.h"
@@ -179,15 +180,20 @@ public:
   // MCMC
   // ModifiedPP-like updates for tausq -- used if not forced_grid
   int tausq_mcmc_counter;
-  int lambda_mcmc_counter;
   RAMAdapt tausq_adapt;
   arma::mat tausq_unif_bounds;
   
+  // tausq for Beta regression
+  arma::vec brtausq_mcmc_counter;
+  std::vector<RAMAdapt> betareg_tausq_adapt;
+  
+  int lambda_mcmc_counter;
   int n_lambda_pars;
   arma::uvec lambda_sampling;
   arma::mat lambda_unif_bounds; // 1x2: lower and upper for off-diagonal
   RAMAdapt lambda_adapt;
   
+  void init_betareg();
   void init_gaussian();
   void update_lly(int, MeshDataLMC&, const arma::mat& LamHw);
   void calc_DplusSi(int, MeshDataLMC& data, const arma::mat& Lam, const arma::vec& tsqi);
@@ -229,7 +235,7 @@ public:
   
   // Tausq
   void deal_with_tausq(MeshDataLMC& data, bool ref_pardata=false);
-  void gibbs_sample_tausq_std();
+  void gibbs_sample_tausq_std(bool ref_pardata);
   void gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata);
   
   void logpost_refresh_after_gibbs(MeshDataLMC& data); //***

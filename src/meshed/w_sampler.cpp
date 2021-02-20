@@ -334,14 +334,10 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
           hmc_eps_started_adapting(u) = 1;
         }
         
-        //Rcpp::Rcout << "begin mala " << endl;
         start = std::chrono::steady_clock::now();
-        
-        //
         arma::mat w_temp = sample_one_mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u), w_hmc_rm, true, false); 
         end = std::chrono::steady_clock::now();
         mala_timer += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-        //Rcpp::Rcout << "end mala" << endl;
         
         hmc_eps(u) = hmc_eps_adapt.at(u).eps;
         
@@ -446,14 +442,17 @@ void Meshed::predicty(){
     if(familyid(j) == 0){
       // gaussian
       yhat.col(j) = linear_predictor + pow(1.0/tausq_inv(j), .5) * arma::randn(n);
-    }
-    if(familyid(j) == 1){
+    } else if(familyid(j) == 1){
       // poisson
       yhat.col(j) = vrpois(exp(linear_predictor));
-    }
-    if(familyid(j) == 2){
+    } else if(familyid(j) == 2){
       // binomial
       yhat.col(j) = vrbern(1.0/(1.0 + exp(-linear_predictor)));
+    } else if(familyid(j) == 3){
+      arma::vec mu =  1.0/ (1.0 + exp(-linear_predictor));
+      arma::vec aa = tausq_inv(j) * mu;
+      arma::vec bb = tausq_inv(j) * (1.0-mu);
+      yhat.col(j) = vrbeta(aa, bb);
     }
   }
 }

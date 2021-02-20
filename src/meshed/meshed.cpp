@@ -166,6 +166,9 @@ Meshed::Meshed(
   if(arma::all(familyid == 0) & forced_grid){
     init_gaussian();
   } 
+  if(arma::any(familyid == 3)){
+    init_betareg();
+  }
   
   init_for_mcmc();
   
@@ -775,8 +778,25 @@ void Meshed::init_gaussian(){
   }
 }
 
-void Meshed::calc_DplusSi(int u, 
-                               MeshDataLMC & data, const arma::mat& Lam, const arma::vec& tsqi){
+
+void Meshed::init_betareg(){
+  
+  tausq_unif_bounds = arma::join_horiz(1e-10 * arma::ones(q), 1e10 * arma::ones(q));
+  betareg_tausq_adapt.reserve(q);
+  brtausq_mcmc_counter = arma::zeros(q);
+  
+  for(int i=0; i<q; i++){
+    if(familyid(i) == 3){
+      
+      RAMAdapt brtsq(1, arma::eye(1,1)*.1, .4);
+      betareg_tausq_adapt.push_back(brtsq);
+      
+    }
+  }
+}
+
+
+void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const arma::vec& tsqi){
   //message("[calc_DplusSi] start.");
   int indxsize = indexing(u).n_elem;
   
@@ -914,6 +934,9 @@ void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw){
           } else if(familyid(j) == 2){ //if(family=="binomial"){
             sigmoid = 1.0/(1.0 + exp(-offsets(i, j) - XB(i, j) - LamHw(i, j)));//xz ));
             loglike += bernoulli_logpmf(y(i, j), sigmoid);
+          } else if(familyid(j) == 3){
+            sigmoid = 1.0/(1.0 + exp(-offsets(i, j) - XB(i, j) - LamHw(i, j)));//xz ));
+            loglike += betareg_logdens(y(i, j), sigmoid, tausq_inv(j));
           }
         }
       }
@@ -940,12 +963,12 @@ void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data){
     //update_block_covpars(u, data);
     update_block_wlogdens(u, data);
     
-    if(forced_grid & true){
-      if(arma::all(familyid == 0)){
+    if(forced_grid & arma::all(familyid == 0)){
+      if(arma::all(familyid==0)){
         calc_DplusSi(u, data, Lambda, tausq_inv);
       }
       update_lly(u, data, LambdaHw);
-    }
+    } 
   }
   
   data.loglik_w = arma::accu(data.logdetCi_comps) + 

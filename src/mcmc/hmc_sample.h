@@ -119,6 +119,10 @@ inline arma::mat sample_one_mala_cpp(arma::mat current_q,
   // double joint1 = postparams.logfullcondit(q) - 0.5 * arma::conv_to<double>::from(p.t() * p);
   // }
   
+  std::chrono::steady_clock::time_point t0;
+  std::chrono::steady_clock::time_point t1;
+  double timer=0;
+  
   double eps1, eps2;
   arma::mat MM, Minvchol, Minv;
 
@@ -155,7 +159,10 @@ inline arma::mat sample_one_mala_cpp(arma::mat current_q,
   double joint0;
   
   //Rcpp::Rcout << "compute_dens_and_grad start " << endl;
+  t0 = std::chrono::steady_clock::now();
   postparams.compute_dens_and_grad(joint0, xgrad, current_q);
+  t1 = std::chrono::steady_clock::now();
+  timer += std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
   //cpp::Rcout << "compute_dens_and_grad end " << endl;
   
   if(xgrad.has_inf() || std::isnan(joint0)){
@@ -182,7 +189,11 @@ inline arma::mat sample_one_mala_cpp(arma::mat current_q,
   // proposal
   double joint1; // = postparams.logfullcondit(qmat);
   arma::vec revgrad;// = postparams.gradient_logfullcondit(qmat);
+  
+  t0 = std::chrono::steady_clock::now();
   postparams.compute_dens_and_grad(joint1, revgrad, qmat);
+  t1 = std::chrono::steady_clock::now();
+  timer += std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
   
   if(revgrad.has_inf() || std::isnan(joint1) || std::isinf(joint1)){
     adaptparams.alpha = 0.0;

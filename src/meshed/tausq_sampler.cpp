@@ -4,15 +4,16 @@ using namespace std;
 
 void Meshed::deal_with_tausq(MeshDataLMC& data, bool ref_pardata){
   // ref_pardata: set to true if this is called without calling deal_with_Lambda first
-  if(false & forced_grid){
+  if(forced_grid & arma::all(familyid == 0)){
     gibbs_sample_tausq_fgrid(data, ref_pardata);
   } else {
-    gibbs_sample_tausq_std();
+    gibbs_sample_tausq_std(ref_pardata);
   }
+  
 }
 
 
-void Meshed::gibbs_sample_tausq_std(){
+void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
   message("[gibbs_sample_tausq_std] start");
   start = std::chrono::steady_clock::now();
   // note that at the available locations w already includes Lambda 
@@ -25,6 +26,7 @@ void Meshed::gibbs_sample_tausq_std(){
   logpost = 0;
   for(int j=0; j<q; j++){
     if(familyid(j) == 0){
+      // gibbs update
       arma::mat yrr = y.submat(ix_by_q_a(j), oneuv*j) - 
         XB.submat(ix_by_q_a(j), oneuv*j) - 
         LHW.submat(ix_by_q_a(j), oneuv*j); //***
@@ -43,9 +45,84 @@ void Meshed::gibbs_sample_tausq_std(){
                     << aparam << " : " << bparam << " " << bcore << " --> " << 1.0/tausq_inv(j)
                     << "\n";
       }
+    } else if(familyid(j) == 3){
+      
+      betareg_tausq_adapt.at(j).count_proposal();
+      Rcpp::RNGScope scope;
+      
+      arma::vec U_update = arma::randn(1);
+      arma::vec one = arma::ones(1);
+      
+      arma::vec new_tsqi = 
+        par_huvtransf_back(par_huvtransf_fwd(one*tausq_inv(j), tausq_unif_bounds.rows(oneuv * j)) + 
+        betareg_tausq_adapt.at(j).paramsd * U_update, tausq_unif_bounds.rows(oneuv * j));
+      
+      double start_logpost = 0;
+      double new_logpost = 0;
+      for(int ix=0; ix<ix_by_q_a(j).n_elem; ix++){
+        int i = ix_by_q_a(j)(ix);
+        double sigmoid = 1.0/(1.0 + exp(-offsets(i, j) - XB(i, j) - LHW(i, j)));
+        start_logpost += betareg_logdens(y(i, j), sigmoid, tausq_inv(j));
+        new_logpost += betareg_logdens(y(i, j), sigmoid, new_tsqi(j));
+        
+        //Rcpp::Rcout << y(i,j) << " " << sigmoid << endl;
+      }
+  
+      double prior_logratio = 0;
+      
+      if(aprior != 0){
+        // for(int i=0; i<q; i++){
+        //   prior_logratio += aprior * 
+        //     (- log(new_tausq(i)) - log(tausq_inv(i)));
+        // }
+        
+        prior_logratio = calc_prior_logratio(one * new_tsqi(j), one * tausq_inv(j), aprior, bprior);
+      }
+      
+      double jacobian  = calc_jacobian(one * new_tsqi(j), one * tausq_inv(j), tausq_unif_bounds.rows(oneuv * j));
+      double logaccept = new_logpost - start_logpost + 
+        prior_logratio +
+        jacobian;
+      
+      //Rcpp::Rcout << "new: " << new_logpost << " old " << start_logpost << endl;
+      
+      // 
+      // Rcpp::Rcout << "new " << new_tausq(0) << " vs " << 1.0/tausq_inv << endl
+      //             << tausq_unif_bounds << endl
+      //             << prior_logratio << endl
+      //             << jacobian << endl;
+      // 
+      bool accepted = do_I_accept(logaccept);
+      if(accepted){
+        betareg_tausq_adapt.at(j).count_accepted();
+        // make the move
+        tausq_inv(j) = new_tsqi(j);
+      } 
+      
+      betareg_tausq_adapt.at(j).update_ratios();
+      betareg_tausq_adapt.at(j).adapt(U_update, exp(logaccept), brtausq_mcmc_counter(j)); 
+      brtausq_mcmc_counter(j) ++;
     }
-    
   }
+  
+  if(arma::any(familyid == 3)){
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+    for(int i = 0; i<n_ref_blocks; i++){
+      int r = reference_blocks(i);
+      int u = block_names(r)-1;
+      update_lly(u, alter_data, LambdaHw);
+      //if(ref_pardata){
+        update_lly(u, param_data, LambdaHw);
+      //}
+    }
+    alter_data.loglik_w = arma::accu(alter_data.logdetCi_comps) + 
+      arma::accu(alter_data.loglik_w_comps) + arma::accu(alter_data.ll_y); //***
+    param_data.loglik_w = arma::accu(param_data.logdetCi_comps) + 
+      arma::accu(param_data.loglik_w_comps) + arma::accu(param_data.ll_y); //***
+  }
+  
   
   if(verbose & debug){
     end = std::chrono::steady_clock::now();
@@ -75,7 +152,7 @@ void Meshed::gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata){
     tausq_adapt.paramsd * U_update, tausq_unif_bounds);
   
 #ifdef _OPENMP
-  //***#pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);

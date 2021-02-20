@@ -102,7 +102,7 @@ meshed <- function(y, x, coords, k=NULL,
     # family id 
     family <- if(length(family)==1){rep(family, q)} else {family}
     family_in <- data.frame(family=family)
-    available_families <- data.frame(id=0:2, family=c("gaussian", "poisson", "binomial"))
+    available_families <- data.frame(id=0:3, family=c("gaussian", "poisson", "binomial", "beta"))
     family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %$% id
     
     latent <- "gaussian"
@@ -477,7 +477,7 @@ meshed <- function(y, x, coords, k=NULL,
     }
     
     if(is.null(starting$tausq)){
-      start_tausq  <- rep(.1, q)
+      start_tausq  <- rep(1, q)
     } else {
       start_tausq  <- starting$tausq
     }

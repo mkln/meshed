@@ -36,4 +36,25 @@ inline double bernoulli_loggradient(const double& y, const double& offset, const
   return y-1 + 1.0/(1.0+exp(offset+w));
 }
 
+inline double betareg_logdens(const double& y, const double& mu, const double& phi){
+  // ferrari & cribari-neto A3
+  // using logistic link
+  double muphi = mu*phi;
+  return R::lgammafn(phi) - R::lgammafn(muphi) - R::lgammafn(phi - muphi) +
+    (muphi - 1.0) * log(y) + 
+    (phi - muphi - 1.0) * log(1.0-y);
+  
+}
+
+inline double betareg_loggradient(const double& ystar, const double& mu, const double& phi){
+  // ferrari & cribari-neto A3
+  // using logistic link
+  double muphi = mu*phi;
+  double oneminusmu = 1.0-mu;
+  //double ystar = log(y/(1.0-y));
+  double mustar = R::digamma(muphi) - R::digamma(phi - muphi);
+  
+  return phi * (ystar - mustar) * mu * oneminusmu;
+}
+
 #endif

@@ -103,22 +103,6 @@ inline arma::sp_mat Zify(const arma::mat& x) {
   return arma::conv_to<arma::sp_mat>::from(X);
 }
 
-inline arma::vec vrpois(const arma::vec& lambdas){
-  arma::vec y = arma::zeros(lambdas.n_elem);
-  for(int i=0; i<lambdas.n_elem; i++){
-    y(i) = R::rpois(lambdas(i));
-  }
-  return y;
-}
-
-inline arma::vec vrbern(const arma::vec& p){
-  arma::vec result = arma::zeros(p.n_elem);
-  
-  for(int i=0; i<p.n_elem; i++){
-    result(i) = R::rbinom(1, p(i));
-  }
-  return result;
-}
 
 
 inline void print_data(const MeshData& data){

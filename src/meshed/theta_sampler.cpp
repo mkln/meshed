@@ -45,12 +45,6 @@ void Meshed::metrop_theta(){
       prior_logratio +
       jacobian;
     
-    // 
-    // Rcpp::Rcout << "logdetCi_comps: " << arma::accu(msp.alter_data.logdetCi_comps) - arma::accu(msp.param_data.logdetCi_comps) << endl;
-    // Rcpp::Rcout << "loglik_w_comps: " << arma::accu(msp.alter_data.loglik_w_comps) - arma::accu(msp.param_data.loglik_w_comps) << endl;
-    // Rcpp::Rcout << "ll_y: " << arma::accu(msp.alter_data.ll_y) - arma::accu(msp.param_data.ll_y) << endl;
-    // 
-
     accepted = do_I_accept(logaccept);
   } else {
     accepted = false;
