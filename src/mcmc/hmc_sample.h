@@ -134,8 +134,6 @@ inline arma::mat sample_one_mala_cpp(arma::mat current_q,
     //Rcpp::Rcout << "neghess_logfullcondit start " << endl;
   }
   
-  //Rcpp::Rcout << "hess done " << endl;
-  
   if(adapt){
     eps2 = pow(adaptparams.eps, 2.0);
     eps1 = adaptparams.eps;
@@ -163,7 +161,7 @@ inline arma::mat sample_one_mala_cpp(arma::mat current_q,
   postparams.compute_dens_and_grad(joint0, xgrad, current_q);
   t1 = std::chrono::steady_clock::now();
   timer += std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
-  //cpp::Rcout << "compute_dens_and_grad end " << endl;
+  //Rcpp::Rcout << "compute_dens_and_grad end " << endl;
   
   if(xgrad.has_inf() || std::isnan(joint0)){
     adaptparams.alpha = 0.0;

@@ -27,7 +27,8 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
   for(int j=0; j<q; j++){
     if(familyid(j) == 0){
       // gibbs update
-      arma::mat yrr = y.submat(ix_by_q_a(j), oneuv*j) - 
+      arma::mat yrr = 
+        y.submat(ix_by_q_a(j), oneuv*j) - 
         XB.submat(ix_by_q_a(j), oneuv*j) - 
         LHW.submat(ix_by_q_a(j), oneuv*j); //***
       
@@ -47,27 +48,31 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
       }
     } else if(familyid(j) == 3){
       
+      
       betareg_tausq_adapt.at(j).count_proposal();
       Rcpp::RNGScope scope;
       
       arma::vec U_update = arma::randn(1);
       arma::vec one = arma::ones(1);
       
-      arma::vec new_tsqi = 
+      arma::vec new_tsqiv = 
         par_huvtransf_back(par_huvtransf_fwd(one*tausq_inv(j), tausq_unif_bounds.rows(oneuv * j)) + 
         betareg_tausq_adapt.at(j).paramsd * U_update, tausq_unif_bounds.rows(oneuv * j));
+      
+      double new_tsqi = new_tsqiv(0);
+      //Rcpp::Rcout << arma::size(offsets) << " " << arma::size(XB) << " " << arma::size(LHW) << " " << arma::size(y) << endl;
       
       double start_logpost = 0;
       double new_logpost = 0;
       for(int ix=0; ix<ix_by_q_a(j).n_elem; ix++){
         int i = ix_by_q_a(j)(ix);
-        double sigmoid = 1.0/(1.0 + exp(-offsets(i, j) - XB(i, j) - LHW(i, j)));
-        start_logpost += betareg_logdens(y(i, j), sigmoid, tausq_inv(j));
-        new_logpost += betareg_logdens(y(i, j), sigmoid, new_tsqi(j));
         
-        //Rcpp::Rcout << y(i,j) << " " << sigmoid << endl;
+        double sigmoid = 1.0/(1.0 + exp(-offsets(i, j) - XB(i, j) - LHW(i, j)));
+        
+        start_logpost += betareg_logdens(y(i, j), sigmoid, tausq_inv(j));
+        new_logpost += betareg_logdens(y(i, j), sigmoid, new_tsqi);
       }
-  
+      
       double prior_logratio = 0;
       
       if(aprior != 0){
@@ -76,18 +81,23 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
         //     (- log(new_tausq(i)) - log(tausq_inv(i)));
         // }
         
-        prior_logratio = calc_prior_logratio(one * new_tsqi(j), one * tausq_inv(j), aprior, bprior);
+        prior_logratio = calc_prior_logratio(one * new_tsqi, one * tausq_inv(j), aprior, bprior);
       }
       
-      double jacobian  = calc_jacobian(one * new_tsqi(j), one * tausq_inv(j), tausq_unif_bounds.rows(oneuv * j));
+      if(std::isnan(prior_logratio)){
+        Rcpp::Rcout << "NaN value from prior on tausq: a=" << aprior << " b=" << bprior << endl;
+        Rcpp::stop("Terminated.");
+      }
+      
+      double jacobian  = calc_jacobian(one * new_tsqi, one * tausq_inv(j), tausq_unif_bounds.rows(oneuv * j));
       double logaccept = new_logpost - start_logpost + 
         prior_logratio +
         jacobian;
-      
-      //Rcpp::Rcout << "new: " << new_logpost << " old " << start_logpost << endl;
-      
       // 
-      // Rcpp::Rcout << "new " << new_tausq(0) << " vs " << 1.0/tausq_inv << endl
+      // Rcpp::Rcout << "new: " << new_logpost << " old " << start_logpost << endl;
+      // 
+      // // 
+      // Rcpp::Rcout << "new " << new_tsqi << " vs " << tausq_inv(j) << endl
       //             << tausq_unif_bounds << endl
       //             << prior_logratio << endl
       //             << jacobian << endl;
@@ -96,7 +106,7 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
       if(accepted){
         betareg_tausq_adapt.at(j).count_accepted();
         // make the move
-        tausq_inv(j) = new_tsqi(j);
+        tausq_inv(j) = new_tsqi;
       } 
       
       betareg_tausq_adapt.at(j).update_ratios();

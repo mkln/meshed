@@ -29,10 +29,10 @@ void Meshed::hmc_sample_beta(){
       //arma::vec w_available = w.rows(na_ix_all);
       arma::mat Xprecy_j = Vim + tausq_inv(j) * beta_node.at(j).Xres;//beta_node.at(j).X.t() * 
       //(beta_node.at(j).y - offsets_for_beta.rows(ix_by_q_a(j)));
+      
       Bcoeff.col(j) = Sigma_chol_Bcoeff.t() * (Sigma_chol_Bcoeff * Xprecy_j + bmat.col(j));
     } else {
       // nongaussian
-      //Rcpp::Rcout << "step " << endl;
       beta_hmc_adapt.at(j).step();
       if(beta_hmc_started(j) == 0){
         // wait a few iterations before starting adaptation

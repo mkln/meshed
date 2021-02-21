@@ -4,7 +4,7 @@
 #define MESHEDSP
 
 // uncomment to disable openmp on compilation
-#undef _OPENMP
+//#undef _OPENMP
 
 #include <RcppArmadillo.h>
 

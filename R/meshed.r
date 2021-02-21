@@ -381,7 +381,7 @@ meshed <- function(y, x, coords, k=NULL,
     }
     
     if(is.null(prior$tausq)){
-      tausq_ab <- c(1, 0)
+      tausq_ab <- c(2, 1)
     } else {
       tausq_ab <- prior$tausq
       if(length(tausq_ab) == 1){

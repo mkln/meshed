@@ -114,12 +114,13 @@ inline NodeDataW::NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
   
   if(arma::any(family == 3)){
     ystar = arma::zeros(arma::size(y));
+    for(int j=0; j<y.n_cols; j++){
+      if(family(j) == 3){
+        ystar.col(j) = log( y.col(j) / (1.0-y.col(j)) );
+      }  
+    }
   }
-  for(int j=0; j<y.n_cols; j++){
-    if(family(j) == 3){
-      ystar.col(j) = log( y / (1.0-y) );
-    }  
-  }
+  
   
   n = y.n_rows;
   z = arma::ones(n); //Z_in.col(0);
@@ -153,8 +154,6 @@ inline void NodeDataW::compute_dens_and_grad(double& xtarget, arma::vec& xgrad, 
   arma::vec grad_loglike = arma::zeros(x.n_rows * x.n_cols);
   
   int indxsize = x.n_rows;
-  
-  
   
   double loglike = 0;
   for(int i=0; i<nr; i++){
@@ -560,9 +559,9 @@ inline NodeDataB::NodeDataB(const arma::vec& y_in, const arma::vec& offset_in,
 inline void NodeDataB::initialize(){
   mstar = arma::zeros(X.n_cols);
   Vw_i = arma::eye(X.n_cols, X.n_cols);
+  XtX = X.t() * X;
   
   if(family == 0){
-    XtX = X.t() * X;
     Sig = arma::inv_sympd(Vw_i + XtX); //
     Sig_i_tchol = arma::trans( arma::inv(arma::trimatl(arma::chol(Sig, "lower"))) );
     M = arma::eye(arma::size(Sig));//M = Sig;

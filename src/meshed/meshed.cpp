@@ -124,9 +124,9 @@ Meshed::Meshed(
   //   XtX(j) = X.rows(ix_by_q_a(j)).t() * X.rows(ix_by_q_a(j));
   // }
   // 
-  // Vi    = beta_Vi_in;
-  // bprim = arma::zeros(p);
-  // Vim   = Vi * bprim;
+   Vi    = beta_Vi_in;
+   bprim = arma::zeros(p);
+   Vim   = Vi * bprim;
   
   tausq_ab = tausq_ab_in;
   
@@ -749,6 +749,8 @@ void Meshed::update_block_wlogdens(int u, MeshDataLMC& data){
 }
 
 void Meshed::init_gaussian(){
+  message("[init_gaussian]");
+  
   tausq_mcmc_counter = 0;
   lambda_mcmc_counter = 0;
   
@@ -780,18 +782,19 @@ void Meshed::init_gaussian(){
 
 
 void Meshed::init_betareg(){
+  message("[init_betareg]");
   
   tausq_unif_bounds = arma::join_horiz(1e-10 * arma::ones(q), 1e10 * arma::ones(q));
   betareg_tausq_adapt.reserve(q);
   brtausq_mcmc_counter = arma::zeros(q);
   
   for(int i=0; i<q; i++){
-    if(familyid(i) == 3){
+    //if(familyid(i) == 3){
       
       RAMAdapt brtsq(1, arma::eye(1,1)*.1, .4);
       betareg_tausq_adapt.push_back(brtsq);
       
-    }
+    //}
   }
 }
 
@@ -1000,6 +1003,8 @@ void Meshed::accept_make_change(){
 // --- 
 
 void Meshed::init_for_mcmc(){
+  message("[init_for_mcmc]");
+  
   //Rcpp::Rcout << "Initialize HMC" << endl;
   // nuts params
   beta_node.reserve(q); // for beta
@@ -1026,6 +1031,8 @@ void Meshed::init_for_mcmc(){
     
     // Beta
     NodeDataB new_beta_block(yj_obs, offsets_for_beta, X_obs, family);
+    //new_beta_block.update_mv(offset_for_w, 1.0 / tausq_inv, Lambda);
+    
     beta_node.push_back(new_beta_block);
     
     AdaptE new_beta_hmc_adapt(.05, 0);
@@ -1041,9 +1048,12 @@ void Meshed::init_for_mcmc(){
     lambda_hmc_adapt.push_back(new_lambda_adapt);
   }
   
+  
+  
   w_do_hmc = arma::any(familyid > 0);
   w_hmc_rm = true;
   if(w_do_hmc){
+    message("[init nongaussian outcome]");
     w_node.reserve(n_blocks); // for w
     hmc_eps = .025 * arma::ones(n_blocks);
     hmc_eps_started_adapting = arma::zeros<arma::uvec>(n_blocks);
@@ -1070,7 +1080,6 @@ void Meshed::init_for_mcmc(){
         indexing_target = indexing(u);
       }
       
-      //Rcpp::Rcout << "gen block " << i << endl;
       NodeDataW new_block(y, na_mat, //Z.rows(indexing(u)), 
                               offset_for_w,
                               indexing_target,
