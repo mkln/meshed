@@ -12,7 +12,7 @@ colnames(test)[4] <- "w"
 test %<>% as.data.frame()
 
 
-setwd("~/spmeshed_files")
+#setwd("~/")
 if(!dir.exists("plot_tests")){
   system("mkdir plot_tests")
 }
