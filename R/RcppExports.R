@@ -53,6 +53,10 @@ meshed_mcmc <- function(y, family, X, coords, k, parents, children, layer_names,
     .Call(`_spmeshed_meshed_mcmc`, y, family, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, adapting, use_cache, forced_grid, use_ps, verbose, debug, print_every, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w)
 }
 
+rmeshedgp_internal <- function(coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, matern_twonu, theta, num_threads = 1L, use_cache = TRUE, verbose = FALSE, debug = FALSE) {
+    .Call(`_spmeshed_rmeshedgp_internal`, coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, matern_twonu, theta, num_threads, use_cache, verbose, debug)
+}
+
 cube_tcrossprod <- function(x) {
     .Call(`_spmeshed_cube_tcrossprod`, x)
 }

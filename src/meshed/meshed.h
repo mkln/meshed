@@ -207,6 +207,7 @@ public:
   void deal_with_w(MeshDataLMC& data);
   void gibbs_sample_w(MeshDataLMC& data);
   void hmc_sample_w(MeshDataLMC& data);
+  void w_prior_sample(MeshDataLMC& data);
   std::vector<NodeDataW> w_node;
   arma::vec hmc_eps;
   std::vector<AdaptE> hmc_eps_adapt;
@@ -304,6 +305,29 @@ public:
     bool use_cache,
     bool use_forced_grid,
     bool use_ps,
+    
+    bool verbose_in,
+    bool debugging,
+    int num_threads);
+  
+  // for prior sampling
+  Meshed(
+    const arma::mat& coords_in, 
+    
+    const arma::field<arma::uvec>& parents_in,
+    const arma::field<arma::uvec>& children_in,
+    
+    const arma::vec& block_names_in,
+    const arma::vec& block_groups_in,
+    
+    const arma::field<arma::uvec>& indexing_in,
+    const arma::field<arma::uvec>& indexing_obs_in,
+    
+    int matern_twonu_in,
+    
+    const arma::mat& theta_in,
+    
+    bool use_cache,
     
     bool verbose_in,
     bool debugging,

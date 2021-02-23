@@ -1101,3 +1101,134 @@ void Meshed::init_for_mcmc(){
   }
   
 }
+
+Meshed::Meshed(
+  const arma::mat& coords_in, 
+  
+  const arma::field<arma::uvec>& parents_in,
+  const arma::field<arma::uvec>& children_in,
+  
+  const arma::vec& block_names_in,
+  const arma::vec& block_groups_in,
+  
+  const arma::field<arma::uvec>& indexing_in,
+  const arma::field<arma::uvec>& indexing_obs_in,
+  
+  int matern_twonu_in,
+  
+  const arma::mat& theta_in,
+  
+  bool use_cache,
+  
+  bool verbose_in,
+  bool debugging,
+  int num_threads){
+  
+  
+  // ---------------
+  
+  oneuv = arma::ones<arma::uvec>(1);//utils
+  k = 1;
+  forced_grid = false;
+  
+  verbose = verbose_in;
+  debug = debugging;
+  cached = use_cache;
+  
+  message("Meshed::Meshed (prior sampling) initialization.\n");
+  
+  start_overall = std::chrono::steady_clock::now();
+  
+  message("[Meshed::Meshed] assign values.");
+  
+  // spatial coordinates and dimension
+  coords              = coords_in;
+  dd = coords.n_cols;
+  
+  // DAG
+  parents             = parents_in;
+  children            = children_in;
+  block_names         = block_names_in;
+  block_groups        = block_groups_in;
+  block_groups_labels = arma::unique(block_groups);
+  n_gibbs_groups      = block_groups_labels.n_elem;
+  n_blocks            = block_names.n_elem;
+  
+  // domain partitioning
+  indexing    = indexing_in;
+  indexing_obs = indexing_obs_in;
+  
+  // init
+  u_is_which_col_f    = arma::field<arma::field<arma::field<arma::uvec> > > (n_blocks);
+  
+  w = arma::randn(coords.n_rows);
+  
+  
+  // now elaborate
+  init_indexing();
+  //na_study();
+  // now we know where NAs are, we can erase them
+  
+  //init_gibbs_index();
+  //make_gibbs_groups();
+  
+  block_ct_obs = arma::ones(n_blocks);
+  init_cache();
+  
+  param_data.Ri_chol_logdet = arma::zeros(n_blocks);
+  param_data.CC_cache = arma::field<arma::cube>(coords_caching.n_elem);
+  param_data.w_cond_prec_ptr.reserve(n_blocks);
+  param_data.w_cond_mean_K_ptr.reserve(n_blocks);
+  
+  param_data.logdetCi_comps = arma::zeros(n_blocks);
+  param_data.w_cond_prec_parents_ptr.reserve(n_blocks);
+  
+  for(int i=0; i<n_blocks; i++){
+    arma::cube jibberish = arma::zeros(1,1,1);
+    param_data.w_cond_prec_ptr.push_back(&jibberish);
+    param_data.w_cond_mean_K_ptr.push_back(&jibberish);
+    param_data.w_cond_prec_parents_ptr.push_back(&jibberish);
+  }
+  
+  param_data.Kxxi_cache = arma::field<arma::cube>(coords_caching.n_elem);
+  for(int i=0; i<coords_caching.n_elem; i++){
+    int u = coords_caching(i);
+    param_data.Kxxi_cache(i) = arma::zeros(indexing(u).n_elem, indexing(u).n_elem, k);
+    if(block_ct_obs(u) > 0){
+      param_data.CC_cache(i) = arma::cube(indexing(u).n_elem, indexing(u).n_elem, k);
+    }
+  }
+  
+  param_data.H_cache = arma::field<arma::cube> (kr_caching.n_elem);
+  param_data.Ri_cache = arma::field<arma::cube> (kr_caching.n_elem);
+  param_data.Kppi_cache = arma::field<arma::cube> (kr_caching.n_elem);
+  for(int i=0; i<kr_caching.n_elem; i++){
+    int u = kr_caching(i);
+    param_data.Ri_cache(i) = 
+      arma::zeros(indexing(u).n_elem, indexing(u).n_elem, k);
+    if(parents(u).n_elem > 0){
+      param_data.H_cache(i) = 
+        arma::zeros(indexing(u).n_elem, parents_indexing(u).n_elem, k);
+      param_data.Kppi_cache(i) = 
+        arma::zeros(parents_indexing(u).n_elem, parents_indexing(u).n_elem, k);
+    }
+  }
+  
+  
+  param_data.theta = theta_in;
+  
+  //init_meshdata(theta_in);
+  
+  bool use_ps = false;
+  init_matern(num_threads, matern_twonu_in, use_ps);
+  
+  if(verbose & debug){
+    end_overall = std::chrono::steady_clock::now();
+    Rcpp::Rcout << "Meshed::Meshed initializing took "
+                << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()
+                << "us.\n";
+  }
+  
+  // ---------------
+  
+}

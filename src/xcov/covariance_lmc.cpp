@@ -179,7 +179,6 @@ void powerexp_inplace(arma::mat& res,
   }
 }
 
-
 // gneiting 2002 eq. 15 with a,c,beta left unknown
 arma::mat gneiting2002(const arma::mat& coords,
                        const arma::uvec& ix, const arma::uvec& iy, 
@@ -192,7 +191,7 @@ arma::mat gneiting2002(const arma::mat& coords,
       arma::rowvec cri = coords.row(ix(i)).subvec(0, 1); //x.row(i);
       double ti = coords(ix(i), 2);
       for(int j=i; j<iy.n_rows; j++){
-        double h = arma::norm(cri - coords.row(iy(j))); //y.row(j);
+        double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
         double u = abs(coords(iy(j), 2) - ti);
         double umod = 1.0/(a * u + 1.0);
         res(i, j) = umod * exp(-c * h * pow(umod, beta/2.0) );
@@ -204,7 +203,7 @@ arma::mat gneiting2002(const arma::mat& coords,
       arma::rowvec cri = coords.row(ix(i)).subvec(0, 1); //x.row(i);
       double ti = coords(ix(i), 2);
       for(int j=0; j<iy.n_rows; j++){
-        double h = arma::norm(cri - coords.row(iy(j))); //y.row(j);
+        double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
         double u = abs(coords(iy(j), 2) - ti);
         double umod = 1.0/(a * u + 1.0);
         res(i, j) = umod * exp(-c * h * pow(umod, beta/2.0) );
@@ -213,6 +212,8 @@ arma::mat gneiting2002(const arma::mat& coords,
   }
   return res;
 }
+
+
 
 arma::mat Correlationf(
     const arma::mat& coords,

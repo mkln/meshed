@@ -229,6 +229,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rmeshedgp_internal
+arma::mat rmeshedgp_internal(const arma::mat& coords, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& indexing_obs, int matern_twonu, const arma::mat& theta, int num_threads, bool use_cache, bool verbose, bool debug);
+RcppExport SEXP _spmeshed_rmeshedgp_internal(SEXP coordsSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP matern_twonuSEXP, SEXP thetaSEXP, SEXP num_threadsSEXP, SEXP use_cacheSEXP, SEXP verboseSEXP, SEXP debugSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type children(childrenSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type layer_names(layer_namesSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type layer_gibbs_group(layer_gibbs_groupSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing_obs(indexing_obsSEXP);
+    Rcpp::traits::input_parameter< int >::type matern_twonu(matern_twonuSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_cache(use_cacheSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< bool >::type debug(debugSEXP);
+    rcpp_result_gen = Rcpp::wrap(rmeshedgp_internal(coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, matern_twonu, theta, num_threads, use_cache, verbose, debug));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cube_tcrossprod
 arma::cube cube_tcrossprod(const arma::cube& x);
 RcppExport SEXP _spmeshed_cube_tcrossprod(SEXP xSEXP) {
@@ -280,6 +303,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spmeshed_knn_naive", (DL_FUNC) &_spmeshed_knn_naive, 3},
     {"_spmeshed_mesh_graph_hyper", (DL_FUNC) &_spmeshed_mesh_graph_hyper, 7},
     {"_spmeshed_meshed_mcmc", (DL_FUNC) &_spmeshed_meshed_mcmc, 40},
+    {"_spmeshed_rmeshedgp_internal", (DL_FUNC) &_spmeshed_rmeshedgp_internal, 13},
     {"_spmeshed_cube_tcrossprod", (DL_FUNC) &_spmeshed_cube_tcrossprod, 1},
     {"_spmeshed_summary_list_mean", (DL_FUNC) &_spmeshed_summary_list_mean, 2},
     {"_spmeshed_summary_list_q", (DL_FUNC) &_spmeshed_summary_list_q, 3},
