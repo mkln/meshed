@@ -11,14 +11,20 @@ simdata <- rmeshedgp(coords, axis_partition, c(1, .5, 1))
 colnames(test)[4] <- "w"
 test %<>% as.data.frame()
 
+
+setwd("~/spmeshed_files")
+if(!dir.exists("plot_tests")){
+  system("mkdir plot_tests")
+}
+
 for(tt in 1:length(unique(test$Var3))){
   plotted <- test %>% filter(Var3==unique(Var3)[tt]) %>% 
     ggplot(aes(Var1, Var2, fill=w)) + geom_raster() + scale_fill_viridis_c() +
     theme_void() +
     theme(legend.position="none") + ggtitle(tt)
   
-  fname <- sprintf("~/spmeshed_files/plot_tests/%02d.png", tt)
+  fname <- sprintf("plot_tests/%02d.png", tt)
   ggsave(plot=plotted, filename=fname, width=7, height=7)
 }
-system("convert -delay 25 -loop 0 -resize 350 ~/spmeshed_files/plot_tests/*.png ~/spmeshed_files/plot_tests/out_alt.gif")
-
+system("convert -delay 25 -loop 0 -resize 350 plot_tests/*.png out_alt.gif")
+system("rm -R plot_tests")
