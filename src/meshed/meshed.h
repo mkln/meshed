@@ -97,6 +97,7 @@ public:
   arma::mat yhat;
   arma::mat offsets;
   arma::mat rand_norm_mat;
+  arma::vec rand_unif;
   
   arma::mat w;
   arma::mat Bcoeff; // sampled

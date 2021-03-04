@@ -227,7 +227,7 @@ inline void NodeDataW::compute_dens_and_grad(double& xtarget, arma::vec& xgrad, 
                              Kcx_x(c), Kco_wo(c));
   }
   
-  xtarget = logprior + loglike;
+  xtarget = logprior + logprior_chi + loglike;
   
   xgrad = grad_loglike + 
     grad_logprior_par + 
@@ -614,11 +614,17 @@ inline double NodeDataB::logfullcondit(const arma::vec& x){
     loglike = 0;
     double lgtsq = R::lgammafn(1.0/tausq);
     arma::vec sigmoid = 1.0/(1.0 + exp(-offset - X * x ));
+    
+    arma::vec logcomps = arma::zeros(y.n_elem);
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
     for(int i=0; i<y.n_elem; i++){
-      loglike += lgtsq - R::lgammafn(sigmoid(i) / tausq) - R::lgammafn((1.0-sigmoid(i)) / tausq) +
+      logcomps(i) = lgtsq - R::lgammafn(sigmoid(i) / tausq) - R::lgammafn((1.0-sigmoid(i)) / tausq) +
         (sigmoid(i) / tausq - 1.0) * log(y(i)) + 
         ((1.0-sigmoid(i)) / tausq - 1.0) * log(1.0-y(i));
     }
+    loglike += arma::accu(logcomps);
   }
   
   
@@ -667,6 +673,10 @@ inline arma::vec NodeDataB::gradient_logfullcondit(const arma::vec& x){
     arma::vec sigmoid = 1.0/(1.0 + exp(-offset - X * x));
     arma::vec mustar = arma::zeros(y.n_elem);
     arma::vec Tym = arma::zeros(y.n_elem);
+    
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
     for(int i=0; i<y.n_elem; i++){
       double oneminusmu = 1.0-sigmoid(i);
       mustar(i) = R::digamma(sigmoid(i) / tausq) - R::digamma(oneminusmu / tausq);

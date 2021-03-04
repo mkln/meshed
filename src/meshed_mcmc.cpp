@@ -352,7 +352,6 @@ Rcpp::List meshed_mcmc(
     double mcmc_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_all - start_all).count();
     Rcpp::Rcout << "MCMC done [" << mcmc_time/1000.0 <<  "s]\n";
 
-    
     // 
     // Rcpp::Named("p_logdetCi_comps") = msp.param_data.logdetCi_comps,
     //   Rcpp::Named("a_logdetCi_comps") = msp.alter_data.logdetCi_comps,
@@ -370,9 +369,9 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
       Rcpp::Named("paramsd") = msp.theta_adapt.paramsd,
       Rcpp::Named("mcmc") = mcmc,
-      Rcpp::Named("logpost") = llsave,
-      Rcpp::Named("logaccept") = logaccept_mcmc,
-      Rcpp::Named("w_logdens") = wllsave,
+      //Rcpp::Named("logpost") = llsave,
+      //Rcpp::Named("logaccept") = logaccept_mcmc,
+      //Rcpp::Named("w_logdens") = wllsave,
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
       Rcpp::Named("proposal_failures") = num_chol_fails
     );

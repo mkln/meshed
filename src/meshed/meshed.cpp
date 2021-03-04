@@ -55,7 +55,6 @@ Meshed::Meshed(
   
   message("Meshed::Meshed initialization.\n");
   
-  
   start_overall = std::chrono::steady_clock::now();
   
   message("[Meshed::Meshed] assign values.");
@@ -410,6 +409,10 @@ void Meshed::init_cache(){
   // 
   findkr = arma::zeros<arma::uvec>(n_blocks);
   findcc = arma::zeros<arma::uvec>(n_blocks);
+  
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i) - 1;
     int kr_cached_ix = kr_caching_ix(u);
@@ -468,7 +471,7 @@ void Meshed::init_gibbs_index(){
   arma::field<arma::uvec> dim_by_parent(n_blocks);
   
 #ifdef _OPENMP
-  #pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i=0; i<n_blocks; i++){ // all blocks
     int u = block_names(i)-1; // block name
@@ -483,7 +486,7 @@ void Meshed::init_gibbs_index(){
     }
   }
   message("[init_gibbs_index] u_is_which_col_f");
-  
+
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     if(indexing(u).n_elem > 0){
@@ -623,6 +626,9 @@ bool Meshed::refresh_cache(MeshDataLMC& data){
   data.Ri_chol_logdet = arma::zeros(kr_caching.n_elem);
   
   int errtype = -1;
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
   for(int i=0; i<coords_caching.n_elem; i++){
     int u = coords_caching(i); 
     if(block_ct_obs(u) > 0){
@@ -634,7 +640,7 @@ bool Meshed::refresh_cache(MeshDataLMC& data){
   }
   
 #ifdef _OPENMP
-  #pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int it=0; it<cx_and_kr_caching.n_elem; it++){
     int i = 0;
@@ -759,7 +765,8 @@ void Meshed::init_gaussian(){
   for(int i=0;i<q;i++){
     arma::uvec yloc = arma::find_finite(y.col(i));
     arma::vec yvar = arma::var(y(yloc, oneuv * i));
-    tausq_unif_bounds(i, 1) = yvar(0);
+    double tsq = 1.0/tausq_inv(i);
+    tausq_unif_bounds(i, 1) = yvar(0) > tsq ? yvar(0) : tsq + .1;
   }
   
   // lambda prepare
@@ -828,7 +835,8 @@ void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const
         }
         arma::uvec obs = arma::find(II == 1);
         // Dtau = D + S
-        arma::mat L = arma::chol(Dtau.submat(obs, obs), "lower");
+        arma::mat L = arma::chol(Dtau.submat(obs, obs), "lower");  
+        
         // L Lt = D + S, therefore Lti Li = (D + S)^-1
         arma::mat Li = arma::inv(arma::trimatl(L));
         
@@ -920,7 +928,6 @@ void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw){
   } else {
     // some nongaussian
     int nr = indexing_obs(u).n_elem;
-    
     for(int ix=0; ix<nr; ix++){
       int i = indexing_obs(u)(ix);
       double loglike = 0;
@@ -943,11 +950,9 @@ void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw){
           }
         }
       }
-      
       data.ll_y.row(i) += loglike;
     }
   }
-  
   end = std::chrono::steady_clock::now();
 }
 
@@ -1001,7 +1006,6 @@ void Meshed::accept_make_change(){
 }
 
 // --- 
-
 void Meshed::init_for_mcmc(){
   message("[init_for_mcmc]");
   
@@ -1069,7 +1073,7 @@ void Meshed::init_for_mcmc(){
     
     //Rcpp::Rcout << " Initializing HMC for W -- 2" << endl;
     arma::mat offset_for_w = offsets + XB;
-    //#pragma omp parallel for
+    #pragma omp parallel for
     for(int i=0; i<n_blocks; i++){
       int u = block_names(i)-1;
       

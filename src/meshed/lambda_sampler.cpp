@@ -198,6 +198,9 @@ void Meshed::sample_hmc_Lambda(){
   start = std::chrono::steady_clock::now();
   
   // new with botev's 2017 method to sample from truncated normal
+
+  arma::vec lambda_runif = vrunif(q);
+  
   for(int j=0; j<q; j++){
     arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
     if(familyid(j) == 0){
@@ -225,7 +228,8 @@ void Meshed::sample_hmc_Lambda(){
       lambda_node.at(j).XtX = Wcrossprod;
       
       arma::vec curLrow = arma::trans(Lambda.submat(oneuv*j, subcols));
-
+      arma::mat rnorm_row = mrstdnorm(curLrow.n_elem, 1);
+      
       // nongaussian
       //Rcpp::Rcout << "step " << endl;
       lambda_hmc_adapt.at(j).step();
@@ -233,7 +237,8 @@ void Meshed::sample_hmc_Lambda(){
         // wait a few iterations before starting adaptation
         //Rcpp::Rcout << "reasonable stepsize " << endl;
         
-        double lambda_eps = find_reasonable_stepsize(curLrow, lambda_node.at(j));
+        
+        double lambda_eps = find_reasonable_stepsize(curLrow, lambda_node.at(j), rnorm_row);
         //Rcpp::Rcout << "adapting scheme starting " << endl;
         AdaptE new_adapting_scheme(lambda_eps, 1e6);
         lambda_hmc_adapt.at(j) = new_adapting_scheme;
@@ -241,7 +246,8 @@ void Meshed::sample_hmc_Lambda(){
         //Rcpp::Rcout << "done initiating adapting scheme" << endl;
       }
       
-      arma::vec sampled = sample_one_mala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), true, true, debug); 
+      
+      arma::vec sampled = sample_one_mala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), rnorm_row, lambda_runif(j), true, true, debug); 
       
       Lambda.submat(oneuv*j, subcols) = sampled.t();
       

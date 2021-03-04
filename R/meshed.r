@@ -20,7 +20,8 @@ meshed <- function(y, x, coords, k=NULL,
                                       mcmc_startfrom=0),
                    debug       = list(sample_beta=T, sample_tausq=T, 
                                       sample_theta=T, sample_w=T, sample_lambda=T,
-                                      verbose=F, debug=F)
+                                      verbose=F, debug=F),
+                   indpart=F
                    ){
 
   # init
@@ -288,6 +289,13 @@ meshed <- function(y, x, coords, k=NULL,
   children                     <- parents_children[["children"]] 
   block_names                  <- parents_children[["names"]] 
   block_groups                 <- parents_children[["groups"]]#[order(block_names)]
+
+  if(indpart){
+    parents %<>% lapply(function(x) numeric(0))
+    children %<>% lapply(function(x) numeric(0))
+    block_groups %<>% rep(0, length(block_groups))
+  }
+  
   
   # these two lines remove the DAG and make all blocks independent
   #parents %<>% lapply(function(x) x[x==-1]) 
@@ -442,18 +450,27 @@ meshed <- function(y, x, coords, k=NULL,
           start_theta[2,] <- btmlim + 1
         }
       } else {
-        theta_names <- c("a", "phi", "beta")
+        theta_names <- c("a", "phi", "beta", "sigmasq")
         npar <- length(theta_names)
         
-        start_theta <- matrix(2, ncol=k, nrow=3) 
-        start_theta[3,] <- .5 # separability parameter beta
+        start_theta <- matrix(0, ncol=k, nrow=npar) 
+        set_unif_bounds <- matrix(0, nrow=npar*k, ncol=2)
         
-        set_unif_bounds <- matrix(0, nrow=3*k, ncol=2)
-        # a and phi
-        set_unif_bounds[seq(1, npar*k, npar),] <- phi_limits
-        set_unif_bounds[seq(2, npar*k, npar),] <- phi_limits
+        # a
+        set_unif_bounds[seq(1, npar*k, npar),] <- matrix(phi_limits,nrow=1) %x% matrix(1, nrow=k)
+        start_theta[1,] <- start_phi
         
-        set_unif_bounds[3*(1:k),] <- matrix(c(1e-5, 1-1e-5),nrow=1) %x% matrix(1, nrow=k)
+        # phi
+        set_unif_bounds[seq(2, npar*k, npar),] <- matrix(phi_limits,nrow=1) %x% matrix(1, nrow=k)
+        start_theta[2,] <- start_phi
+        
+        # beta
+        set_unif_bounds[seq(3, npar*k, npar),] <- matrix(c(0,1),nrow=1) %x% matrix(1, nrow=k)
+        start_theta[3,] <- 0.5
+        
+        # sigmasq --overpar
+        set_unif_bounds[seq(4, npar*k, npar),] <- matrix(c(btmlim, toplim),nrow=1) %x% matrix(1, nrow=k)
+        start_theta[4,] <- btmlim + 1
       }
       
     } else {
@@ -477,7 +494,7 @@ meshed <- function(y, x, coords, k=NULL,
     }
     
     if(is.null(starting$tausq)){
-      start_tausq  <- rep(1, q)
+      start_tausq  <- family %>% sapply(function(ff) if(ff == "gaussian"){.1} else {1})
     } else {
       start_tausq  <- starting$tausq
     }
@@ -661,6 +678,8 @@ meshed <- function(y, x, coords, k=NULL,
   
   returning <- list(coordsdata = coordsdata,
                     savedata = saved,
+                    block_names = block_names,
+                    block_groups = block_groups,
                     parents = parents,
                     children = children,
                     coordsblocking = coords_blocking) %>% 

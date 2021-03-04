@@ -3,8 +3,11 @@
 using namespace std;
 
 void Meshed::deal_with_w(MeshDataLMC& data){
-  Rcpp::RNGScope scope;
-  rand_norm_mat = arma::randn(coords.n_rows, k);
+  
+  // ensure this is independent on the number of threads being used
+  
+  rand_norm_mat = mrstdnorm(coords.n_rows, k);
+  rand_unif = vrunif(n_blocks);
   
   if(w_do_hmc){
     hmc_sample_w(data);
@@ -115,11 +118,14 @@ void Meshed::sample_nonreference_w(int u, MeshDataLMC& data, const arma::mat& ra
       try {
         Sigi_chol = arma::inv(arma::trimatl(arma::chol( arma::symmatu( Sigi_tot ), "lower")));
       } catch(...) {
-        Rcpp::Rcout << Sigi_tot << endl
-                    << tsqi << endl
-                    << Lambda << endl
-                    << Stemp << endl;
-        throw 1;
+        Sigi_chol = arma::zeros(k, k);
+        for(int j=0; j<k; j++){
+          if(Sigi_tot(j, j) == 0){
+            Sigi_chol(j, j) = 0;
+          } else {
+            Sigi_chol(j, j) = pow( Sigi_tot(j, j), -0.5 );
+          }
+        }
       }
       
       arma::vec rnvec = arma::vectorise(rand_norm_mat.row(indexing_obs(u)(ix)));
@@ -264,6 +270,8 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
           //w_node.at(u).w_parents = w.rows(parents_indexing(u));
         }
         
+        
+        
         if(forced_grid){
           w_node.at(u).Hproject = &data.Hproject(u);
         }
@@ -316,7 +324,7 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
             w_node.at(u).Kco_wo(c) = arma::zeros(0,0);
           }
           //Rcpp::Rcout << "child done " << endl;
-        }
+        } 
         
         // -----------------------------------------------
           
@@ -327,7 +335,7 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
         if((hmc_eps_started_adapting(u) == 0) & (hmc_eps_adapt.at(u).i==10)){
           // wait a few iterations before starting adaptation
           //message("find reasonable");
-          hmc_eps(u) = find_reasonable_stepsize(w_current, w_node.at(u));
+          hmc_eps(u) = find_reasonable_stepsize(w_current, w_node.at(u), rand_norm_mat.rows(indexing(u)));
           //message("found reasonable");
           AdaptE new_adapting_scheme(hmc_eps(u), 1e6);
           hmc_eps_adapt.at(u) = new_adapting_scheme;
@@ -335,7 +343,12 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
         }
         
         start = std::chrono::steady_clock::now();
-        arma::mat w_temp = sample_one_mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u), w_hmc_rm, true, false); 
+        arma::mat w_temp = sample_one_mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u), 
+                                               rand_norm_mat.rows(indexing(u)),
+                                               rand_unif(u),
+                                               w_hmc_rm, true, 
+                                               false, // gibbs
+                                               false); 
         end = std::chrono::steady_clock::now();
         mala_timer += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         
@@ -380,7 +393,7 @@ void Meshed::predict(){
   if(predict_group_exists == 1){
     message("[predict] start ");
 #ifdef _OPENMP
-    #pragma omp parallel for 
+#pragma omp parallel for 
 #endif
     for(int i=0; i<u_predicts.n_elem; i++){ //*** subset to blocks with NA
       int u = u_predicts(i);// u_predicts(i);
@@ -432,16 +445,16 @@ void Meshed::predict(){
   }
 }
 
-void Meshed::predicty(){
+void Meshed::predicty(){  
   int n = XB.n_rows;
   yhat.fill(0);
-  
+  Rcpp::RNGScope scope;
   arma::mat Lw = wU*Lambda.t();
   for(int j=0; j<q; j++){
     arma::vec linear_predictor = XB.col(j) + Lw.col(j);
     if(familyid(j) == 0){
       // gaussian
-      yhat.col(j) = linear_predictor + pow(1.0/tausq_inv(j), .5) * arma::randn(n);
+      yhat.col(j) = linear_predictor + pow(1.0/tausq_inv(j), .5) * mrstdnorm(n, 1);
     } else if(familyid(j) == 1){
       // poisson
       yhat.col(j) = vrpois(exp(linear_predictor));

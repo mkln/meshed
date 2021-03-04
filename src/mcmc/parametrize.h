@@ -9,8 +9,8 @@ inline arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arm
   
   arma::mat reparametrizer; 
   if(d == 3){
-    // exponential reparametrization of gneiting's ? 
-    reparametrizer = arma::diagmat(pow(theta.row(1), - 0.5)); 
+    // expand variance for spacetime gneiting covariance
+    reparametrizer = arma::diagmat(pow(theta.row(3), - 0.5)); 
   } else {
     if(theta.n_rows > 2){
       // full matern
@@ -39,9 +39,9 @@ inline arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in, const 
   
   arma::mat reparametrizer;
   if(d == 3){
-    // exponential
+    // expand variance for spacetime gneiting covariance
     reparametrizer = arma::diagmat(pow(
-      theta.row(1), + 0.5)); 
+      theta.row(3), + 0.5)); 
   } else {
     if(theta.n_rows > 2){
       // full matern: builds lambda*phi^nu

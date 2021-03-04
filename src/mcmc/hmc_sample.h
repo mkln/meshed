@@ -47,12 +47,12 @@ inline void leapfrog(pq_point &z, float epsilon, T& postparams, int k=1){
 }
 
 template <class T>
-inline double find_reasonable_stepsize(const arma::mat& current_q, T& postparams){
+inline double find_reasonable_stepsize(const arma::mat& current_q, T& postparams, const arma::mat& rnorm_mat){
   int K = current_q.n_elem;
   
   pq_point z(K);
   arma::vec p0 = //postparams.Michol * 
-    arma::randn(K);
+    arma::vectorise(rnorm_mat); //arma::randn(K);
   
   double epsilon = 1;
   
@@ -104,7 +104,11 @@ inline double find_reasonable_stepsize(const arma::mat& current_q, T& postparams
 template <class T>
 inline arma::mat sample_one_mala_cpp(arma::mat current_q, 
                                      T& postparams,
-                                     AdaptE& adaptparams, bool rm=true, bool adapt=true, bool debug=false){
+                                     AdaptE& adaptparams, 
+                                     const arma::mat& rnorm_mat,
+                                     const double& runifvar,
+                                     bool rm=true, bool adapt=true,
+                                     bool gibbs = false, bool debug=false){
   
   
   int k = current_q.n_cols;
@@ -134,7 +138,7 @@ inline arma::mat sample_one_mala_cpp(arma::mat current_q,
     //Rcpp::Rcout << "neghess_logfullcondit start " << endl;
   }
   
-  if(adapt){
+  if(adapt & (!gibbs)){
     eps2 = pow(adaptparams.eps, 2.0);
     eps1 = adaptparams.eps;
   } else {
@@ -177,9 +181,14 @@ inline arma::mat sample_one_mala_cpp(arma::mat current_q,
   arma::vec proposal_mean = veccurq + Minv * xgrad;// / max(eps2, arma::norm(xgrad));
   
   // proposal value
-  arma::vec p = arma::randn(current_q.n_elem);  
+  arma::vec p = arma::vectorise(rnorm_mat); //arma::randn(current_q.n_elem);  
   arma::vec q = proposal_mean + eps1 * Minvchol.t() * p;
   arma::mat qmat = arma::mat(q.memptr(), q.n_elem/k, k);
+  
+  if(gibbs){
+    return qmat;
+  }
+  
   // target at current and proposed values
   
   //double joint0 = postparams.logfullcondit(current_q);
@@ -212,7 +221,7 @@ inline arma::mat sample_one_mala_cpp(arma::mat current_q,
   adaptparams.alpha = std::min(1.0, exp(joint1 + prop1to0 - joint0 - prop0to1));
   adaptparams.n_alpha = 1.0;
   
-  if(R::runif(0, 1) < adaptparams.alpha){ 
+  if(runifvar < adaptparams.alpha){ 
     current_q = qmat;
     
     if(debug){

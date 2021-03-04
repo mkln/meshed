@@ -19,7 +19,7 @@ arma::mat matern(const arma::mat& x, const arma::mat& y, const double& phi, cons
 
 //[[Rcpp::export]]
 arma::mat gneiting2002(const arma::mat& coords, const arma::uvec& ix, const arma::uvec& iy, 
-                       const double& a, const double& c, const double& beta, bool same=false);
+                       const double& a, const double& c, const double& beta, const double& sigmasq, bool same=false);
 
 arma::mat Correlationf(const arma::mat& coords, const arma::uvec& ix, const arma::uvec& iy, 
                        const arma::vec& theta, MaternParams& matern, bool same);

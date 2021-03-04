@@ -11,11 +11,13 @@ void Meshed::metrop_theta(){
   arma::vec new_param = arma::vectorise(param_data.theta);
   
   Rcpp::RNGScope scope;
-  arma::vec U_update = arma::randn(new_param.n_elem);
+  arma::vec U_update = mrstdnorm(new_param.n_elem, 1);
+  
   
   // theta
   new_param = par_huvtransf_back(par_huvtransf_fwd(param, theta_unif_bounds) + 
     theta_adapt.paramsd * U_update, theta_unif_bounds);
+  
   
   bool out_unif_bounds = unif_bounds(new_param, theta_unif_bounds);
   
@@ -44,7 +46,7 @@ void Meshed::metrop_theta(){
     logaccept = new_loglik - current_loglik + 
       prior_logratio +
       jacobian;
-    
+  
     accepted = do_I_accept(logaccept);
   } else {
     accepted = false;
@@ -61,8 +63,8 @@ void Meshed::metrop_theta(){
     param_data.theta = theta_proposal;
     
     if(debug & verbose){
-      Rcpp::Rcout << "[theta] accepted (log accept. " << logaccept << " : " << new_loglik << " " << current_loglik << 
-        " " << prior_logratio << " " << jacobian << ")\n";
+      Rcpp::Rcout << "log accept. " << logaccept << " : " << new_loglik << " " << current_loglik << 
+        " " << prior_logratio << " " << jacobian << "s\n";
     }
   } else {
     if(debug & verbose){

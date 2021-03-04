@@ -52,8 +52,8 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
       betareg_tausq_adapt.at(j).count_proposal();
       Rcpp::RNGScope scope;
       
-      arma::vec U_update = arma::randn(1);
       arma::vec one = arma::ones(1);
+      arma::vec U_update = one * R::rnorm(0, 1);
       
       arma::vec new_tsqiv = 
         par_huvtransf_back(par_huvtransf_fwd(one*tausq_inv(j), tausq_unif_bounds.rows(oneuv * j)) + 
@@ -62,16 +62,23 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
       double new_tsqi = new_tsqiv(0);
       //Rcpp::Rcout << arma::size(offsets) << " " << arma::size(XB) << " " << arma::size(LHW) << " " << arma::size(y) << endl;
       
-      double start_logpost = 0;
-      double new_logpost = 0;
+      arma::vec start_logpost_vec = arma::zeros(ix_by_q_a(j).n_elem);
+      arma::vec new_logpost_vec = arma::zeros(ix_by_q_a(j).n_elem);
+      
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
       for(int ix=0; ix<ix_by_q_a(j).n_elem; ix++){
         int i = ix_by_q_a(j)(ix);
         
         double sigmoid = 1.0/(1.0 + exp(-offsets(i, j) - XB(i, j) - LHW(i, j)));
         
-        start_logpost += betareg_logdens(y(i, j), sigmoid, tausq_inv(j));
-        new_logpost += betareg_logdens(y(i, j), sigmoid, new_tsqi);
+        start_logpost_vec(ix) = betareg_logdens(y(i, j), sigmoid, tausq_inv(j));
+        new_logpost_vec(ix) = betareg_logdens(y(i, j), sigmoid, new_tsqi);
       }
+      
+      double start_logpost = arma::accu(start_logpost_vec);
+      double new_logpost = arma::accu(new_logpost_vec);
       
       double prior_logratio = 0;
       
@@ -155,7 +162,7 @@ void Meshed::gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata){
   tausq_adapt.count_proposal();
   Rcpp::RNGScope scope;
   
-  arma::vec U_update = arma::randn(q);
+  arma::vec U_update = mrstdnorm(q, 1);
   
   arma::vec new_tausq = 
     par_huvtransf_back(par_huvtransf_fwd(1.0/tausq_inv, tausq_unif_bounds) + 

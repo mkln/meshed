@@ -182,7 +182,7 @@ void powerexp_inplace(arma::mat& res,
 // gneiting 2002 eq. 15 with a,c,beta left unknown
 arma::mat gneiting2002(const arma::mat& coords,
                        const arma::uvec& ix, const arma::uvec& iy, 
-                       const double& a, const double& c, const double& beta, bool same){
+                       const double& a, const double& c, const double& beta, const double& sigmasq, bool same){
   // NOT reparametrized here
   arma::mat res = arma::zeros(ix.n_rows, iy.n_rows);
   arma::uvec timecol = arma::ones<arma::uvec>(1) * 2;
@@ -193,7 +193,7 @@ arma::mat gneiting2002(const arma::mat& coords,
       for(int j=i; j<iy.n_rows; j++){
         double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
         double u = abs(coords(iy(j), 2) - ti);
-        double umod = 1.0/(a * u + 1.0);
+        double umod = sigmasq / (a * u + 1.0);
         res(i, j) = umod * exp(-c * h * pow(umod, beta/2.0) );
       }
     }
@@ -205,7 +205,7 @@ arma::mat gneiting2002(const arma::mat& coords,
       for(int j=0; j<iy.n_rows; j++){
         double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
         double u = abs(coords(iy(j), 2) - ti);
-        double umod = 1.0/(a * u + 1.0);
+        double umod = sigmasq / (a * u + 1.0);
         res(i, j) = umod * exp(-c * h * pow(umod, beta/2.0) );
       }
     }
@@ -235,6 +235,7 @@ arma::mat Correlationf(
       
       int nutimes2 = matern.twonu;
       double reparam = 1.0; 
+      
       if(matern.using_ps){
         reparam = pow(phi, .0 + nutimes2);
       }
@@ -266,7 +267,8 @@ arma::mat Correlationf(
     // theta 0: temporal decay, 
     // theta 1: spatial decay,
     // theta 2: separability
-    return gneiting2002(coords, ix, iy, theta(0), theta(1), theta(2), same);
+    // theta 3: sigmasq
+    return gneiting2002(coords, ix, iy, theta(0), theta(1), theta(2), theta(3), same);
   }
 }
 
