@@ -11,7 +11,8 @@ void Meshed::hmc_sample_beta(){
   // choose between NUTS or Gibbs
   start = std::chrono::steady_clock::now();
   
-  arma::mat bmat = arma::randn(p, q);
+  arma::mat bmat = mrstdnorm(p, q);
+  arma::vec bunifv = vrunif(q);
   arma::mat LHW = wU * Lambda.t();
   
   for(int j=0; j<q; j++){
@@ -37,7 +38,7 @@ void Meshed::hmc_sample_beta(){
       if(beta_hmc_started(j) == 0){
         // wait a few iterations before starting adaptation
         //Rcpp::Rcout << "reasonable stepsize " << endl;
-        double beta_eps = find_reasonable_stepsize(Bcoeff.col(j), beta_node.at(j));
+        double beta_eps = find_reasonable_stepsize(Bcoeff.col(j), beta_node.at(j), bmat.cols(oneuv * j));
         //Rcpp::Rcout << "adapting scheme starting " << endl;
         AdaptE new_adapting_scheme(beta_eps, 1e6);
         beta_hmc_adapt.at(j) = new_adapting_scheme;
@@ -45,7 +46,8 @@ void Meshed::hmc_sample_beta(){
         //Rcpp::Rcout << "done initiating adapting scheme" << endl;
       }
       
-      Bcoeff.col(j) = sample_one_mala_cpp(Bcoeff.col(j), beta_node.at(j), beta_hmc_adapt.at(j)); 
+      Bcoeff.col(j) = sample_one_mala_cpp(Bcoeff.col(j), beta_node.at(j), beta_hmc_adapt.at(j), bmat.cols(oneuv * j), bunifv(j),
+                 true, true, false, false); 
 
     }
     XB.col(j) = X * Bcoeff.col(j);
