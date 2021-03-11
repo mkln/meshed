@@ -181,6 +181,7 @@ void Meshed::gibbs_sample_w(MeshDataLMC& data){
                                w.rows( parents_indexing(u) ));
         } 
         
+        
         for(int c=0; c<children(u).n_elem; c++){
           int child = children(u)(c);
           //---------------------
@@ -261,6 +262,7 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
       
       if((block_ct_obs(u) > 0)){
         
+        start = std::chrono::steady_clock::now();
         //Rcpp::Rcout << "u :  " << u << endl;
         w_node.at(u).update_mv(offset_for_w, 1.0/tausq_inv, Lambda);
         
@@ -269,8 +271,6 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
           w_node.at(u).Kcx = data.w_cond_mean_K_ptr.at(u);
           //w_node.at(u).w_parents = w.rows(parents_indexing(u));
         }
-        
-        
         
         if(forced_grid){
           w_node.at(u).Hproject = &data.Hproject(u);
@@ -287,10 +287,6 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
           w_node.at(u).Kcxpar = arma::zeros(0,0);
         }
           
-        //w_node.at(u).woKoowo = arma::zeros(k, w_node.at(u).num_children);
-        
-        //Rcpp::Rcout << "Ri : " << arma::size((*w_node.at(u).Ri)) << endl;
-        
         for(int c=0; c<w_node.at(u).num_children; c++ ){
           int child = children(u)(c);
           //Rcpp::Rcout << "child [" << child << "]\n";
@@ -303,11 +299,6 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
           arma::mat w_childs_parents = w.rows(pofc_ix);
           arma::mat w_otherparents = w_childs_parents.rows(pofc_ix_other);
           
-          
-          //Rcpp::Rcout << "step 1 " << endl;
-          // store
-          //start = std::chrono::steady_clock::now();
-          //w_node.at(u).dim_of_pars_of_children(c) = parents_indexing(child).n_rows;
           w_node.at(u).w_child(c) = w.rows(c_ix);
           w_node.at(u).Ri_of_child(c) = data.w_cond_prec_ptr.at(child);
           w_node.at(u).Kcx_x(c) = cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), pofc_ix_x);
@@ -342,15 +333,15 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
           hmc_eps_started_adapting(u) = 1;
         }
         
-        start = std::chrono::steady_clock::now();
+        
+        bool do_gibbs = arma::all(familyid == 0);
         arma::mat w_temp = sample_one_mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u), 
                                                rand_norm_mat.rows(indexing(u)),
                                                rand_unif(u),
                                                w_hmc_rm, true, 
-                                               false, // gibbs
+                                               do_gibbs, // gibbs
                                                false); 
         end = std::chrono::steady_clock::now();
-        mala_timer += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         
         hmc_eps(u) = hmc_eps_adapt.at(u).eps;
         
@@ -371,6 +362,8 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
             }
           }
         }
+        
+        mala_timer += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         //Rcpp::Rcout << "done sampling "<< endl;
 
       }

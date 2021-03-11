@@ -42,8 +42,9 @@ void fwdconditional_mvn(double& logtarget, arma::vec& gradient,
     if(Kcxpar.n_cols > 0){ // meaning w_parents.n_rows > 0
       xcentered -= Kcxpar.col(j);
     } 
-    numer += arma::conv_to<double>::from( xcentered.t() * (*Ri).slice(j) * xcentered );
-    norm_grad.col(j) = -(*Ri).slice(j) * xcentered;
+    arma::vec Rix = (*Ri).slice(j) * xcentered;
+    numer += arma::conv_to<double>::from( xcentered.t() * Rix );
+    norm_grad.col(j) = - Rix;
   }
   logtarget = -.5 * numer;//result;
   gradient = arma::vectorise(norm_grad);//result;
@@ -98,12 +99,12 @@ void bwdconditional_mvn(double& xtarget, arma::vec& gradient, const arma::mat& x
     if(Kco_wo.n_cols > 0){
       xcentered -= Kco_wo.col(j);
     } 
-    numer += arma::conv_to<double>::from(xcentered.t() * (*Ri_of_child).slice(j) * xcentered);
-    result.col(j) = Kcx_x.slice(j).t() * (*Ri_of_child).slice(j) * xcentered;
+    arma::vec Rix = (*Ri_of_child).slice(j) * xcentered;
+    numer += arma::conv_to<double>::from(xcentered.t() * Rix);
+    result.col(j) = Kcx_x.slice(j).t() * Rix;
   }
   xtarget -= 0.5*numer;
   gradient += arma::vectorise(result);
-  
 }
 
 void neghess_fwdcond_dmvn(arma::mat& result, const arma::mat& x, 
@@ -139,3 +140,28 @@ void neghess_bwdcond_dmvn(arma::mat& result,
   //return result;
 }
 
+void mvn_dens_grad_neghess(double& xtarget, arma::vec& gradient, arma::mat& neghess,
+                           const arma::mat& x, const arma::mat& w_child, const arma::cube* Ri_of_child,
+                           const arma::cube& Kcx_x, const arma::mat& Kco_wo){
+
+  
+  int k = (*Ri_of_child).n_slices;
+  int nr = Kcx_x.n_cols; //(*Ri_of_child).n_rows;
+  int nc = Kcx_x.n_cols; //(*Ri_of_child).n_cols;
+  
+  arma::mat result = arma::zeros(arma::size(x));
+  double numer = 0;
+  for(int j=0; j<k; j++){
+    arma::vec xcentered = w_child.col(j) - Kcx_x.slice(j)*x.col(j);
+    if(Kco_wo.n_cols > 0){
+      xcentered -= Kco_wo.col(j);
+    } 
+    arma::mat KRichild = Kcx_x.slice(j).t() * (*Ri_of_child).slice(j);
+    numer += arma::conv_to<double>::from(xcentered.t() * (*Ri_of_child).slice(j) * xcentered);
+    result.col(j) = KRichild * xcentered;
+    neghess.submat(nr*j, nc*j, (j+1)*nr-1, (j+1)*nc-1) += KRichild * Kcx_x.slice(j);
+  }
+  xtarget -= 0.5*numer;
+  gradient += arma::vectorise(result);
+  
+}

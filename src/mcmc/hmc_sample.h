@@ -127,15 +127,16 @@ inline arma::mat sample_one_mala_cpp(arma::mat current_q,
   std::chrono::steady_clock::time_point t1;
   double timer=0;
   
-  double eps1, eps2;
+  // currents
+  arma::vec xgrad;
+  double joint0, eps1, eps2;
   arma::mat MM, Minvchol, Minv;
 
   if(!rm){
     MM = arma::eye(current_q.n_elem, current_q.n_elem);
+    postparams.compute_dens_and_grad(joint0, xgrad, current_q);
   } else {
-    //Rcpp::Rcout << "neghess_logfullcondit start " << endl;
-    MM = postparams.neghess_logfullcondit(current_q);
-    //Rcpp::Rcout << "neghess_logfullcondit start " << endl;
+    postparams.compute_dens_grad_neghess(joint0, xgrad, MM, current_q);
   }
   
   if(adapt & (!gibbs)){
@@ -156,15 +157,7 @@ inline arma::mat sample_one_mala_cpp(arma::mat current_q,
   
   Minv = eps2 * 0.5 * Minvchol.t() * Minvchol;
   
-  // currents
-  arma::vec xgrad;
-  double joint0;
   
-  //Rcpp::Rcout << "compute_dens_and_grad start " << endl;
-  t0 = std::chrono::steady_clock::now();
-  postparams.compute_dens_and_grad(joint0, xgrad, current_q);
-  t1 = std::chrono::steady_clock::now();
-  timer += std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
   //Rcpp::Rcout << "compute_dens_and_grad end " << endl;
   
   if(xgrad.has_inf() || std::isnan(joint0)){

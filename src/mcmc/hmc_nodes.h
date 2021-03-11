@@ -81,6 +81,7 @@ public:
   arma::mat neghess_logfullcondit(const arma::mat& x);
   
   void compute_dens_and_grad(double& xtarget, arma::vec& xgrad, const arma::mat& x);
+  void compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, arma::mat& M, const arma::mat& x);
   
   NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
                 const arma::umat& na_mat_all, const arma::mat& offset_all, 
@@ -140,8 +141,6 @@ inline void NodeDataW::update_mv(const arma::mat& offset_all, const arma::vec& t
   // }
   // tausq_long = arma::vectorise(tausqmat);
   Lambda_lmc = Lambda_lmc_in;
-  
-  
   tausq = tausq_in;
   offset = offset_all.rows(indexing_target);
 }
@@ -372,6 +371,123 @@ inline arma::vec NodeDataW::gradient_logfullcondit(const arma::mat& x){
     grad_logprior_chi;
 }
 
+inline void NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, arma::mat& H, const arma::mat& x){
+  int nr = y.n_rows;
+  int q = y.n_cols;
+  int k = x.n_cols;
+  
+  arma::vec grad_loglike = arma::zeros(x.n_rows * x.n_cols);
+  arma::mat neghess_logtarg = arma::zeros(x.n_rows * x.n_cols,
+                                          x.n_rows * x.n_cols);
+  
+  int indxsize = x.n_rows;
+  
+  double loglike = 0;
+  
+  for(int i=0; i<nr; i++){
+    arma::mat wloc, Hloc;
+    if(fgrid){
+      wloc = arma::sum(arma::trans((*Hproject).slice(i) % arma::trans(x)), 0);
+    } else {
+      wloc = x.row(i);
+    }
+    for(int j=0; j<q; j++){
+      if(na_mat(i, j) > 0){
+        
+        arma::vec gradloc;
+        double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
+        
+        double mult = 1;
+        if(family(j) == 0){  // family=="gaussian"
+          double y_minus_mean = y(i, j) - offset(i, j) - xij;
+          loglike += gaussian_logdensity(y_minus_mean, tausq(j));
+          gradloc = gaussian_loggradient(y_minus_mean, tausq(j));
+          mult = pow(tausq(j), -0.5);
+        } else if(family(j) == 1){ //if(family == "poisson"){
+          double lambda = exp(offset(i, j) + xij);//xz);//x(i));
+          loglike += poisson_logpmf(y(i, j), lambda);
+          gradloc = poisson_loggradient(y(i, j), offset(i, j), xij); //xz) * z(i);
+          mult = pow(exp(xij), 0.5);
+        } else if(family(j) == 2){ //if(family == "binomial"){
+          double exij = exp(-offset(i, j) - xij);
+          double opexij = (1.0 + exij);
+          double sigmoid = 1.0/opexij;//xz ));
+          loglike += bernoulli_logpmf(y(i, j), sigmoid);
+          gradloc = bernoulli_loggradient(y(i, j), offset(i, j), xij); //xz) * z(i);
+          mult = pow(exij / (opexij*opexij), 0.5);
+        } else if(family(j) == 3){
+          double sigmoid = 1.0/(1.0 + exp(-offset(i, j) - xij));
+          loglike += betareg_logdens(y(i, j), sigmoid, 1.0/tausq(j));
+          gradloc = betareg_loggradient(ystar(i, j), sigmoid, 1.0/tausq(j));
+          
+          double tausq2 = tausq(j) * tausq(j);
+          mult = - 1.0/tausq2 * (R::trigamma(sigmoid / tausq(j)) + 
+            R::trigamma( (1.0-sigmoid) / tausq(j) ) ) * 
+            pow(sigmoid * (1.0 - sigmoid), 2.0);  // notation of 
+        }
+        
+        if(fgrid){
+          arma::mat LambdaHt = arma::zeros(k*indxsize, 1);  
+          arma::vec LambdaHrowj = arma::zeros(k*indxsize);  
+          
+          Hloc = (*Hproject).slice(i);
+          for(int jx=0; jx<k; jx++){
+            arma::mat Hsub = Hloc.row(jx).t(); //data.Hproject(u).subcube(jx,0,ix,jx,indxsize-1, ix);
+            // this outcome margin observed at this location
+            LambdaHt.submat(jx*indxsize, 0, (jx+1)*indxsize-1, 0) += Lambda_lmc(j, jx) * Hsub;
+            LambdaHrowj.subvec(jx*indxsize, (jx+1)*indxsize-1) += (mult * Lambda_lmc(j, jx)) * Hsub;
+          }
+          grad_loglike += LambdaHt * gradloc;
+          neghess_logtarg += LambdaHrowj * LambdaHrowj.t();
+        } else {
+          arma::mat LambdaHt = Lambda_lmc.row(j).t();
+          arma::vec Lgrad = LambdaHt * gradloc;
+          
+          arma::mat hess_LambdaH = Lambda_lmc.row(j).t() * mult;
+          arma::mat neghessloc = hess_LambdaH * hess_LambdaH.t();
+          
+          for(int s1=0; s1<k; s1++){
+            grad_loglike(s1 * indxsize + i) += Lgrad(s1);   
+            for(int s2=0; s2<k; s2++){
+              neghess_logtarg(s1 * indxsize + i, s2*indxsize + i) += neghessloc(s1, s2);
+            }
+          }  
+        }
+      }
+    }
+  }
+  
+  // GP prior
+  double logprior = 0;
+  arma::vec grad_logprior_par;
+  
+  //double logprior = fwdcond_dmvn(x, Ri, Kcxpar);
+  //arma::vec grad_logprior_par = grad_fwdcond_dmvn(x, Ri, Kcxpar);
+  fwdconditional_mvn(logprior, grad_logprior_par, x, Ri, Kcxpar);
+  neghess_fwdcond_dmvn(neghess_logtarg, x, Ri);
+  
+  double logprior_chi = 0;
+  arma::vec grad_logprior_chi = arma::zeros(grad_logprior_par.n_elem);
+  for(int c=0; c<num_children; c++ ){
+    //bwdconditional_mvn(logprior_chi, grad_logprior_chi, x, w_child(c), Ri_of_child(c), 
+    //                   Kcx_x(c), Kco_wo(c));
+    //neghess_bwdcond_dmvn(neghess_logtarg, x, w_child(c), Ri_of_child(c), Kcx_x(c));
+    
+    mvn_dens_grad_neghess(logprior_chi, grad_logprior_chi, neghess_logtarg, x, 
+                          w_child(c), Ri_of_child(c), Kcx_x(c), Kco_wo(c));
+  }
+  
+  xtarget = logprior + logprior_chi + loglike;
+  
+  xgrad = grad_loglike + 
+    grad_logprior_par + 
+    grad_logprior_chi;
+  
+  H = neghess_logtarg;
+  
+}
+
+
 // Gradient of the log posterior
 inline arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
   int q = y.n_cols;
@@ -437,6 +553,7 @@ inline arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
             mult = pow(tausq(j), -0.5);
           } else {
             arma::mat wloc = x.row(i);
+            
             double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
             
             if (family(j) == 1){
@@ -523,6 +640,7 @@ public:
   arma::vec gradient_logfullcondit(const arma::vec& x);
   arma::mat neghess_logfullcondit(const arma::vec& x);
   void compute_dens_and_grad(double& xtarget, arma::vec& xgrad, const arma::mat& x);
+  void compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, arma::mat& H, const arma::mat& x);
   //using MVDistParams::MVDistParams;
   //using MVDistParams::logfullcondit;
   //using MVDistParams::gradient_logfullcondit;
@@ -700,4 +818,10 @@ inline arma::mat NodeDataB::neghess_logfullcondit(const arma::vec& x){
 inline void NodeDataB::compute_dens_and_grad(double& xtarget, arma::vec& xgrad, const arma::mat& x){
   xtarget = logfullcondit(x);
   xgrad = gradient_logfullcondit(x);
+}
+
+inline void NodeDataB::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, arma::mat& H, const arma::mat& x){
+  xtarget = logfullcondit(x);
+  xgrad = gradient_logfullcondit(x);
+  H = neghess_logfullcondit(x);
 }

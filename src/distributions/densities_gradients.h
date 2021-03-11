@@ -11,7 +11,7 @@ inline double gaussian_logdensity(const double& x, const double& sigsq){
 
 inline double gaussian_loggradient(const double& x, const double& sigsq){
   // derivative wrt mean parameter
-  return 1.0/sigsq * x;
+  return x/sigsq;
 }
 
 inline double poisson_logpmf(const double& x, const double& lambda){

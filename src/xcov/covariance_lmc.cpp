@@ -181,8 +181,8 @@ void powerexp_inplace(arma::mat& res,
 
 // gneiting 2002 eq. 15 with a,c,beta left unknown
 arma::mat gneiting2002(const arma::mat& coords,
-                       const arma::uvec& ix, const arma::uvec& iy, 
-                       const double& a, const double& c, const double& beta, const double& sigmasq, bool same){
+                          const arma::uvec& ix, const arma::uvec& iy, 
+                          const double& a, const double& c, const double& beta, const double& sigmasq, bool same){
   // NOT reparametrized here
   arma::mat res = arma::zeros(ix.n_rows, iy.n_rows);
   arma::uvec timecol = arma::ones<arma::uvec>(1) * 2;
@@ -212,12 +212,73 @@ arma::mat gneiting2002(const arma::mat& coords,
   }
   return res;
 }
+// gneiting 2002 eq. 15 with a,c,beta left unknown
+void gneiting2002_inplace(arma::mat& res, const arma::mat& coords,
+                       const arma::uvec& ix, const arma::uvec& iy, 
+                       const double& a, const double& c, const double& beta, const double& sigmasq, bool same){
+  // NOT reparametrized here
+  //arma::mat res = arma::zeros(ix.n_rows, iy.n_rows);
+  arma::uvec timecol = arma::ones<arma::uvec>(1) * 2;
+  if(same){
+    for(int i=0; i<ix.n_rows; i++){
+      arma::rowvec cri = coords.row(ix(i)).subvec(0, 1); //x.row(i);
+      double ti = coords(ix(i), 2);
+      for(int j=i; j<iy.n_rows; j++){
+        double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
+        double u = abs(coords(iy(j), 2) - ti);
+        double umod = sigmasq / (a * u + 1.0);
+        res(i, j) = umod * exp(-c * h * pow(umod, beta/2.0) );
+      }
+    }
+    res = arma::symmatu(res);
+  } else {
+    for(int i=0; i<ix.n_rows; i++){
+      arma::rowvec cri = coords.row(ix(i)).subvec(0, 1); //x.row(i);
+      double ti = coords(ix(i), 2);
+      for(int j=0; j<iy.n_rows; j++){
+        double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
+        double u = abs(coords(iy(j), 2) - ti);
+        double umod = sigmasq / (a * u + 1.0);
+        res(i, j) = umod * exp(-c * h * pow(umod, beta/2.0) );
+      }
+    }
+  }
+}
 
 
+void kernelp_inplace(arma::mat& res,
+             const arma::mat& Xcoords, const arma::uvec& ind1, const arma::uvec& ind2, 
+             const arma::vec& theta, bool same){
+  
+  double sigmasq = theta(0);
+  arma::vec kweights = theta.subvec(1, theta.n_elem-1);
+  
+  int p = Xcoords.n_cols;
+  if(same){
+    for(int i=0; i<ind1.n_elem; i++){
+      arma::rowvec cri = Xcoords.row(ind1(i));
+      for(int j=i; j<ind2.n_elem; j++){
+        arma::rowvec deltasq = cri - Xcoords.row(ind2(j));
+        double weighted = (arma::accu(kweights.t() % deltasq % deltasq));
+        res(i, j) = sigmasq * exp(-weighted) + (weighted == 0? 1e-6 : 0);
+      }
+    }
+    res = arma::symmatu(res);
+  } else {
+    //int cc = 0;
+    for(int i=0; i<ind1.n_elem; i++){
+      arma::rowvec cri = Xcoords.row(ind1(i));
+      for(int j=0; j<ind2.n_elem; j++){
+        arma::rowvec deltasq = cri - Xcoords.row(ind2(j));
+        double weighted = (arma::accu(kweights.t() % deltasq % deltasq));
+        res(i, j) = sigmasq * exp(-weighted) + (weighted == 0? 1e-6 : 0);
+      }
+    }
+  }
+}
 
 arma::mat Correlationf(
     const arma::mat& coords,
-    //const arma::mat& x, const arma::mat& y, 
     const arma::uvec& ix, const arma::uvec& iy,
     const arma::vec& theta,
     MaternParams& matern, bool same){
@@ -263,12 +324,17 @@ arma::mat Correlationf(
       
       return res;
     }
-  } else {
+  } else if (coords.n_cols == 3){
     // theta 0: temporal decay, 
     // theta 1: spatial decay,
     // theta 2: separability
     // theta 3: sigmasq
-    return gneiting2002(coords, ix, iy, theta(0), theta(1), theta(2), theta(3), same);
+    gneiting2002_inplace(res, coords, ix, iy, theta(0), theta(1), theta(2), theta(3), same);
+    return res;
+  } else {
+    // p exposures, p+1 params
+    kernelp_inplace(res, coords, ix, iy, theta, same);
+    return res;
   }
 }
 

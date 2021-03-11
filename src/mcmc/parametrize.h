@@ -10,8 +10,8 @@ inline arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arm
   arma::mat reparametrizer; 
   if(d == 3){
     // expand variance for spacetime gneiting covariance
-    reparametrizer = arma::diagmat(pow(theta.row(3), - 0.5)); 
-  } else {
+    reparametrizer = arma::diagmat(pow(theta.row(3), .5)); 
+  } else if (d == 2) {
     if(theta.n_rows > 2){
       // full matern
       arma::vec rdiag = arma::zeros(theta.n_cols);
@@ -28,6 +28,9 @@ inline arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arm
         arma::diagmat(pow(theta.row(0), -nutimes2/2.0)) * 
         arma::diagmat(sqrt(theta.row(1))); 
     }
+  } else {
+    // p-kernel
+    reparametrizer = arma::diagmat(pow(theta.row(0), .5));
   }
   return Lambda_in * reparametrizer;
 }
@@ -41,8 +44,8 @@ inline arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in, const 
   if(d == 3){
     // expand variance for spacetime gneiting covariance
     reparametrizer = arma::diagmat(pow(
-      theta.row(3), + 0.5)); 
-  } else {
+      theta.row(3), -0.5)); 
+  } else if (d==2) {
     if(theta.n_rows > 2){
       // full matern: builds lambda*phi^nu
       arma::vec rdiag = arma::zeros(theta.n_cols);
@@ -59,6 +62,9 @@ inline arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in, const 
         arma::diagmat(pow(theta.row(0), + nutimes2/2.0)) * 
         arma::diagmat(pow(theta.row(1), -0.5)); 
     }
+  } else {
+    // p-kernel
+    reparametrizer = arma::diagmat(pow(theta.row(0), -.5));
   }
   return Lambda_in * reparametrizer;
 }

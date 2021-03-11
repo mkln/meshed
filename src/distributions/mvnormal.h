@@ -39,3 +39,7 @@ void neghess_bwdcond_dmvn(arma::mat& result, const arma::mat& x,
                                    const arma::mat& w_child,
                                    const arma::cube* Ri_of_child,
                                    const arma::cube& Kcx_x);
+
+void mvn_dens_grad_neghess(double& xtarget, arma::vec& gradient, arma::mat& neghess, const arma::mat& x, 
+                           const arma::mat& w_child, const arma::cube* Ri_of_child,
+                           const arma::cube& Kcx_x, const arma::mat& Kco_wo);

@@ -4,7 +4,7 @@
 #define MESHEDSP
 
 // uncomment to disable openmp on compilation
-//#undef _OPENMP
+#undef _OPENMP
 
 #include <RcppArmadillo.h>
 
@@ -60,20 +60,7 @@ public:
   
   int n_loc_ne_blocks;
   
-  // regression
-  arma::mat Lambda;
-  arma::umat Lambda_mask; // 1 where we want lambda to be nonzero
-  arma::mat LambdaHw; // part of the regression mean explained by the latent process
-  arma::mat wU; // nonreference locations
-  
-  arma::mat XB; // by outcome
-  
-  arma::field<arma::mat> XtX;
-  arma::mat Vi; 
-  arma::mat Vim;
-  arma::vec bprim;
-  
-  // dependence
+  // DAG
   arma::field<arma::sp_mat> Ib;
   arma::field<arma::uvec>   parents; // i = parent block names for i-labeled block (not ith block)
   arma::field<arma::uvec>   children; // i = children block names for i-labeled block (not ith block)
@@ -90,6 +77,7 @@ public:
   // for each block's children, which columns of parents of c is u? and which instead are of other parents
   arma::field<arma::field<arma::field<arma::uvec> > > u_is_which_col_f; 
   
+  // utils
   arma::uvec oneuv;
   double hl2pi;
     
@@ -98,6 +86,19 @@ public:
   arma::mat offsets;
   arma::mat rand_norm_mat;
   arma::vec rand_unif;
+  
+  // regression
+  arma::mat Lambda;
+  arma::umat Lambda_mask; // 1 where we want lambda to be nonzero
+  arma::mat LambdaHw; // part of the regression mean explained by the latent process
+  arma::mat wU; // nonreference locations
+  
+  arma::mat XB; // by outcome
+  
+  arma::field<arma::mat> XtX;
+  arma::mat Vi; 
+  arma::mat Vim;
+  arma::vec bprim;
   
   arma::mat w;
   arma::mat Bcoeff; // sampled
