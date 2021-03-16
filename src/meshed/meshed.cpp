@@ -971,7 +971,7 @@ void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data){
     //update_block_covpars(u, data);
     update_block_wlogdens(u, data);
     
-    if(forced_grid & arma::all(familyid == 0)){
+    if(forced_grid){
       if(arma::all(familyid==0)){
         calc_DplusSi(u, data, Lambda, tausq_inv);
       }

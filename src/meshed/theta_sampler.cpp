@@ -26,6 +26,7 @@ void Meshed::metrop_theta(){
   
   alter_data.theta = theta_proposal;
   
+ 
   bool acceptable = get_loglik_comps_w( alter_data );
   
   bool accepted = false;
@@ -37,6 +38,10 @@ void Meshed::metrop_theta(){
   
   if(acceptable){
     new_loglik = alter_data.loglik_w;
+    
+    double before_loglik = param_data.loglik_w;
+    
+    bool from = get_loglik_comps_w( param_data );
     current_loglik = param_data.loglik_w;
     
     prior_logratio = calc_prior_logratio(

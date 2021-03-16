@@ -101,19 +101,19 @@ inline void block_invcholesky_(arma::mat& X, const arma::uvec& upleft_cumblocksi
     arma::mat LAinv = arma::inv(arma::trimatl(arma::chol(
       arma::symmatu(X.submat(upleft_cumblocksizes(i), upleft_cumblocksizes(i), 
                              upleft_cumblocksizes(i+1) - 1, upleft_cumblocksizes(i+1) - 1)), "lower")));
-    
+  
     X.submat(upleft_cumblocksizes(i), upleft_cumblocksizes(i), 
              upleft_cumblocksizes(i+1) - 1, upleft_cumblocksizes(i+1) - 1) = LAinv;
-    BLAinvt.cols(upleft_cumblocksizes(i), upleft_cumblocksizes(i+1) - 1) = 
-      B.cols(upleft_cumblocksizes(i), upleft_cumblocksizes(i+1) - 1) * LAinv.t();
-    BLAinvtLAinv.cols(upleft_cumblocksizes(i), upleft_cumblocksizes(i+1) - 1) =
-      BLAinvt.cols(upleft_cumblocksizes(i), upleft_cumblocksizes(i+1) - 1) * LAinv;
+    arma::mat BLAinvt_temp = B.cols(upleft_cumblocksizes(i), upleft_cumblocksizes(i+1) - 1) * LAinv.t();
+    BLAinvt.cols(upleft_cumblocksizes(i), upleft_cumblocksizes(i+1) - 1) = BLAinvt_temp;
+    BLAinvtLAinv.cols(upleft_cumblocksizes(i), upleft_cumblocksizes(i+1) - 1) = BLAinvt_temp * LAinv;
   }
   
   arma::mat invcholSchur = arma::inv(arma::trimatl(arma::chol(
     arma::symmatu(D - BLAinvt * BLAinvt.t()), "lower")));
   X.submat(n_upleft, 0, X.n_rows-1, n_upleft-1) = - invcholSchur * BLAinvtLAinv;
   X.submat(n_upleft, n_upleft, X.n_rows-1, X.n_rows-1) = invcholSchur;
+
 }
 
 inline void add_smu_parents_(arma::mat& result, 

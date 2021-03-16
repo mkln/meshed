@@ -193,8 +193,8 @@ arma::mat gneiting2002(const arma::mat& coords,
       for(int j=i; j<iy.n_rows; j++){
         double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
         double u = abs(coords(iy(j), 2) - ti);
-        double umod = sigmasq / (a * u + 1.0);
-        res(i, j) = umod * exp(-c * h * pow(umod, beta/2.0) );
+        double umod = 1.0 / (a * u + 1.0);
+        res(i, j) = sigmasq * umod * exp(-c * h * pow(umod, beta/2.0) );
       }
     }
     res = arma::symmatu(res);
@@ -205,8 +205,8 @@ arma::mat gneiting2002(const arma::mat& coords,
       for(int j=0; j<iy.n_rows; j++){
         double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
         double u = abs(coords(iy(j), 2) - ti);
-        double umod = sigmasq / (a * u + 1.0);
-        res(i, j) = umod * exp(-c * h * pow(umod, beta/2.0) );
+        double umod = 1.0 / (a * u + 1.0);
+        res(i, j) = sigmasq * umod * exp(-c * h * pow(umod, beta/2.0) );
       }
     }
   }
@@ -226,8 +226,8 @@ void gneiting2002_inplace(arma::mat& res, const arma::mat& coords,
       for(int j=i; j<iy.n_rows; j++){
         double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
         double u = abs(coords(iy(j), 2) - ti);
-        double umod = sigmasq / (a * u + 1.0);
-        res(i, j) = umod * exp(-c * h * pow(umod, beta/2.0) );
+        double umod = 1.0 / (a * u + 1.0);
+        res(i, j) = sigmasq * umod * exp(-c * h * pow(umod, beta/2.0) );
       }
     }
     res = arma::symmatu(res);
@@ -238,8 +238,8 @@ void gneiting2002_inplace(arma::mat& res, const arma::mat& coords,
       for(int j=0; j<iy.n_rows; j++){
         double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
         double u = abs(coords(iy(j), 2) - ti);
-        double umod = sigmasq / (a * u + 1.0);
-        res(i, j) = umod * exp(-c * h * pow(umod, beta/2.0) );
+        double umod = 1.0 / (a * u + 1.0);
+        res(i, j) = sigmasq * umod * exp(-c * h * pow(umod, beta/2.0) );
       }
     }
   }

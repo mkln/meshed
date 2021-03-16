@@ -115,7 +115,6 @@ arma::vec Meshed::sample_Lambda_row(int j){
   // build W
   
   arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
-  
   // filter: choose value of spatial processes at locations of Yj that are available
   arma::mat WWj = wU.submat(ix_by_q_a(j), subcols); // acts as X //*********
   //wmean.submat(ix_by_q_a(j), subcols); // acts as X
@@ -135,9 +134,8 @@ arma::vec Meshed::sample_Lambda_row(int j){
   arma::mat Simean_L = tausq_inv(j) * WWj.t() * 
     (y.submat(ix_by_q_a(j), oneuv*j) - XB.submat(ix_by_q_a(j), oneuv*j));
   
-  
   arma::mat Lambdarow_Sig = Sigma_chol_L.t() * Sigma_chol_L;
-  
+
   arma::vec Lprior_mean = arma::zeros(subcols.n_elem);
   //if(j < 0){
   //  Lprior_mean(j) = arma::stddev(arma::vectorise( y.submat(ix_by_q_a(j), oneuv*j) ));
@@ -147,6 +145,7 @@ arma::vec Meshed::sample_Lambda_row(int j){
   arma::mat Lambdarow_mu = Lprior_inv * Lprior_mean + 
     Lambdarow_Sig * Simean_L;
   
+  /*
   // truncation limits: start with (-inf, inf) then replace lower lim at appropriate loc
   arma::vec upper_lim = arma::zeros(subcols.n_elem);
   upper_lim.fill(arma::datum::inf);
@@ -157,13 +156,8 @@ arma::vec Meshed::sample_Lambda_row(int j){
     lower_lim(j) = 0;
   }
   
-  // Rcpp::Rcout << Lambdarow_mu << endl
-  //             << lower_lim << endl
-  //             << upper_lim << endl
-  //             << Lambdarow_Sig << endl;
-  // 
-  
   //arma::vec sampled = mvtruncnormal(Lambdarow_mu, lower_lim, upper_lim, Lambdarow_Sig, 1);
+   */
   arma::vec sampled = Lambdarow_mu + Sigma_chol_L.t() * arma::randn(subcols.n_elem);
   return sampled;
 }
@@ -176,8 +170,9 @@ void Meshed::sample_nc_Lambda_std(){
   
   // new with botev's 2017 method to sample from truncated normal
   for(int j=0; j<q; j++){
-    arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
     arma::vec sampled = sample_Lambda_row(j);
+    
+    arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
     Lambda.submat(oneuv*j, subcols) = sampled.t();
   } 
   

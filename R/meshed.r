@@ -507,9 +507,13 @@ meshed <- function(y, x, coords, k=NULL,
     }
     
     if(is.null(starting$lambda_mask)){
-      lambda_mask <- matrix(0, nrow=q, ncol=k)
-      lambda_mask[lower.tri(lambda_mask)] <- 1
-      diag(lambda_mask) <- 1 #***
+      if(k<=q){
+        lambda_mask <- matrix(0, nrow=q, ncol=k)
+        lambda_mask[lower.tri(lambda_mask)] <- 1
+        diag(lambda_mask) <- 1 #*** 
+      } else {
+        stop("starting$lambda_mask needs to be specified")
+      }
     } else {
       lambda_mask <- starting$lambda_mask
     }
