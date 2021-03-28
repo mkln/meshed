@@ -52,6 +52,8 @@ meshed <- function(y, x, coords, k=NULL,
     saving <- settings$saving %>% set_default(F)
     use_ps <- settings$ps %>% set_default(T)
     
+    coords %<>% as.matrix()
+    
     dd             <- ncol(coords)
     p              <- ncol(x)
     
