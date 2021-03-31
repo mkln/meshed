@@ -1,4 +1,4 @@
-Package: spmeshed
+Package: meshed
 Type: Package
 Title: Meshed spatial process methods for Bayesian multivariate regression
 Version: 0.20.12

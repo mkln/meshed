@@ -2,19 +2,19 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 Cov_matern <- function(x, y, sigmasq, phi, nu, tausq, same, nThreads = 1L) {
-    .Call(`_spmeshed_Cov_matern`, x, y, sigmasq, phi, nu, tausq, same, nThreads)
+    .Call(`_meshed_Cov_matern`, x, y, sigmasq, phi, nu, tausq, same, nThreads)
 }
 
 Cov_matern2 <- function(x, y, phi, same, twonu) {
-    .Call(`_spmeshed_Cov_matern2`, x, y, phi, same, twonu)
+    .Call(`_meshed_Cov_matern2`, x, y, phi, same, twonu)
 }
 
 Cov_matern_h <- function(h, sigmasq, phi, nu, tausq) {
-    .Call(`_spmeshed_Cov_matern_h`, h, sigmasq, phi, nu, tausq)
+    .Call(`_meshed_Cov_matern_h`, h, sigmasq, phi, nu, tausq)
 }
 
 Cov_powexp_h <- function(h, sigmasq, phi, nu, tausq) {
-    .Call(`_spmeshed_Cov_powexp_h`, h, sigmasq, phi, nu, tausq)
+    .Call(`_meshed_Cov_powexp_h`, h, sigmasq, phi, nu, tausq)
 }
 
 gneiting2002_h <- function(h, u, a, c, beta) {
@@ -22,54 +22,54 @@ gneiting2002_h <- function(h, u, a, c, beta) {
 }
 
 blanket <- function(parents, children, names, block_ct_obs) {
-    .Call(`_spmeshed_blanket`, parents, children, names, block_ct_obs)
+    .Call(`_meshed_blanket`, parents, children, names, block_ct_obs)
 }
 
 coloring <- function(blanket, block_names, block_ct_obs) {
-    .Call(`_spmeshed_coloring`, blanket, block_names, block_ct_obs)
+    .Call(`_meshed_coloring`, blanket, block_names, block_ct_obs)
 }
 
 kthresholdscp <- function(x, k) {
-    .Call(`_spmeshed_kthresholdscp`, x, k)
+    .Call(`_meshed_kthresholdscp`, x, k)
 }
 
 part_axis_parallel <- function(coords, Mv, n_threads, verbose = FALSE) {
-    .Call(`_spmeshed_part_axis_parallel`, coords, Mv, n_threads, verbose)
+    .Call(`_meshed_part_axis_parallel`, coords, Mv, n_threads, verbose)
 }
 
 part_axis_parallel_fixed <- function(coords, thresholds, n_threads) {
-    .Call(`_spmeshed_part_axis_parallel_fixed`, coords, thresholds, n_threads)
+    .Call(`_meshed_part_axis_parallel_fixed`, coords, thresholds, n_threads)
 }
 
 mesh_graph_cpp <- function(layers_descr, Mv, verbose = TRUE, both_spatial_axes = TRUE) {
-    .Call(`_spmeshed_mesh_graph_cpp`, layers_descr, Mv, verbose, both_spatial_axes)
+    .Call(`_meshed_mesh_graph_cpp`, layers_descr, Mv, verbose, both_spatial_axes)
 }
 
 knn_naive <- function(x, search_here, weights) {
-    .Call(`_spmeshed_knn_naive`, x, search_here, weights)
+    .Call(`_meshed_knn_naive`, x, search_here, weights)
 }
 
 mesh_graph_hyper <- function(bucbl, bavail, na_which, centroids, avcentroids, avblocks, k = 1L) {
-    .Call(`_spmeshed_mesh_graph_hyper`, bucbl, bavail, na_which, centroids, avcentroids, avblocks, k)
+    .Call(`_meshed_mesh_graph_hyper`, bucbl, bavail, na_which, centroids, avcentroids, avblocks, k)
 }
 
 meshed_mcmc <- function(y, family, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, mcmc_startfrom = 0L, num_threads = 1L, adapting = FALSE, use_cache = TRUE, forced_grid = TRUE, use_ps = TRUE, verbose = FALSE, debug = FALSE, print_every = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_lambda = TRUE, sample_theta = TRUE, sample_w = TRUE) {
-    .Call(`_spmeshed_meshed_mcmc`, y, family, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, adapting, use_cache, forced_grid, use_ps, verbose, debug, print_every, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w)
+    .Call(`_meshed_meshed_mcmc`, y, family, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, adapting, use_cache, forced_grid, use_ps, verbose, debug, print_every, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w)
 }
 
 rmeshedgp_internal <- function(coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, matern_twonu, theta, num_threads = 1L, use_cache = TRUE, verbose = FALSE, debug = FALSE) {
-    .Call(`_spmeshed_rmeshedgp_internal`, coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, matern_twonu, theta, num_threads, use_cache, verbose, debug)
+    .Call(`_meshed_rmeshedgp_internal`, coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, matern_twonu, theta, num_threads, use_cache, verbose, debug)
 }
 
 cube_tcrossprod <- function(x) {
-    .Call(`_spmeshed_cube_tcrossprod`, x)
+    .Call(`_meshed_cube_tcrossprod`, x)
 }
 
 summary_list_mean <- function(x, num_threads = 1L) {
-    .Call(`_spmeshed_summary_list_mean`, x, num_threads)
+    .Call(`_meshed_summary_list_mean`, x, num_threads)
 }
 
 summary_list_q <- function(x, q, num_threads = 1L) {
-    .Call(`_spmeshed_summary_list_q`, x, q, num_threads)
+    .Call(`_meshed_summary_list_q`, x, q, num_threads)
 }
 

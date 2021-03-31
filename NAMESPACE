@@ -1,8 +1,8 @@
-useDynLib(spmeshed, .registration=TRUE)
+useDynLib(meshed, .registration=TRUE)
 importFrom(Rcpp, evalCpp)
 importFrom(rlang, .data)
 importFrom(magrittr, "%>%")
 importFrom(magrittr, "%<>%")
 importFrom(magrittr, "%$%")
 
-export("meshed", "pimeshed", "rmeshedgp", "summary_list_mean", "summary_list_q")
+export("spmeshed", "pimeshed", "rmeshedgp", "summary_list_mean", "summary_list_q")

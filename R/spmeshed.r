@@ -1,4 +1,4 @@
-meshed <- function(y, x, coords, k=NULL,
+spmeshed <- function(y, x, coords, k=NULL,
                      axis_partition = NULL, 
                      block_size = 30,
                      grid_size=NULL,
