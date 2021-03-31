@@ -8,7 +8,7 @@ using namespace Rcpp;
 
 // Cov_matern
 arma::mat Cov_matern(const arma::mat& x, const arma::mat& y, const double& sigmasq, const double& phi, const double& nu, const double& tausq, bool same, int nThreads);
-RcppExport SEXP _spmeshed_Cov_matern(SEXP xSEXP, SEXP ySEXP, SEXP sigmasqSEXP, SEXP phiSEXP, SEXP nuSEXP, SEXP tausqSEXP, SEXP sameSEXP, SEXP nThreadsSEXP) {
+RcppExport SEXP _meshed_Cov_matern(SEXP xSEXP, SEXP ySEXP, SEXP sigmasqSEXP, SEXP phiSEXP, SEXP nuSEXP, SEXP tausqSEXP, SEXP sameSEXP, SEXP nThreadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -26,7 +26,7 @@ END_RCPP
 }
 // Cov_matern2
 arma::mat Cov_matern2(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int twonu);
-RcppExport SEXP _spmeshed_Cov_matern2(SEXP xSEXP, SEXP ySEXP, SEXP phiSEXP, SEXP sameSEXP, SEXP twonuSEXP) {
+RcppExport SEXP _meshed_Cov_matern2(SEXP xSEXP, SEXP ySEXP, SEXP phiSEXP, SEXP sameSEXP, SEXP twonuSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -41,7 +41,7 @@ END_RCPP
 }
 // Cov_matern_h
 double Cov_matern_h(const double& h, const double& sigmasq, const double& phi, const double& nu, const double& tausq);
-RcppExport SEXP _spmeshed_Cov_matern_h(SEXP hSEXP, SEXP sigmasqSEXP, SEXP phiSEXP, SEXP nuSEXP, SEXP tausqSEXP) {
+RcppExport SEXP _meshed_Cov_matern_h(SEXP hSEXP, SEXP sigmasqSEXP, SEXP phiSEXP, SEXP nuSEXP, SEXP tausqSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -56,7 +56,7 @@ END_RCPP
 }
 // Cov_powexp_h
 double Cov_powexp_h(const double& h, const double& sigmasq, const double& phi, const double& nu, const double& tausq);
-RcppExport SEXP _spmeshed_Cov_powexp_h(SEXP hSEXP, SEXP sigmasqSEXP, SEXP phiSEXP, SEXP nuSEXP, SEXP tausqSEXP) {
+RcppExport SEXP _meshed_Cov_powexp_h(SEXP hSEXP, SEXP sigmasqSEXP, SEXP phiSEXP, SEXP nuSEXP, SEXP tausqSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -71,7 +71,7 @@ END_RCPP
 }
 // blanket
 arma::field<arma::uvec> blanket(const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::uvec& names, const arma::uvec& block_ct_obs);
-RcppExport SEXP _spmeshed_blanket(SEXP parentsSEXP, SEXP childrenSEXP, SEXP namesSEXP, SEXP block_ct_obsSEXP) {
+RcppExport SEXP _meshed_blanket(SEXP parentsSEXP, SEXP childrenSEXP, SEXP namesSEXP, SEXP block_ct_obsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -85,7 +85,7 @@ END_RCPP
 }
 // coloring
 arma::ivec coloring(const arma::field<arma::uvec>& blanket, const arma::uvec& block_names, const arma::uvec& block_ct_obs);
-RcppExport SEXP _spmeshed_coloring(SEXP blanketSEXP, SEXP block_namesSEXP, SEXP block_ct_obsSEXP) {
+RcppExport SEXP _meshed_coloring(SEXP blanketSEXP, SEXP block_namesSEXP, SEXP block_ct_obsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -98,7 +98,7 @@ END_RCPP
 }
 // kthresholdscp
 arma::vec kthresholdscp(arma::vec x, int k);
-RcppExport SEXP _spmeshed_kthresholdscp(SEXP xSEXP, SEXP kSEXP) {
+RcppExport SEXP _meshed_kthresholdscp(SEXP xSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -110,7 +110,7 @@ END_RCPP
 }
 // part_axis_parallel
 arma::mat part_axis_parallel(const arma::mat& coords, const arma::vec& Mv, int n_threads, bool verbose);
-RcppExport SEXP _spmeshed_part_axis_parallel(SEXP coordsSEXP, SEXP MvSEXP, SEXP n_threadsSEXP, SEXP verboseSEXP) {
+RcppExport SEXP _meshed_part_axis_parallel(SEXP coordsSEXP, SEXP MvSEXP, SEXP n_threadsSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -124,7 +124,7 @@ END_RCPP
 }
 // part_axis_parallel_fixed
 arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<arma::vec>& thresholds, int n_threads);
-RcppExport SEXP _spmeshed_part_axis_parallel_fixed(SEXP coordsSEXP, SEXP thresholdsSEXP, SEXP n_threadsSEXP) {
+RcppExport SEXP _meshed_part_axis_parallel_fixed(SEXP coordsSEXP, SEXP thresholdsSEXP, SEXP n_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -137,7 +137,7 @@ END_RCPP
 }
 // mesh_graph_cpp
 Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr, const arma::uvec& Mv, bool verbose, bool both_spatial_axes);
-RcppExport SEXP _spmeshed_mesh_graph_cpp(SEXP layers_descrSEXP, SEXP MvSEXP, SEXP verboseSEXP, SEXP both_spatial_axesSEXP) {
+RcppExport SEXP _meshed_mesh_graph_cpp(SEXP layers_descrSEXP, SEXP MvSEXP, SEXP verboseSEXP, SEXP both_spatial_axesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -151,7 +151,7 @@ END_RCPP
 }
 // knn_naive
 arma::umat knn_naive(const arma::mat& x, const arma::mat& search_here, const arma::vec& weights);
-RcppExport SEXP _spmeshed_knn_naive(SEXP xSEXP, SEXP search_hereSEXP, SEXP weightsSEXP) {
+RcppExport SEXP _meshed_knn_naive(SEXP xSEXP, SEXP search_hereSEXP, SEXP weightsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -164,7 +164,7 @@ END_RCPP
 }
 // mesh_graph_hyper
 Rcpp::List mesh_graph_hyper(const arma::umat& bucbl, const arma::umat& bavail, const arma::vec& na_which, const arma::mat& centroids, const arma::mat& avcentroids, const arma::uvec& avblocks, int k);
-RcppExport SEXP _spmeshed_mesh_graph_hyper(SEXP bucblSEXP, SEXP bavailSEXP, SEXP na_whichSEXP, SEXP centroidsSEXP, SEXP avcentroidsSEXP, SEXP avblocksSEXP, SEXP kSEXP) {
+RcppExport SEXP _meshed_mesh_graph_hyper(SEXP bucblSEXP, SEXP bavailSEXP, SEXP na_whichSEXP, SEXP centroidsSEXP, SEXP avcentroidsSEXP, SEXP avblocksSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -181,7 +181,7 @@ END_RCPP
 }
 // meshed_mcmc
 Rcpp::List meshed_mcmc(const arma::mat& y, const arma::uvec& family, const arma::mat& X, const arma::mat& coords, int k, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& indexing_obs, const arma::mat& set_unif_bounds_in, const arma::mat& beta_Vi, const arma::vec& sigmasq_ab, const arma::vec& tausq_ab, int matern_twonu, const arma::mat& start_w, const arma::mat& lambda, const arma::umat& lambda_mask, const arma::mat& theta, const arma::mat& beta, const arma::vec& tausq, const arma::mat& mcmcsd, int mcmc_keep, int mcmc_burn, int mcmc_thin, int mcmc_startfrom, int num_threads, bool adapting, bool use_cache, bool forced_grid, bool use_ps, bool verbose, bool debug, int print_every, bool sample_beta, bool sample_tausq, bool sample_lambda, bool sample_theta, bool sample_w);
-RcppExport SEXP _spmeshed_meshed_mcmc(SEXP ySEXP, SEXP familySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP kSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP sigmasq_abSEXP, SEXP tausq_abSEXP, SEXP matern_twonuSEXP, SEXP start_wSEXP, SEXP lambdaSEXP, SEXP lambda_maskSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP mcmcsdSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP mcmc_startfromSEXP, SEXP num_threadsSEXP, SEXP adaptingSEXP, SEXP use_cacheSEXP, SEXP forced_gridSEXP, SEXP use_psSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP print_everySEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_lambdaSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
+RcppExport SEXP _meshed_meshed_mcmc(SEXP ySEXP, SEXP familySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP kSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP sigmasq_abSEXP, SEXP tausq_abSEXP, SEXP matern_twonuSEXP, SEXP start_wSEXP, SEXP lambdaSEXP, SEXP lambda_maskSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP mcmcsdSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP mcmc_startfromSEXP, SEXP num_threadsSEXP, SEXP adaptingSEXP, SEXP use_cacheSEXP, SEXP forced_gridSEXP, SEXP use_psSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP print_everySEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_lambdaSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -231,7 +231,7 @@ END_RCPP
 }
 // rmeshedgp_internal
 arma::mat rmeshedgp_internal(const arma::mat& coords, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& indexing_obs, int matern_twonu, const arma::mat& theta, int num_threads, bool use_cache, bool verbose, bool debug);
-RcppExport SEXP _spmeshed_rmeshedgp_internal(SEXP coordsSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP matern_twonuSEXP, SEXP thetaSEXP, SEXP num_threadsSEXP, SEXP use_cacheSEXP, SEXP verboseSEXP, SEXP debugSEXP) {
+RcppExport SEXP _meshed_rmeshedgp_internal(SEXP coordsSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP matern_twonuSEXP, SEXP thetaSEXP, SEXP num_threadsSEXP, SEXP use_cacheSEXP, SEXP verboseSEXP, SEXP debugSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -254,7 +254,7 @@ END_RCPP
 }
 // cube_tcrossprod
 arma::cube cube_tcrossprod(const arma::cube& x);
-RcppExport SEXP _spmeshed_cube_tcrossprod(SEXP xSEXP) {
+RcppExport SEXP _meshed_cube_tcrossprod(SEXP xSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -265,7 +265,7 @@ END_RCPP
 }
 // summary_list_mean
 arma::mat summary_list_mean(const arma::field<arma::mat>& x, int num_threads);
-RcppExport SEXP _spmeshed_summary_list_mean(SEXP xSEXP, SEXP num_threadsSEXP) {
+RcppExport SEXP _meshed_summary_list_mean(SEXP xSEXP, SEXP num_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -277,7 +277,7 @@ END_RCPP
 }
 // summary_list_q
 arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int num_threads);
-RcppExport SEXP _spmeshed_summary_list_q(SEXP xSEXP, SEXP qSEXP, SEXP num_threadsSEXP) {
+RcppExport SEXP _meshed_summary_list_q(SEXP xSEXP, SEXP qSEXP, SEXP num_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -290,27 +290,27 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_spmeshed_Cov_matern", (DL_FUNC) &_spmeshed_Cov_matern, 8},
-    {"_spmeshed_Cov_matern2", (DL_FUNC) &_spmeshed_Cov_matern2, 5},
-    {"_spmeshed_Cov_matern_h", (DL_FUNC) &_spmeshed_Cov_matern_h, 5},
-    {"_spmeshed_Cov_powexp_h", (DL_FUNC) &_spmeshed_Cov_powexp_h, 5},
-    {"_spmeshed_blanket", (DL_FUNC) &_spmeshed_blanket, 4},
-    {"_spmeshed_coloring", (DL_FUNC) &_spmeshed_coloring, 3},
-    {"_spmeshed_kthresholdscp", (DL_FUNC) &_spmeshed_kthresholdscp, 2},
-    {"_spmeshed_part_axis_parallel", (DL_FUNC) &_spmeshed_part_axis_parallel, 4},
-    {"_spmeshed_part_axis_parallel_fixed", (DL_FUNC) &_spmeshed_part_axis_parallel_fixed, 3},
-    {"_spmeshed_mesh_graph_cpp", (DL_FUNC) &_spmeshed_mesh_graph_cpp, 4},
-    {"_spmeshed_knn_naive", (DL_FUNC) &_spmeshed_knn_naive, 3},
-    {"_spmeshed_mesh_graph_hyper", (DL_FUNC) &_spmeshed_mesh_graph_hyper, 7},
-    {"_spmeshed_meshed_mcmc", (DL_FUNC) &_spmeshed_meshed_mcmc, 40},
-    {"_spmeshed_rmeshedgp_internal", (DL_FUNC) &_spmeshed_rmeshedgp_internal, 13},
-    {"_spmeshed_cube_tcrossprod", (DL_FUNC) &_spmeshed_cube_tcrossprod, 1},
-    {"_spmeshed_summary_list_mean", (DL_FUNC) &_spmeshed_summary_list_mean, 2},
-    {"_spmeshed_summary_list_q", (DL_FUNC) &_spmeshed_summary_list_q, 3},
+    {"_meshed_Cov_matern", (DL_FUNC) &_meshed_Cov_matern, 8},
+    {"_meshed_Cov_matern2", (DL_FUNC) &_meshed_Cov_matern2, 5},
+    {"_meshed_Cov_matern_h", (DL_FUNC) &_meshed_Cov_matern_h, 5},
+    {"_meshed_Cov_powexp_h", (DL_FUNC) &_meshed_Cov_powexp_h, 5},
+    {"_meshed_blanket", (DL_FUNC) &_meshed_blanket, 4},
+    {"_meshed_coloring", (DL_FUNC) &_meshed_coloring, 3},
+    {"_meshed_kthresholdscp", (DL_FUNC) &_meshed_kthresholdscp, 2},
+    {"_meshed_part_axis_parallel", (DL_FUNC) &_meshed_part_axis_parallel, 4},
+    {"_meshed_part_axis_parallel_fixed", (DL_FUNC) &_meshed_part_axis_parallel_fixed, 3},
+    {"_meshed_mesh_graph_cpp", (DL_FUNC) &_meshed_mesh_graph_cpp, 4},
+    {"_meshed_knn_naive", (DL_FUNC) &_meshed_knn_naive, 3},
+    {"_meshed_mesh_graph_hyper", (DL_FUNC) &_meshed_mesh_graph_hyper, 7},
+    {"_meshed_meshed_mcmc", (DL_FUNC) &_meshed_meshed_mcmc, 40},
+    {"_meshed_rmeshedgp_internal", (DL_FUNC) &_meshed_rmeshedgp_internal, 13},
+    {"_meshed_cube_tcrossprod", (DL_FUNC) &_meshed_cube_tcrossprod, 1},
+    {"_meshed_summary_list_mean", (DL_FUNC) &_meshed_summary_list_mean, 2},
+    {"_meshed_summary_list_q", (DL_FUNC) &_meshed_summary_list_q, 3},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_spmeshed(DllInfo *dll) {
+RcppExport void R_init_meshed(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }
