@@ -69,6 +69,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// gneiting2002_h
+double gneiting2002_h(const double& h, const double& u, const double& a, const double& c, const double& beta);
+RcppExport SEXP _spmeshed_gneiting2002_h(SEXP hSEXP, SEXP uSEXP, SEXP aSEXP, SEXP cSEXP, SEXP betaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const double& >::type h(hSEXP);
+    Rcpp::traits::input_parameter< const double& >::type u(uSEXP);
+    Rcpp::traits::input_parameter< const double& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< const double& >::type c(cSEXP);
+    Rcpp::traits::input_parameter< const double& >::type beta(betaSEXP);
+    rcpp_result_gen = Rcpp::wrap(gneiting2002_h(h, u, a, c, beta));
+    return rcpp_result_gen;
+END_RCPP
+}
 // blanket
 arma::field<arma::uvec> blanket(const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::uvec& names, const arma::uvec& block_ct_obs);
 RcppExport SEXP _spmeshed_blanket(SEXP parentsSEXP, SEXP childrenSEXP, SEXP namesSEXP, SEXP block_ct_obsSEXP) {
@@ -294,6 +309,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_spmeshed_Cov_matern2", (DL_FUNC) &_spmeshed_Cov_matern2, 5},
     {"_spmeshed_Cov_matern_h", (DL_FUNC) &_spmeshed_Cov_matern_h, 5},
     {"_spmeshed_Cov_powexp_h", (DL_FUNC) &_spmeshed_Cov_powexp_h, 5},
+    {"_spmeshed_gneiting2002_h", (DL_FUNC) &_spmeshed_gneiting2002_h, 5},
     {"_spmeshed_blanket", (DL_FUNC) &_spmeshed_blanket, 4},
     {"_spmeshed_coloring", (DL_FUNC) &_spmeshed_coloring, 3},
     {"_spmeshed_kthresholdscp", (DL_FUNC) &_spmeshed_kthresholdscp, 2},

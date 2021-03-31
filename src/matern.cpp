@@ -154,3 +154,12 @@ double Cov_powexp_h(const double& h,
     return sigmasq + tausq;
   }
 }
+
+
+// gneiting 2002 eq. 15 with a,c,beta left unknown
+//[[Rcpp::export]]
+double gneiting2002_h(const double& h, const double& u,
+                         const double& a, const double& c, const double& beta){
+  double umod = 1.0 / (a * u + 1.0);
+  return umod * exp(-c * h * pow(umod, beta/2.0) );
+}
