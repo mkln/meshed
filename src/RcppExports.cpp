@@ -71,7 +71,7 @@ END_RCPP
 }
 // gneiting2002_h
 double gneiting2002_h(const double& h, const double& u, const double& a, const double& c, const double& beta);
-RcppExport SEXP _spmeshed_gneiting2002_h(SEXP hSEXP, SEXP uSEXP, SEXP aSEXP, SEXP cSEXP, SEXP betaSEXP) {
+RcppExport SEXP _meshed_gneiting2002_h(SEXP hSEXP, SEXP uSEXP, SEXP aSEXP, SEXP cSEXP, SEXP betaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -305,30 +305,11 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-<<<<<<< HEAD
-    {"_spmeshed_Cov_matern", (DL_FUNC) &_spmeshed_Cov_matern, 8},
-    {"_spmeshed_Cov_matern2", (DL_FUNC) &_spmeshed_Cov_matern2, 5},
-    {"_spmeshed_Cov_matern_h", (DL_FUNC) &_spmeshed_Cov_matern_h, 5},
-    {"_spmeshed_Cov_powexp_h", (DL_FUNC) &_spmeshed_Cov_powexp_h, 5},
-    {"_spmeshed_gneiting2002_h", (DL_FUNC) &_spmeshed_gneiting2002_h, 5},
-    {"_spmeshed_blanket", (DL_FUNC) &_spmeshed_blanket, 4},
-    {"_spmeshed_coloring", (DL_FUNC) &_spmeshed_coloring, 3},
-    {"_spmeshed_kthresholdscp", (DL_FUNC) &_spmeshed_kthresholdscp, 2},
-    {"_spmeshed_part_axis_parallel", (DL_FUNC) &_spmeshed_part_axis_parallel, 4},
-    {"_spmeshed_part_axis_parallel_fixed", (DL_FUNC) &_spmeshed_part_axis_parallel_fixed, 3},
-    {"_spmeshed_mesh_graph_cpp", (DL_FUNC) &_spmeshed_mesh_graph_cpp, 4},
-    {"_spmeshed_knn_naive", (DL_FUNC) &_spmeshed_knn_naive, 3},
-    {"_spmeshed_mesh_graph_hyper", (DL_FUNC) &_spmeshed_mesh_graph_hyper, 7},
-    {"_spmeshed_meshed_mcmc", (DL_FUNC) &_spmeshed_meshed_mcmc, 40},
-    {"_spmeshed_rmeshedgp_internal", (DL_FUNC) &_spmeshed_rmeshedgp_internal, 13},
-    {"_spmeshed_cube_tcrossprod", (DL_FUNC) &_spmeshed_cube_tcrossprod, 1},
-    {"_spmeshed_summary_list_mean", (DL_FUNC) &_spmeshed_summary_list_mean, 2},
-    {"_spmeshed_summary_list_q", (DL_FUNC) &_spmeshed_summary_list_q, 3},
-=======
     {"_meshed_Cov_matern", (DL_FUNC) &_meshed_Cov_matern, 8},
     {"_meshed_Cov_matern2", (DL_FUNC) &_meshed_Cov_matern2, 5},
     {"_meshed_Cov_matern_h", (DL_FUNC) &_meshed_Cov_matern_h, 5},
     {"_meshed_Cov_powexp_h", (DL_FUNC) &_meshed_Cov_powexp_h, 5},
+    {"_meshed_gneiting2002_h", (DL_FUNC) &_meshed_gneiting2002_h, 5},
     {"_meshed_blanket", (DL_FUNC) &_meshed_blanket, 4},
     {"_meshed_coloring", (DL_FUNC) &_meshed_coloring, 3},
     {"_meshed_kthresholdscp", (DL_FUNC) &_meshed_kthresholdscp, 2},
@@ -342,7 +323,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_cube_tcrossprod", (DL_FUNC) &_meshed_cube_tcrossprod, 1},
     {"_meshed_summary_list_mean", (DL_FUNC) &_meshed_summary_list_mean, 2},
     {"_meshed_summary_list_q", (DL_FUNC) &_meshed_summary_list_q, 3},
->>>>>>> 48672fdc486b0c72eb5af28449a3d517a6cf0df6
     {NULL, NULL, 0}
 };
 
