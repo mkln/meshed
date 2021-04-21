@@ -17,6 +17,10 @@ Cov_powexp_h <- function(h, sigmasq, phi, nu, tausq) {
     .Call(`_meshed_Cov_powexp_h`, h, sigmasq, phi, nu, tausq)
 }
 
+gneiting2002_h <- function(h, u, a, c, beta) {
+    .Call(`_spmeshed_gneiting2002_h`, h, u, a, c, beta)
+}
+
 blanket <- function(parents, children, names, block_ct_obs) {
     .Call(`_meshed_blanket`, parents, children, names, block_ct_obs)
 }
