@@ -94,6 +94,7 @@ public:
   arma::mat wU; // nonreference locations
   
   arma::mat XB; // by outcome
+  arma::mat linear_predictor;
   
   arma::field<arma::mat> XtX;
   arma::mat Vi; 
@@ -205,6 +206,7 @@ public:
   
   // W
   bool w_do_hmc;
+  bool w_hmc_nuts;
   bool w_hmc_rm;
   void deal_with_w(MeshDataLMC& data);
   void gibbs_sample_w(MeshDataLMC& data);

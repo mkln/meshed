@@ -180,39 +180,6 @@ void powerexp_inplace(arma::mat& res,
 }
 
 // gneiting 2002 eq. 15 with a,c,beta left unknown
-arma::mat gneiting2002(const arma::mat& coords,
-                          const arma::uvec& ix, const arma::uvec& iy, 
-                          const double& a, const double& c, const double& beta, const double& sigmasq, bool same){
-  // NOT reparametrized here
-  arma::mat res = arma::zeros(ix.n_rows, iy.n_rows);
-  arma::uvec timecol = arma::ones<arma::uvec>(1) * 2;
-  if(same){
-    for(int i=0; i<ix.n_rows; i++){
-      arma::rowvec cri = coords.row(ix(i)).subvec(0, 1); //x.row(i);
-      double ti = coords(ix(i), 2);
-      for(int j=i; j<iy.n_rows; j++){
-        double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
-        double u = abs(coords(iy(j), 2) - ti);
-        double umod = 1.0 / (a * u + 1.0);
-        res(i, j) = sigmasq * umod * exp(-c * h * pow(umod, beta/2.0) );
-      }
-    }
-    res = arma::symmatu(res);
-  } else {
-    for(int i=0; i<ix.n_rows; i++){
-      arma::rowvec cri = coords.row(ix(i)).subvec(0, 1); //x.row(i);
-      double ti = coords(ix(i), 2);
-      for(int j=0; j<iy.n_rows; j++){
-        double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
-        double u = abs(coords(iy(j), 2) - ti);
-        double umod = 1.0 / (a * u + 1.0);
-        res(i, j) = sigmasq * umod * exp(-c * h * pow(umod, beta/2.0) );
-      }
-    }
-  }
-  return res;
-}
-// gneiting 2002 eq. 15 with a,c,beta left unknown
 void gneiting2002_inplace(arma::mat& res, const arma::mat& coords,
                        const arma::uvec& ix, const arma::uvec& iy, 
                        const double& a, const double& c, const double& beta, const double& sigmasq, bool same){

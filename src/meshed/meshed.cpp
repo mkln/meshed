@@ -110,6 +110,8 @@ Meshed::Meshed(
   
   tausq_inv = tausq_inv_in;
   XB = arma::zeros(coords.n_rows, q);
+  linear_predictor = arma::zeros(coords.n_rows, q);
+  
   Bcoeff = beta_in; 
   for(int j=0; j<q; j++){
     XB.col(j) = X * Bcoeff.col(j);
@@ -1009,8 +1011,6 @@ void Meshed::accept_make_change(){
 void Meshed::init_for_mcmc(){
   message("[init_for_mcmc]");
   
-  //Rcpp::Rcout << "Initialize HMC" << endl;
-  // nuts params
   beta_node.reserve(q); // for beta
   lambda_node.reserve(q); // for lambda
   
@@ -1055,6 +1055,7 @@ void Meshed::init_for_mcmc(){
   
   
   w_do_hmc = arma::any(familyid > 0);
+  w_hmc_nuts = false;
   w_hmc_rm = true;
   if(w_do_hmc){
     message("[init nongaussian outcome]");

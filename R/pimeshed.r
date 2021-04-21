@@ -44,7 +44,6 @@ pimeshed <- function(y, x, k=NULL, proj_dim=2,
     saving <- settings$saving %>% set_default(F)
     use_ps <- settings$ps %>% set_default(T)
     
-    coords %<>% as.matrix()
     
     # data management part 0 - reshape/rename
     if(is.null(dim(y))){
@@ -82,7 +81,7 @@ pimeshed <- function(y, x, k=NULL, proj_dim=2,
     }
     
     X_pca <- prcomp(x)
-    coords <- X_pca$x[,1:proj_dim]
+    coords <- X_pca$x[,1:proj_dim] %>% as.matrix()
     colnames(coords) <- paste0("Var", 1:ncol(coords))
     dd <- ncol(coords)
     

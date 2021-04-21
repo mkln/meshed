@@ -335,12 +335,21 @@ void Meshed::hmc_sample_w(MeshDataLMC& data){
         
         
         bool do_gibbs = arma::all(familyid == 0);
-        arma::mat w_temp = sample_one_mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u), 
-                                               rand_norm_mat.rows(indexing(u)),
-                                               rand_unif(u),
-                                               w_hmc_rm, true, 
-                                               do_gibbs, // gibbs
-                                               false); 
+        arma::mat w_temp;
+        
+        if(!w_hmc_nuts){
+          w_temp = sample_one_mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u), 
+                                rand_norm_mat.rows(indexing(u)),
+                                rand_unif(u),
+                                w_hmc_rm, true, 
+                                do_gibbs, // gibbs
+                                false); 
+          
+        } else {
+          w_temp = sample_one_nuts_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u)); 
+        }
+        
+        
         end = std::chrono::steady_clock::now();
         
         hmc_eps(u) = hmc_eps_adapt.at(u).eps;
@@ -444,18 +453,18 @@ void Meshed::predicty(){
   Rcpp::RNGScope scope;
   arma::mat Lw = wU*Lambda.t();
   for(int j=0; j<q; j++){
-    arma::vec linear_predictor = XB.col(j) + Lw.col(j);
+    linear_predictor.col(j) = XB.col(j) + Lw.col(j);
     if(familyid(j) == 0){
       // gaussian
-      yhat.col(j) = linear_predictor + pow(1.0/tausq_inv(j), .5) * mrstdnorm(n, 1);
+      yhat.col(j) = linear_predictor.col(j) + pow(1.0/tausq_inv(j), .5) * mrstdnorm(n, 1);
     } else if(familyid(j) == 1){
       // poisson
-      yhat.col(j) = vrpois(exp(linear_predictor));
+      yhat.col(j) = vrpois(exp(linear_predictor.col(j)));
     } else if(familyid(j) == 2){
       // binomial
-      yhat.col(j) = vrbern(1.0/(1.0 + exp(-linear_predictor)));
+      yhat.col(j) = vrbern(1.0/(1.0 + exp(-linear_predictor.col(j))));
     } else if(familyid(j) == 3){
-      arma::vec mu =  1.0/ (1.0 + exp(-linear_predictor));
+      arma::vec mu =  1.0/ (1.0 + exp(-linear_predictor.col(j)));
       arma::vec aa = tausq_inv(j) * mu;
       arma::vec bb = tausq_inv(j) * (1.0-mu);
       yhat.col(j) = vrbeta(aa, bb);

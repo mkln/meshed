@@ -148,12 +148,12 @@ Rcpp::List meshed_mcmc(
   
   // field avoids limit in size of objects -- ideally this should be a cube
   arma::field<arma::mat> w_mcmc(mcmc_keep);
-  arma::field<arma::mat> lw_mcmc(mcmc_keep);
+  arma::field<arma::mat> lp_mcmc(mcmc_keep);
   arma::field<arma::mat> yhat_mcmc(mcmc_keep);
   
   for(int i=0; i<mcmc_keep; i++){
-    w_mcmc(i) = arma::zeros(msp.w.n_rows, k);
-    lw_mcmc(i) = arma::zeros(msp.y.n_rows, q);
+    w_mcmc(i) = arma::zeros(msp.w.n_rows, q);
+    lp_mcmc(i) = arma::zeros(msp.y.n_rows, q);
     yhat_mcmc(i) = arma::zeros(msp.y.n_rows, q);
   }
   
@@ -164,7 +164,6 @@ Rcpp::List meshed_mcmc(
     acceptable = msp.get_loglik_comps_w( msp.alter_data );
   }
   
-
   double current_loglik = tempr*msp.param_data.loglik_w;
   if(verbose & debug){
     Rcpp::Rcout << "Starting from logdens: " << current_loglik << endl; 
@@ -172,8 +171,6 @@ Rcpp::List meshed_mcmc(
   
   double logaccept;
 
-  //RAMAdapt adaptivemc(param.n_elem, metropolis_sd, .25);
-  
   bool interrupted = false;
   Rcpp::Rcout << "Running MCMC for " << mcmc << " iterations.\n\n";
   
@@ -285,8 +282,8 @@ Rcpp::List meshed_mcmc(
         w_saved++;
         
         if(mx % mcmc_thin == 0){
-          w_mcmc(mcmc_saved) = msp.w;
-          lw_mcmc(mcmc_saved) = msp.LambdaHw;
+          w_mcmc(mcmc_saved) = msp.LambdaHw;
+          lp_mcmc(mcmc_saved) = msp.linear_predictor;
           Rcpp::RNGScope scope;
         
           msp.predicty();
@@ -308,10 +305,15 @@ Rcpp::List meshed_mcmc(
           msp.theta_adapt.print_summary(time_tick, time_mcmc, m, mcmc);
           
           tick_mcmc = std::chrono::steady_clock::now();
-          Rprintf("  p(w|theta) = %.2f    p(y|...) = %.2f  \n  theta = ", msp.param_data.loglik_w, msp.logpost);
-          for(int pp=0; pp<msp.param_data.theta.n_elem; pp++){
-            Rprintf("%.3f ", msp.param_data.theta(pp));
+          
+          Rprintf("  p(w|theta) = %.2f    p(y|...) = %.2f  \n ", msp.param_data.loglik_w, msp.logpost);
+          if(msp.param_data.theta.n_elem < 10){
+            Rprintf("theta = ");
+            for(int pp=0; pp<msp.param_data.theta.n_elem; pp++){
+              Rprintf("%.3f ", msp.param_data.theta(pp));
+            }
           }
+          
           if(arma::any(msp.familyid == 0)){
             Rprintf("\n  tsq = ");
             for(int pp=0; pp<q; pp++){
@@ -362,7 +364,7 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("eps") = eps_mcmc,
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("w_mcmc") = w_mcmc,
-      Rcpp::Named("lw_mcmc") = lw_mcmc,
+      Rcpp::Named("lp_mcmc") = lp_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
@@ -385,7 +387,7 @@ Rcpp::List meshed_mcmc(
     return Rcpp::List::create(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("w_mcmc") = w_mcmc,
-      Rcpp::Named("lw_mcmc") = lw_mcmc,
+      Rcpp::Named("lp_mcmc") = lp_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,

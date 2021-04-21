@@ -264,7 +264,6 @@ inline double NodeDataW::logfullcondit(const arma::mat& x){
           loglike += betareg_logdens(y(i, j), sigmoid, 1.0/tausq(j));
           
         }
-         
       }
     }
   }
