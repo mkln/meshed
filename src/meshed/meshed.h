@@ -15,6 +15,7 @@
 #include "../utils/caching_pairwise_compare.h"
 #include "../utils/mesh_utils.h"
 #include "../utils/mesh_lmc_utils.h"
+#include "../utils/irls.h"
 #include "../xcov/covariance_lmc.h"
 
 class Meshed {
@@ -198,19 +199,19 @@ public:
   
   void init_betareg();
   void init_gaussian();
-  void update_lly(int, MeshDataLMC&, const arma::mat& LamHw);
+  void update_lly(int, MeshDataLMC&, const arma::mat& LamHw, bool map=false);
   void calc_DplusSi(int, MeshDataLMC& data, const arma::mat& Lam, const arma::vec& tsqi);
   void update_block_w_cache(int, MeshDataLMC& data);
-  void sample_nonreference_w(int, MeshDataLMC& data, const arma::mat& );
   void refresh_w_cache(MeshDataLMC& data);
   
   // W
   bool w_do_hmc;
   bool w_hmc_nuts;
   bool w_hmc_rm;
-  void deal_with_w(MeshDataLMC& data);
-  void gibbs_sample_w(MeshDataLMC& data);
-  void hmc_sample_w(MeshDataLMC& data);
+  void deal_with_w(MeshDataLMC& data, bool sample=true);
+  void gaussian_w(MeshDataLMC& data, bool sample);
+  void gaussian_nonreference_w(int, MeshDataLMC& data, const arma::mat&, bool sample);
+  void nongaussian_w(MeshDataLMC& data, bool sample);
   void w_prior_sample(MeshDataLMC& data);
   std::vector<NodeDataW> w_node;
   arma::vec hmc_eps;
@@ -222,8 +223,9 @@ public:
   bool calc_ywlogdens(MeshDataLMC& data);
   
   // Beta
-  void deal_with_beta();
-  void hmc_sample_beta();
+  void deal_with_beta(bool sample=true);
+  void hmc_sample_beta(bool sample=true);
+  void tester_beta(bool sample=true);
   std::vector<NodeDataB> beta_node; // std::vector
   std::vector<AdaptE> beta_hmc_adapt; // std::vector
   arma::uvec beta_hmc_started;
@@ -243,11 +245,11 @@ public:
   void gibbs_sample_tausq_std(bool ref_pardata);
   void gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata);
   
-  void logpost_refresh_after_gibbs(MeshDataLMC& data); //***
+  void logpost_refresh_after_gibbs(MeshDataLMC& data, bool sample=true); //***
   
   // Predictions for W and Y
-  void predict();
-  void predicty();
+  void predict(bool sample=true);
+  void predicty(bool sample=true);
   
   // --------------------------------------------------------------- from SP
   

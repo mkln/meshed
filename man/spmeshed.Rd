@@ -1,11 +1,11 @@
-\name{meshedgp}
-\alias{meshedgp}
+\name{spmeshed}
+\alias{spmeshed}
 \title{Meshed GP multivariate spatial regression}
 \description{Bayesian linear multivariate spatial regression using latent MGPs. This implements the following model:
 \deqn{ y(s) = x(s)^\top \beta + \Lambda w(s) + \epsilon(s), }
-where \eqn{y(s)} is a \eqn{q\times 1} vector of outcomes at spatial location \eqn{s}, \eqn{x(s)} is a \eqn{p\times 1} vector of covariates with static coefficients \eqn{\beta}, \eqn{\Lambda} is a \eqn{q \times k} matrix of factor loadings, \eqn{w(s)} is a \eqn{k \times 1} vector which collects the realization of independent Gaussian processes \eqn{w_j \sim MeshedGP(0, C_j)} for \eqn{j=1, \dots, k} and where \eqn{C_j(s, s')} is a correlation function. \eqn{s} is a coordinate in space (\eqn{d=2}) or space plus time (\eqn{d=3}). The Meshed GP implemented here associates an axis-parallel tessellation of the domain to a cubic directed acyclic graph (mesh).}
+where \eqn{y(s)} is a \eqn{q\times 1} vector of outcomes at spatial location \eqn{s}, \eqn{x(s)} is a \eqn{p\times 1} vector of covariates with static coefficients \eqn{\beta}, \eqn{\Lambda} is a \eqn{q \times k} matrix of factor loadings, \eqn{w(s)} is a \eqn{k \times 1} vector which collects the realization of independent Gaussian processes \eqn{w_j \sim spmeshed(0, C_j)} for \eqn{j=1, \dots, k} and where \eqn{C_j(s, s')} is a correlation function. \eqn{s} is a coordinate in space (\eqn{d=2}) or space plus time (\eqn{d=3}). The Meshed GP implemented here associates an axis-parallel tessellation of the domain to a cubic directed acyclic graph (mesh).}
 \usage{
-meshedgp(y, x, coords, 
+spmeshed(y, x, coords, 
   k = NULL,
   axis_partition = NULL, 
   block_size = 30,
@@ -62,17 +62,17 @@ This parameter is ignored if \code{settings$forced_grid = F} in which case the d
 
 \item{predict_everywhere}{bool used if settings$forced_grid=T. Should predictions be made at the reference grid locations? If not, predictions will be made only at the supplied NA values of Y.}
 
-\item{settings}{list: \code{settings$adapting} turns the adaptation of MCMC on/off, \code{settings$forced_grid} determines whether or not to use the data grid or a forced grid; if unspecified, the function will try to see what the data look like. Note: if \code{forced_grid=F} and \eqn{n} is very large and \eqn{coords} are irregularly spaced, then expect slowdowns in preprocessing and consider using \code{forced_grid=T} instead. \code{settings$saving} will save model data if set to \code{T} and MCMC can be automatically restarted using \code{meshedgp_restart}.}
+\item{settings}{list: \code{settings$adapting} turns the adaptation of MCMC on/off, \code{settings$forced_grid} determines whether or not to use the data grid or a forced grid; if unspecified, the function will try to see what the data look like. Note: if \code{forced_grid=F} and \eqn{n} is very large and \eqn{coords} are irregularly spaced, then expect slowdowns in preprocessing and consider using \code{forced_grid=T} instead. \code{settings$saving} will save model data if set to \code{T} and MCMC can be automatically restarted using \code{spmeshed_restart}.}
 
 \item{prior}{list: setup for priors of unknown parameters. There is currently limited functionality here and some parameters are currently ignored. Defaults are: a vague Gaussian for \eqn{\beta}, \eqn{\Lambda_{i,j} \sim N(0,1)}, \eqn{\tau^2_i \sim IG(2,1)}, \eqn{\theta_j \sim IG(2,2)}, all subject to change.}
 
-\item{starting}{list: setup for starting values of unknown parameters. \code{starting$mcmcsd} is the initial standard deviation of proposals. \code{starting$mcmc_startfrom} is input to the adaptive MCMC and can be used to manually restart MCMC without \code{meshedgp_restart}. There is currently limited functionality here and some parameters may be ignored.}
+\item{starting}{list: setup for starting values of unknown parameters. \code{starting$mcmcsd} is the initial standard deviation of proposals. \code{starting$mcmc_startfrom} is input to the adaptive MCMC and can be used to manually restart MCMC without \code{spmeshed_restart}. There is currently limited functionality here and some parameters may be ignored.}
 
 \item{debug}{list: setup for debugging things. Some parts of MCMC can be turned off here.}
 }
 \value{
 \item{coordsdata}{A \code{data.frame} including the original \eqn{n} coordinates plus the \eqn{n_g} knot coordinates if the model was run on a forced grid. The additional column \code{forced_grid} has value 1 if the corresponding coordinate is a knot in the forced grid.}
-\item{savedata}{If \code{settings$saving==T}, this stores all model data for use in \code{meshedgp_restart}.}
+\item{savedata}{If \code{settings$saving==T}, this stores all model data for use in \code{spmeshed_restart}.}
 \item{yhat_mcmc}{A list of length \code{n_samples} whose elements are matrices of size \eqn{(n + n_g) \times q}. Each matrix in the list is a posterior sample of the latent spatial process. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{w}.}
 \item{w_mcmc}{A list of length \code{n_samples} whose elements are matrices of size \eqn{(n + n_g) \times k}. Each matrix in the list is a posterior sample of the latent spatial process. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{w}.}
 \item{beta_mcmc}{An array of size \code{(p, q, n_thin*n_samples)} with the posterior sample for the static regression coefficients \eqn{\beta}. The \eqn{j}th column of each \eqn{p \times q} matrix corresponds to the \eqn{p} linear effects on the \eqn{j}th outcome. The full chain minus burn-in is returned NOT thinned since \code{p} and \code{q} are relatively small.}
@@ -156,7 +156,7 @@ mcmc_thin <- 5
 axis_partition <- c(20, 10) # resulting in blocks of approx size 32
 
 mesh_total_time <- system.time({
-  meshout <- meshedgp(YY, XX, coords,
+  meshout <- spmeshed(YY, XX, coords,
                       axis_partition=axis_partition,
                       n_samples = mcmc_keep, n_burn = mcmc_burn, n_thin = mcmc_thin, 
                       n_threads = 10

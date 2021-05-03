@@ -2,17 +2,18 @@
 
 using namespace std;
 
-void Meshed::deal_with_beta(){
-  hmc_sample_beta();
+void Meshed::deal_with_beta(bool sample){
+  hmc_sample_beta(sample);
 }
 
-void Meshed::hmc_sample_beta(){
+void Meshed::hmc_sample_beta(bool sample){
   message("[hmc_sample_beta]");
   // choose between NUTS or Gibbs
   start = std::chrono::steady_clock::now();
   
   arma::mat bmat = mrstdnorm(p, q);
   arma::vec bunifv = vrunif(q);
+  
   arma::mat LHW = wU * Lambda.t();
   
   for(int j=0; j<q; j++){
@@ -31,11 +32,15 @@ void Meshed::hmc_sample_beta(){
       arma::mat Xprecy_j = Vim + tausq_inv(j) * beta_node.at(j).Xres;//beta_node.at(j).X.t() * 
       //(beta_node.at(j).y - offsets_for_beta.rows(ix_by_q_a(j)));
       
-      Bcoeff.col(j) = Sigma_chol_Bcoeff.t() * (Sigma_chol_Bcoeff * Xprecy_j + bmat.col(j));
+      Bcoeff.col(j) = Sigma_chol_Bcoeff.t() * Sigma_chol_Bcoeff * Xprecy_j;
+      if(sample){
+        Bcoeff.col(j) += Sigma_chol_Bcoeff.t() * bmat.col(j);
+      }
+      
     } else {
       // nongaussian
       beta_hmc_adapt.at(j).step();
-      if(beta_hmc_started(j) == 0){
+      if(sample & (beta_hmc_started(j) == 0)){
         // wait a few iterations before starting adaptation
         //Rcpp::Rcout << "reasonable stepsize " << endl;
         double beta_eps = find_reasonable_stepsize(Bcoeff.col(j), beta_node.at(j), bmat.cols(oneuv * j));
@@ -46,9 +51,15 @@ void Meshed::hmc_sample_beta(){
         //Rcpp::Rcout << "done initiating adapting scheme" << endl;
       }
       
-      Bcoeff.col(j) = sample_one_mala_cpp(Bcoeff.col(j), beta_node.at(j), beta_hmc_adapt.at(j), bmat.cols(oneuv * j), bunifv(j),
-                 true, true, false, false); 
-
+      if(sample){
+        Bcoeff.col(j) = sample_one_mala_cpp(Bcoeff.col(j), beta_node.at(j), beta_hmc_adapt.at(j), bmat.cols(oneuv * j), bunifv(j),
+                   true, true, false, false); 
+      } else {
+        //Bcoeff.col(j) = newton_step(Bcoeff.col(j), beta_node.at(j), beta_hmc_adapt.at(j), 1, true);
+        Bcoeff.col(j) = irls_step(Bcoeff.col(j), beta_node.at(j).y, beta_node.at(j).X, beta_node.at(j).offset, Vi, familyid(j));
+      
+      }
+      
     }
     XB.col(j) = X * Bcoeff.col(j);
   }
@@ -60,3 +71,5 @@ void Meshed::hmc_sample_beta(){
                 << "us.\n";
   }
 }
+
+

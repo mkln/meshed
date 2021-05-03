@@ -51,8 +51,10 @@ void Meshed::metrop_theta(){
     logaccept = new_loglik - current_loglik + 
       prior_logratio +
       jacobian;
-  
+    
+    
     accepted = do_I_accept(logaccept);
+    
   } else {
     accepted = false;
     //num_chol_fails ++;
@@ -77,9 +79,7 @@ void Meshed::metrop_theta(){
         " " << prior_logratio << " " << jacobian << ")\n";
     }
   }
-  if(std::isnan(logaccept)){
-    Rcpp::stop("NaN in logdensity");
-  }
+  
   
   theta_adapt.update_ratios();
   

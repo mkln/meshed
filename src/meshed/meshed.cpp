@@ -164,6 +164,9 @@ Meshed::Meshed(
   LambdaHw = w * Lambda.t(); // arma::zeros(coords.n_rows, q); 
   wU = w;
   
+  rand_norm_mat = arma::zeros(coords.n_rows, k);
+  rand_unif = arma::zeros(n_blocks);
+  
   if(arma::all(familyid == 0) & forced_grid){
     init_gaussian();
   } 
@@ -911,12 +914,12 @@ bool Meshed::get_loglik_comps_w(MeshDataLMC& data){
   }
 }
 
-void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw){
+void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw, bool map){
   //message("[update_lly] start.");
   start = std::chrono::steady_clock::now();
   data.ll_y.rows(indexing_obs(u)).fill(0.0);
   
-  if(arma::all(familyid == 0)){
+  if(arma::all(familyid == 0) & (!map)){
     for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
       if(na_1_blocks(u)(ix) == 1){
         // at least one outcome available
@@ -958,7 +961,7 @@ void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw){
   end = std::chrono::steady_clock::now();
 }
 
-void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data){
+void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data, bool sample){
   message("[logpost_refresh_after_gibbs]");
   if(verbose & debug){
     start_overall = std::chrono::steady_clock::now();
@@ -977,8 +980,12 @@ void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data){
       if(arma::all(familyid==0)){
         calc_DplusSi(u, data, Lambda, tausq_inv);
       }
-      update_lly(u, data, LambdaHw);
-    } 
+      update_lly(u, data, LambdaHw, false);
+    } else {
+      if(!sample){
+        update_lly(u, data, LambdaHw, true);
+      }
+    }
   }
   
   data.loglik_w = arma::accu(data.logdetCi_comps) + 
@@ -1055,6 +1062,7 @@ void Meshed::init_for_mcmc(){
   
   
   w_do_hmc = arma::any(familyid > 0);
+  
   w_hmc_nuts = false;
   w_hmc_rm = true;
   if(w_do_hmc){

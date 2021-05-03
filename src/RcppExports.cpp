@@ -194,6 +194,44 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// meshed_casc
+Rcpp::List meshed_casc(const arma::mat& y, const arma::uvec& family, const arma::mat& X, const arma::mat& coords, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& indexing_obs, const arma::mat& beta_Vi, int matern_twonu, const arma::mat& start_w, const arma::mat& lambda_values, const arma::umat& lambda_mask, const arma::mat& theta_values, const arma::mat& beta, const arma::vec& tausq_values, int maxit, int num_threads, bool adapting, bool use_cache, bool forced_grid, bool verbose, bool debug, int print_every, bool casc_beta, bool casc_w);
+RcppExport SEXP _meshed_meshed_casc(SEXP ySEXP, SEXP familySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP beta_ViSEXP, SEXP matern_twonuSEXP, SEXP start_wSEXP, SEXP lambda_valuesSEXP, SEXP lambda_maskSEXP, SEXP theta_valuesSEXP, SEXP betaSEXP, SEXP tausq_valuesSEXP, SEXP maxitSEXP, SEXP num_threadsSEXP, SEXP adaptingSEXP, SEXP use_cacheSEXP, SEXP forced_gridSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP print_everySEXP, SEXP casc_betaSEXP, SEXP casc_wSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type family(familySEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type children(childrenSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type layer_names(layer_namesSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type layer_gibbs_group(layer_gibbs_groupSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing_obs(indexing_obsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type beta_Vi(beta_ViSEXP);
+    Rcpp::traits::input_parameter< int >::type matern_twonu(matern_twonuSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type start_w(start_wSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type lambda_values(lambda_valuesSEXP);
+    Rcpp::traits::input_parameter< const arma::umat& >::type lambda_mask(lambda_maskSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type theta_values(theta_valuesSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type tausq_values(tausq_valuesSEXP);
+    Rcpp::traits::input_parameter< int >::type maxit(maxitSEXP);
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    Rcpp::traits::input_parameter< bool >::type adapting(adaptingSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_cache(use_cacheSEXP);
+    Rcpp::traits::input_parameter< bool >::type forced_grid(forced_gridSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< bool >::type debug(debugSEXP);
+    Rcpp::traits::input_parameter< int >::type print_every(print_everySEXP);
+    Rcpp::traits::input_parameter< bool >::type casc_beta(casc_betaSEXP);
+    Rcpp::traits::input_parameter< bool >::type casc_w(casc_wSEXP);
+    rcpp_result_gen = Rcpp::wrap(meshed_casc(y, family, X, coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, beta_Vi, matern_twonu, start_w, lambda_values, lambda_mask, theta_values, beta, tausq_values, maxit, num_threads, adapting, use_cache, forced_grid, verbose, debug, print_every, casc_beta, casc_w));
+    return rcpp_result_gen;
+END_RCPP
+}
 // meshed_mcmc
 Rcpp::List meshed_mcmc(const arma::mat& y, const arma::uvec& family, const arma::mat& X, const arma::mat& coords, int k, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& indexing_obs, const arma::mat& set_unif_bounds_in, const arma::mat& beta_Vi, const arma::vec& sigmasq_ab, const arma::vec& tausq_ab, int matern_twonu, const arma::mat& start_w, const arma::mat& lambda, const arma::umat& lambda_mask, const arma::mat& theta, const arma::mat& beta, const arma::vec& tausq, const arma::mat& mcmcsd, int mcmc_keep, int mcmc_burn, int mcmc_thin, int mcmc_startfrom, int num_threads, bool adapting, bool use_cache, bool forced_grid, bool use_ps, bool verbose, bool debug, int print_every, bool sample_beta, bool sample_tausq, bool sample_lambda, bool sample_theta, bool sample_w);
 RcppExport SEXP _meshed_meshed_mcmc(SEXP ySEXP, SEXP familySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP kSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP sigmasq_abSEXP, SEXP tausq_abSEXP, SEXP matern_twonuSEXP, SEXP start_wSEXP, SEXP lambdaSEXP, SEXP lambda_maskSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP mcmcsdSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP mcmc_startfromSEXP, SEXP num_threadsSEXP, SEXP adaptingSEXP, SEXP use_cacheSEXP, SEXP forced_gridSEXP, SEXP use_psSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP print_everySEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_lambdaSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
@@ -318,6 +356,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_mesh_graph_cpp", (DL_FUNC) &_meshed_mesh_graph_cpp, 4},
     {"_meshed_knn_naive", (DL_FUNC) &_meshed_knn_naive, 3},
     {"_meshed_mesh_graph_hyper", (DL_FUNC) &_meshed_mesh_graph_hyper, 7},
+    {"_meshed_meshed_casc", (DL_FUNC) &_meshed_meshed_casc, 28},
     {"_meshed_meshed_mcmc", (DL_FUNC) &_meshed_meshed_mcmc, 40},
     {"_meshed_rmeshedgp_internal", (DL_FUNC) &_meshed_rmeshedgp_internal, 13},
     {"_meshed_cube_tcrossprod", (DL_FUNC) &_meshed_cube_tcrossprod, 1},

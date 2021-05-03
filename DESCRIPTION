@@ -1,12 +1,13 @@
 Package: meshed
 Type: Package
-Title: Meshed spatial process methods for Bayesian multivariate regression
-Version: 0.20.12
-Date: 2020-12-19
+Title: Meshed Gaussian Process methods for Bayesian multivariate regression
+Version: 0.21.04.29
+Date: 2021-04-29
 Author: Michele Peruzzi
 Maintainer: Michele Peruzzi <michele.peruzzi@duke.edu>
-Description: This package implements Bayesian spatial linear regression models using latent Meshed GPs. 
-    The meshedgp function can be used for: multivariate regression, spatial factor regression, spacetime regression, misaligned data.
+Description: This package implements Bayesian linear regression models using latent Meshed GPs. 
+    The `spmeshed` function can be used for: spatial multivariate regression, spatial factor regression, spacetime regression, misaligned data. 
+    The experimental `pimeshed` function does the same thing on projected inputs.
 License: CC BY 4.0
 Imports: Rcpp (>= 1.0.5), dplyr, glue, rlang, magrittr
 LinkingTo: Rcpp, RcppArmadillo

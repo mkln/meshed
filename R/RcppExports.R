@@ -53,6 +53,10 @@ mesh_graph_hyper <- function(bucbl, bavail, na_which, centroids, avcentroids, av
     .Call(`_meshed_mesh_graph_hyper`, bucbl, bavail, na_which, centroids, avcentroids, avblocks, k)
 }
 
+meshed_casc <- function(y, family, X, coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, beta_Vi, matern_twonu, start_w, lambda_values, lambda_mask, theta_values, beta, tausq_values, maxit = 1000L, num_threads = 1L, adapting = FALSE, use_cache = TRUE, forced_grid = TRUE, verbose = FALSE, debug = FALSE, print_every = FALSE, casc_beta = TRUE, casc_w = TRUE) {
+    .Call(`_meshed_meshed_casc`, y, family, X, coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, beta_Vi, matern_twonu, start_w, lambda_values, lambda_mask, theta_values, beta, tausq_values, maxit, num_threads, adapting, use_cache, forced_grid, verbose, debug, print_every, casc_beta, casc_w)
+}
+
 meshed_mcmc <- function(y, family, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, mcmc_startfrom = 0L, num_threads = 1L, adapting = FALSE, use_cache = TRUE, forced_grid = TRUE, use_ps = TRUE, verbose = FALSE, debug = FALSE, print_every = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_lambda = TRUE, sample_theta = TRUE, sample_w = TRUE) {
     .Call(`_meshed_meshed_mcmc`, y, family, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, adapting, use_cache, forced_grid, use_ps, verbose, debug, print_every, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w)
 }

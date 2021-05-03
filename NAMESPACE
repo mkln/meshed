@@ -5,4 +5,4 @@ importFrom(magrittr, "%>%")
 importFrom(magrittr, "%<>%")
 importFrom(magrittr, "%$%")
 
-export("spmeshed", "pimeshed", "rmeshedgp", "summary_list_mean", "summary_list_q")
+export("spmeshed", "spmeshed_map", "pimeshed", "rmeshedgp", "summary_list_mean", "summary_list_q")

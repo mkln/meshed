@@ -1,4 +1,4 @@
-pimeshed <- function(y, x, k=NULL, proj_dim=2,
+pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
                    block_size = 30,
                    n_samples = 1000,
                    n_burnin = 100,
@@ -73,6 +73,14 @@ pimeshed <- function(y, x, k=NULL, proj_dim=2,
       mcmc_print_every <- print_every
     }
     
+    
+    X_pca <- prcomp(x)
+    coords <- X_pca$x[,1:proj_dim] %>% as.matrix()
+    colnames(coords) <- paste0("Var", 1:ncol(coords))
+    dd <- ncol(coords)
+    
+    # covariates/confounders
+  
     if(is.null(colnames(x))){
       orig_X_colnames <- colnames(x) <- paste0('X_', 1:ncol(x))
     } else {
@@ -80,10 +88,12 @@ pimeshed <- function(y, x, k=NULL, proj_dim=2,
       colnames(x)     <- paste0('X_', 1:ncol(x))
     }
     
-    X_pca <- prcomp(x)
-    coords <- X_pca$x[,1:proj_dim] %>% as.matrix()
-    colnames(coords) <- paste0("Var", 1:ncol(coords))
-    dd <- ncol(coords)
+    if(is.null(colnames(z))){
+      orig_Z_colnames <- colnames(z) <- paste0('Z_', 1:ncol(z))
+    } else {
+      orig_Z_colnames <- colnames(z)
+      colnames(z)     <- paste0('Z_', 1:ncol(z))
+    }
     
     nr             <- nrow(x)
     q              <- ncol(y)
@@ -124,7 +134,7 @@ pimeshed <- function(y, x, k=NULL, proj_dim=2,
     yrownas <- apply(y, 1, function(i) ifelse(sum(is.na(i))==q, NA, 1))
     na_which <- ifelse(!is.na(yrownas), 1, NA)
     simdata <- data.frame(ix=1:nrow(coords)) %>% 
-      cbind(coords, y, na_which, x) %>% 
+      cbind(coords, y, na_which, x, z) %>% 
       as.data.frame()
     
     #####
@@ -212,7 +222,7 @@ pimeshed <- function(y, x, k=NULL, proj_dim=2,
     }
     
     if(is.null(prior$beta)){
-      beta_Vi <- diag(ncol(x)) * 1/100
+      beta_Vi <- diag(ncol(z)) * 1/100
     } else {
       beta_Vi <- prior$beta
     }
@@ -234,7 +244,7 @@ pimeshed <- function(y, x, k=NULL, proj_dim=2,
     
     # starting values
     if(is.null(starting$beta)){
-      start_beta   <- matrix(0, nrow=p, ncol=q)
+      start_beta   <- matrix(0, nrow=ncol(z), ncol=q)
     } else {
       start_beta   <- starting$beta
     }
@@ -319,6 +329,14 @@ pimeshed <- function(y, x, k=NULL, proj_dim=2,
   colnames(x) <- orig_X_colnames
   x[is.na(x)] <- 0 # NAs if added coords due to empty blocks
   
+  z <- simdata_in %>% 
+    dplyr::select(dplyr::contains("Z_")) %>% 
+    as.matrix()
+  colnames(z) <- orig_Z_colnames
+  if(any(is.na(z))){
+    stop("Cannot have NA in Z matrix")
+  }
+  
   na_which <- simdata_in$na_which
   
   coords <- simdata_in %>% 
@@ -332,7 +350,7 @@ pimeshed <- function(y, x, k=NULL, proj_dim=2,
   mcmc_run <- meshed_mcmc
   
   comp_time <- system.time({
-    results <- mcmc_run(y, family_id, x, x, k,
+    results <- mcmc_run(y, family_id, z, x, k,
                         
                         parents, children, 
                         block_names, block_groups,
@@ -388,7 +406,7 @@ pimeshed <- function(y, x, k=NULL, proj_dim=2,
       anonList
     }
     
-    saved <- listN(y, x, coords, k,
+    saved <- listN(y, x, z, coords, k,
                    
                    parents, children, 
                    block_names, block_groups,
