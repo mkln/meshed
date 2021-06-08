@@ -6,14 +6,14 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
                    n_threads = 4,
                    print_every = NULL,
                    family = "gaussian",
-                   settings    = list(adapting=T, ps=T, saving=F),
+                   settings    = list(adapting=TRUE, ps=TRUE, saving=FALSE),
                    prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
                    starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, w=NULL, 
                                       mcmcsd=.05, mcmc_startfrom=0),
-                   debug       = list(sample_beta=T, sample_tausq=T, 
-                                      sample_theta=T, sample_w=T, sample_lambda=T,
-                                      verbose=F, debug=F)
+                   debug       = list(sample_beta=TRUE, sample_tausq=TRUE, 
+                                      sample_theta=TRUE, sample_w=TRUE, sample_lambda=TRUE,
+                                      verbose=FALSE, debug=FALSE)
 ){
   
   # init
@@ -38,11 +38,11 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
     mcmc_burn <- n_burnin
     mcmc_thin <- n_thin
     
-    mcmc_adaptive    <- settings$adapting %>% set_default(T)
-    mcmc_verbose     <- debug$verbose %>% set_default(F)
-    mcmc_debug       <- debug$debug %>% set_default(F)
-    saving <- settings$saving %>% set_default(F)
-    use_ps <- settings$ps %>% set_default(T)
+    mcmc_adaptive    <- settings$adapting %>% set_default(TRUE)
+    mcmc_verbose     <- debug$verbose %>% set_default(FALSE)
+    mcmc_debug       <- debug$debug %>% set_default(FALSE)
+    saving <- settings$saving %>% set_default(FALSE)
+    use_ps <- settings$ps %>% set_default(TRUE)
     
     
     # data management part 0 - reshape/rename
@@ -104,7 +104,7 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
     family <- if(length(family)==1){rep(family, q)} else {family}
     family_in <- data.frame(family=family)
     available_families <- data.frame(id=0:3, family=c("gaussian", "poisson", "binomial", "beta"))
-    family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %$% id
+    family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %>% pull(.data$id)
     
     latent <- "gaussian"
     if(!(latent %in% c("gaussian"))){
@@ -117,15 +117,15 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
     
     axis_partition <- rep(round((nr/block_size)^(1/dd)), dd)
 
-    use_forced_grid <- F
-    use_cache <- F
+    use_forced_grid <- FALSE
+    use_cache <- FALSE
     
     # what are we sampling
-    sample_w       <- debug$sample_w %>% set_default(T)
-    sample_beta    <- debug$sample_beta %>% set_default(T)
-    sample_tausq   <- debug$sample_tausq %>% set_default(T)
-    sample_theta   <- debug$sample_theta %>% set_default(T)
-    sample_lambda  <- debug$sample_lambda %>% set_default(T)
+    sample_w       <- debug$sample_w %>% set_default(TRUE)
+    sample_beta    <- debug$sample_beta %>% set_default(TRUE)
+    sample_tausq   <- debug$sample_tausq %>% set_default(TRUE)
+    sample_theta   <- debug$sample_theta %>% set_default(TRUE)
+    sample_lambda  <- debug$sample_lambda %>% set_default(TRUE)
     
   }
   
@@ -185,7 +185,7 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
   
   # DAG
   if(dd < 4){
-    suppressMessages(parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), axis_partition, F))
+    suppressMessages(parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), axis_partition, FALSE))
   } else {
     suppressMessages(parents_children <- mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-.data$ix)))
   }
@@ -207,10 +207,10 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
   indexing_grid <- indexing
   indexing_obs <- indexing_grid
   
-  if(T){
+  if(1){
     # prior and starting values for mcmc
     
-    matern_nu <- F
+    matern_nu <- FALSE
     if(is.null(starting$nu)){
       start_nu <- 0.5
       matern_fix_twonu <- 1

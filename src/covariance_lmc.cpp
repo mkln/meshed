@@ -33,7 +33,7 @@ void matern_internal_inplace(arma::mat& res,
                              const arma::uvec& ix, const arma::uvec& iy, 
                              const double& phi, const double& nu, 
                           const double& sigmasq, const double& reparam,
-                 double * bessel_ws, const double& nugginside=1e-7,  bool same=false){
+                 double * bessel_ws, const double& nugginside=0,  bool same=false){
   
   double sigmasq_reparam = sigmasq / reparam;
   
@@ -296,7 +296,11 @@ arma::mat Correlationf(
     // theta 1: spatial decay,
     // theta 2: separability
     // theta 3: sigmasq
-    gneiting2002_inplace(res, coords, ix, iy, theta(0), theta(1), theta(2), theta(3), same);
+    double sigmasq = 1.0;
+    if(matern.using_ps){
+      sigmasq = theta(3);
+    }
+    gneiting2002_inplace(res, coords, ix, iy, theta(0), theta(1), theta(2), sigmasq, same);
     return res;
   } else {
     // p exposures, p+1 params
@@ -304,6 +308,30 @@ arma::mat Correlationf(
     return res;
   }
 }
+
+
+arma::mat Correlationc(
+    const arma::mat& coordsx,
+    const arma::mat& coordsy,
+    const arma::vec& theta,
+    MaternParams& matern, bool same){
+  // inefficient
+  
+  if(same){
+    arma::uvec ix = arma::regspace<arma::uvec>(0, coordsx.n_rows-1);
+    
+    return Correlationf(coordsx, ix, ix, theta, matern, same);
+  } else {
+    arma::mat coords = arma::join_vert(coordsx, coordsy);
+    arma::uvec ix = arma::regspace<arma::uvec>(0, coordsx.n_rows-1);
+    arma::uvec iy = arma::regspace<arma::uvec>(coordsx.n_rows, coords.n_rows-1);
+    
+    return Correlationf(coords, ix, iy, theta, matern, same);
+  }
+  
+}
+
+
 
 void CviaKron_invsympd_(arma::cube& CCi, 
                         const arma::mat& coords, const arma::uvec& indx, 
@@ -391,16 +419,17 @@ void CviaKron_HRj_bdiag_(
     for(int ix=0; ix<indx.n_rows; ix++){
       if(naix(ix) == 1){
         arma::uvec indxi = oneuv*indx(ix);
+        
         arma::mat Cxx = Correlationf(coords, indxi, indxi, 
-                                     theta.col(j), matern, true);
+                                     theta.col(j), matern, true); // ***
         arma::mat Cxy = Correlationf(coords, indxi, indy,  
-                                     theta.col(j), matern, false);
+                                     theta.col(j), matern, false); //***
         arma::mat Hloc = Cxy * Cyy_i;
         arma::mat R = Cxx - Hloc * Cxy.t();
         
         Hj.subcube(j, 0, ix, j, Hj.n_cols-1, ix) = Hloc;
         Rj(j, j, ix) = R(0,0) < 0 ? 0.0 : R(0,0);
-        Rij(j, j, ix) = R(0,0) < 1e-17 ? 0.0 : 1.0/R(0,0); //1e-10
+        Rij(j, j, ix) = R(0,0) < 1e-15 ? 0.0 : 1.0/R(0,0); //1e-10
       }
     }
   }

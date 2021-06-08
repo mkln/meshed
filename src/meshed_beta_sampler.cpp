@@ -7,7 +7,10 @@ void Meshed::deal_with_beta(bool sample){
 }
 
 void Meshed::hmc_sample_beta(bool sample){
-  message("[hmc_sample_beta]");
+  if(verbose & debug){
+    Rcpp::Rcout << "[hmc_sample_beta]\n";
+  }
+  
   // choose between NUTS or Gibbs
   start = std::chrono::steady_clock::now();
   

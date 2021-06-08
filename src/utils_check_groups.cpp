@@ -1,4 +1,4 @@
-#include "check_groups.h"
+#include "utils_check_groups.h"
 
 using namespace std;
 
@@ -12,7 +12,7 @@ arma::vec check_gibbs_groups(arma::vec block_groups,
   int n_blocks = block_names.n_elem;
   int it = 0;
   
-  Rcpp::Rcout << "~ grouping blocks into ci groups... ";
+  //Rcpp::Rcout << "~ grouping blocks into ci groups... ";
               //<< ".. n_blocks: " << n_blocks << endl;
   
   while(it < maxit){
@@ -72,16 +72,16 @@ arma::vec check_gibbs_groups(arma::vec block_groups,
     int n_changes = arma::accu(changes);
     
     it ++;
-    Rcpp::Rcout << it << " ";
+    //Rcpp::Rcout << it << " ";
     if(n_changes == 0){
       // no changes were made, so groups are ok!
-      Rcpp::Rcout << " done." << endl;
+      //Rcpp::Rcout << " done." << endl;
       return block_groups;
     }
     
   }
   
-  Rcpp::Rcout << endl << "~ done, but too messy -- sampler will run sequentially." << endl;
+  //Rcpp::Rcout << endl << "~ done, but too messy -- sampler will run sequentially." << endl;
   // group fixing failed, return sequential groups
   return arma::regspace(0, block_groups.n_elem-1);
 }

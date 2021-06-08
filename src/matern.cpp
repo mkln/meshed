@@ -2,7 +2,11 @@
 #include <R.h>
 #include <Rmath.h>
 #include <Rinternals.h>
+
+#ifdef _OPENMP
 #include <omp.h>
+#endif
+
 
 
 //[[Rcpp::export]]

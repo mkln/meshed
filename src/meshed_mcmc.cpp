@@ -1,10 +1,9 @@
 #define ARMA_DONT_PRINT_ERRORS
 
-#include "utils/mesh_lmc_utils.h"
-#include "utils/interrupt_handler.h"
-#include "mcmc/parametrize.h"
-
-#include "meshed/meshed.h"
+#include "utils_lmc.h"
+#include "utils_interrupt_handler.h"
+#include "utils_parametrize.h"
+#include "meshed.h"
 
 //[[Rcpp::export]]
 Rcpp::List meshed_mcmc(
@@ -68,9 +67,10 @@ Rcpp::List meshed_mcmc(
     bool sample_theta=true,
     bool sample_w=true){
   
-  Rcpp::Rcout << "Initializing.\n";
+  if(verbose & debug){
+    Rcpp::Rcout << "Initializing.\n";
+  }
   
-  int twonu = 1; // choose between 1, 3, 5. 1=exp covar
   
 #ifdef _OPENMP
   omp_set_num_threads(num_threads);
@@ -109,7 +109,10 @@ Rcpp::List meshed_mcmc(
   arma::mat start_lambda = reparametrize_lambda_forward(lambda, theta, d, matern_twonu, use_ps);
   
   arma::mat start_theta = theta;
-  Rcpp::Rcout << "start theta \n" << theta;
+  if(verbose & debug){
+    Rcpp::Rcout << "start theta \n" << theta;
+  }
+  
   
   Meshed msp(y, family,
             X, coords, k,
@@ -135,8 +138,7 @@ Rcpp::List meshed_mcmc(
   arma::mat tausq_mcmc = arma::zeros(q, mcmc_thin*mcmc_keep);
   arma::cube theta_mcmc = arma::zeros(param.n_elem/k, k, mcmc_thin*mcmc_keep);
   
-  arma::field<arma::vec> eps_mcmc(mcmc_thin * mcmc_keep);
-  arma::field<arma::vec> ratios_mcmc(mcmc_thin * mcmc_keep);
+  //arma::field<arma::vec> eps_mcmc(mcmc_thin * mcmc_keep);
   
   //arma::cube lambdastar_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   arma::cube lambda_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
@@ -147,11 +149,13 @@ Rcpp::List meshed_mcmc(
   arma::vec wllsave = arma::zeros(mcmc_thin*mcmc_keep);
   
   // field avoids limit in size of objects -- ideally this should be a cube
+  arma::field<arma::mat> v_mcmc(mcmc_keep);
   arma::field<arma::mat> w_mcmc(mcmc_keep);
   arma::field<arma::mat> lp_mcmc(mcmc_keep);
   arma::field<arma::mat> yhat_mcmc(mcmc_keep);
   
   for(int i=0; i<mcmc_keep; i++){
+    v_mcmc(i) = arma::zeros(msp.w.n_rows, k);
     w_mcmc(i) = arma::zeros(msp.w.n_rows, q);
     lp_mcmc(i) = arma::zeros(msp.y.n_rows, q);
     yhat_mcmc(i) = arma::zeros(msp.y.n_rows, q);
@@ -172,18 +176,22 @@ Rcpp::List meshed_mcmc(
   double logaccept;
 
   bool interrupted = false;
-  Rcpp::Rcout << "Running MCMC for " << mcmc << " iterations.\n\n";
+  
+  if(verbose){
+    Rcpp::Rcout << "Running MCMC for " << mcmc << " iterations.\n\n";
+  }
+  
   
   start_all = std::chrono::steady_clock::now();
   int m=0; int mx=0; int num_chol_fails=0;
   int mcmc_saved = 0; int w_saved = 0;
-  //try {
-    for(m=0; m<mcmc & !interrupted; m++){
+  try {
+    for(m=0; m<mcmc & (!interrupted); m++){
       
       msp.predicting = false;
       mx = m-mcmc_burn;
       if(mx >= 0){
-        if(mx % mcmc_thin == 0){
+        if((mx % mcmc_thin) == 0){
           msp.predicting = true;
         }
       }
@@ -271,7 +279,7 @@ Rcpp::List meshed_mcmc(
         b_mcmc.slice(w_saved) = msp.Bcoeff;
         
         theta_mcmc.slice(w_saved) = msp.param_data.theta;
-        eps_mcmc(w_saved) = msp.hmc_eps;
+        //eps_mcmc(w_saved) = msp.hmc_eps;
         
         // lambda here reconstructs based on 1/phi Matern reparametrization
         //lambdastar_mcmc.slice(w_saved) = msp.Lambda;
@@ -282,6 +290,7 @@ Rcpp::List meshed_mcmc(
         w_saved++;
         
         if(mx % mcmc_thin == 0){
+          v_mcmc(mcmc_saved) = msp.w;
           w_mcmc(mcmc_saved) = msp.LambdaHw;
           lp_mcmc(mcmc_saved) = msp.linear_predictor;
           Rcpp::RNGScope scope;
@@ -292,12 +301,19 @@ Rcpp::List meshed_mcmc(
         }
       }
       
+      interrupted = checkInterrupt();
+      if(interrupted){
+        Rcpp::stop("Interrupted by the user.");
+      }
+      
       if((m>0) & (mcmc > 100)){
-        if(!(m % print_every)){
-          interrupted = checkInterrupt();
-          if(interrupted){
-            Rcpp::stop("Interrupted by the user.");
-          }
+        
+        bool print_condition = (print_every>0);
+        if(print_condition){
+          print_condition *= (!(m % print_every));
+        };
+        
+        if(print_condition){
           end_mcmc = std::chrono::steady_clock::now();
           
           int time_tick = std::chrono::duration_cast<std::chrono::milliseconds>(end_mcmc - tick_mcmc).count();
@@ -305,10 +321,12 @@ Rcpp::List meshed_mcmc(
           msp.theta_adapt.print_summary(time_tick, time_mcmc, m, mcmc);
           
           tick_mcmc = std::chrono::steady_clock::now();
+          if(verbose & debug){
+            Rprintf("  p(w|theta) = %.2f    p(y|...) = %.2f  \n ", msp.param_data.loglik_w, msp.logpost);
+          }
           
-          Rprintf("  p(w|theta) = %.2f    p(y|...) = %.2f  \n ", msp.param_data.loglik_w, msp.logpost);
           if(msp.param_data.theta.n_elem < 10){
-            Rprintf("theta = ");
+            Rprintf("  theta = ");
             for(int pp=0; pp<msp.param_data.theta.n_elem; pp++){
               Rprintf("%.3f ", msp.param_data.theta(pp));
             }
@@ -330,7 +348,7 @@ Rcpp::List meshed_mcmc(
               }
             }
           }
-          if(use_ps){
+          if(use_ps || q > 1){
             arma::vec lvec = arma::vectorise(msp.Lambda);
             Rprintf("\n  lambdastar = ");
             for(int pp=0; pp<lvec.n_elem; pp++){
@@ -352,17 +370,13 @@ Rcpp::List meshed_mcmc(
     
     end_all = std::chrono::steady_clock::now();
     double mcmc_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_all - start_all).count();
-    Rcpp::Rcout << "MCMC done [" << mcmc_time/1000.0 <<  "s]\n";
-
-    // 
-    // Rcpp::Named("p_logdetCi_comps") = msp.param_data.logdetCi_comps,
-    //   Rcpp::Named("a_logdetCi_comps") = msp.alter_data.logdetCi_comps,
-    //   Rcpp::Named("p_wcore") = msp.param_data.wcore,
-    //   Rcpp::Named("a_wcore") = msp.alter_data.wcore
-    //   
+    if(print_every>0){
+      Rcpp::Rcout << "MCMC done [" << mcmc_time/1000.0 <<  "s]\n";
+    }
+    
     return Rcpp::List::create(
-      Rcpp::Named("eps") = eps_mcmc,
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
+      Rcpp::Named("v_mcmc") = v_mcmc,
       Rcpp::Named("w_mcmc") = w_mcmc,
       Rcpp::Named("lp_mcmc") = lp_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
@@ -371,34 +385,30 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
       Rcpp::Named("paramsd") = msp.theta_adapt.paramsd,
       Rcpp::Named("mcmc") = mcmc,
-      //Rcpp::Named("logpost") = llsave,
-      //Rcpp::Named("logaccept") = logaccept_mcmc,
-      //Rcpp::Named("w_logdens") = wllsave,
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
       Rcpp::Named("proposal_failures") = num_chol_fails
     );
   
-  /*} catch (...) {
+  } catch (...) {
     end_all = std::chrono::steady_clock::now();
     
     double mcmc_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_all - start_all).count();
-    Rcpp::Rcout << "MCMC has been interrupted. Returning partial saved results if any.\n";
+    Rcpp::warning("MCMC has been interrupted. Returning partial saved results if any.\n");
     
     return Rcpp::List::create(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
+      Rcpp::Named("v_mcmc") = v_mcmc,
       Rcpp::Named("w_mcmc") = w_mcmc,
       Rcpp::Named("lp_mcmc") = lp_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
-      Rcpp::Named("paramsd") = adaptivemc.paramsd,
+      Rcpp::Named("paramsd") = msp.theta_adapt.paramsd,
       Rcpp::Named("mcmc") = mcmc,
-      Rcpp::Named("logpost") = llsave,
-      Rcpp::Named("w_logdens") = wllsave,
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
       Rcpp::Named("proposal_failures") = num_chol_fails
     );
-  }*/
+  }
 }
 

@@ -1,104 +1,23 @@
-#include <RcppArmadillo.h>
-#include "R.h"
-#include <numeric>
-//#include "tmesh_utils.h"
-#include "../distributions/densities_gradients.h"
+#include "mcmc_hmc_nodes.h"
 
-class NodeData {
-public:
-  // common stuff
-  // latent process type
-  std::string latent;
-  arma::mat y; // output data
-  
-  arma::mat ystar; // for binomial and beta outcomes
-  
-  arma::mat offset; // offset for this update
-  int n;
-  
-  double logfullcondit(const arma::vec& x);
-  arma::vec gradient_logfullcondit(const arma::vec& x);
-  
-  NodeData();
-  
-};
-
-inline NodeData::NodeData(){
+NodeData::NodeData(){
   n=-1;
 }
 
-inline double NodeData::logfullcondit(const arma::vec& x){
+double NodeData::logfullcondit(const arma::vec& x){
   return 0;
 }
 
-inline arma::vec NodeData::gradient_logfullcondit(const arma::vec& x){
+arma::vec NodeData::gradient_logfullcondit(const arma::vec& x){
   return 0;
 }
 
-class NodeDataW : public NodeData {
-public:
-  arma::uvec family; // 0: gaussian, 1: poisson, 2: bernoulli, 3: beta, length q
-  int k;
-  arma::vec z;
-  
-  arma::mat Lambda_lmc;
-  
-  arma::umat na_mat;
-  arma::vec tausq;
-  
-  int block_ct_obs; // number of not-na
-  
-  arma::uvec indexing_target;
-  
-  bool fgrid;
-  
-  //arma::cube Kxxi;
-  arma::cube * Kcx;
-  arma::cube * Ri;
-  arma::cube * Hproject;
-  
-  //arma::vec parKxxpar;
-  arma::mat Kcxpar;
-  //arma::mat w_parents;
-  
-  int num_children;
-  double parents_dim;
-  //arma::vec dim_of_pars_of_children;
-  
-  arma::field<arma::cube> Kcx_x;//(c) = (*param_data).w_cond_mean_K(child).cols(pofc_ix_x);
-  //arma::field<arma::cube> Kxxi_x;//(c) = (*param_data).w_cond_prec_parents(child)(pofc_ix_x, pofc_ix_x);
-  arma::field<arma::mat> w_child;//(c) = arma::vectorise( (*w_full).rows(c_ix) );
-  arma::field<arma::cube *> Ri_of_child;//(c) = (*param_data).w_cond_prec(child);
-  //arma::field<arma::mat> Kxo_wo;//(c) = Kxxi_xo * w_otherparents;
-  arma::field<arma::mat> Kco_wo;//(c) = Kcx_other * w_otherparents;
-  //arma::mat woKoowo;//(c) = w_otherparents.t() * Kxxi_other * w_otherparents;
-  
-  void initialize();
-  void update_mv(const arma::mat& new_offset, const arma::vec& tausq, const arma::mat& Lambda_lmc_in);
-  
-  double logfullcondit(const arma::mat& x);
-  arma::vec gradient_logfullcondit(const arma::mat& x);
-  arma::mat neghess_logfullcondit(const arma::mat& x);
-  
-  void compute_dens_and_grad(double& xtarget, arma::vec& xgrad, const arma::mat& x);
-  void compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, arma::mat& M, const arma::mat& x);
-  
-  NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
-                const arma::umat& na_mat_all, const arma::mat& offset_all, 
-                const arma::uvec& indexing_target,
-                const arma::uvec& outtype, int k, 
-                bool fgrid_in);
-  
-  NodeDataW();
-  
-};
 
-
-inline NodeDataW::NodeDataW(){
+NodeDataW::NodeDataW(){
   n=-1;
 }
 
-inline NodeDataW::NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
+NodeDataW::NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
                                     const arma::umat& na_mat_all, const arma::mat& offset_all, 
                                     const arma::uvec& indexing_target_in,
                                     const arma::uvec& outtype, int k, 
@@ -129,11 +48,11 @@ inline NodeDataW::NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
   fgrid = fgrid_in;
 }
 
-inline void NodeDataW::initialize(){
+void NodeDataW::initialize(){
   
 }
 
-inline void NodeDataW::update_mv(const arma::mat& offset_all, const arma::vec& tausq_in,
+void NodeDataW::update_mv(const arma::mat& offset_all, const arma::vec& tausq_in,
                                      const arma::mat& Lambda_lmc_in){
   // arma::mat tausqmat = arma::zeros<arma::umat>(arma::size(new_offset));
   // for(int i=0; i<tausqmat.n_cols; i++){
@@ -145,7 +64,159 @@ inline void NodeDataW::update_mv(const arma::mat& offset_all, const arma::vec& t
   offset = offset_all.rows(indexing_target);
 }
 
-inline void NodeDataW::compute_dens_and_grad(double& xtarget, arma::vec& xgrad, const arma::mat& x){
+
+double NodeDataW::fwdcond_dmvn(const arma::mat& x, 
+                    const arma::cube* Ri,
+                    const arma::mat& Kcxpar){
+  // conditional of x | parents
+  
+  double numer = 0;
+  for(int j=0; j<x.n_cols; j++){
+    arma::vec xcentered = x.col(j);
+    if(Kcxpar.n_cols > 0){ // meaning w_parents.n_rows > 0
+      xcentered -= Kcxpar.col(j);
+    } 
+    numer += arma::conv_to<double>::from( xcentered.t() * (*Ri).slice(j) * xcentered );
+  }
+  return -.5 * numer;//result;
+}
+
+arma::vec NodeDataW::grad_fwdcond_dmvn(const arma::mat& x){
+  
+  // gradient of conditional of x | parents
+  arma::mat norm_grad = arma::zeros(arma::size(x));
+  for(int j=0; j<x.n_cols; j++){
+    arma::vec xcentered = x.col(j);
+    if(Kcxpar.n_cols > 0){ // meaning w_parents.n_rows > 0
+      xcentered -= Kcxpar.col(j);
+    } 
+    norm_grad.col(j) = -(*Ri).slice(j) * xcentered;
+  }
+  return arma::vectorise(norm_grad);//result;
+}
+
+void NodeDataW::fwdconditional_mvn(double& logtarget, arma::vec& gradient, 
+                        const arma::mat& x){
+  arma::mat norm_grad = arma::zeros(arma::size(x));
+  double numer = 0;
+  for(int j=0; j<x.n_cols; j++){
+    arma::vec xcentered = x.col(j);
+    if(Kcxpar.n_cols > 0){ // meaning w_parents.n_rows > 0
+      xcentered -= Kcxpar.col(j);
+    } 
+    arma::vec Rix = (*Ri).slice(j) * xcentered;
+    numer += arma::conv_to<double>::from( xcentered.t() * Rix );
+    norm_grad.col(j) = - Rix;
+  }
+  logtarget = -.5 * numer;//result;
+  gradient = arma::vectorise(norm_grad);//result;
+}
+
+
+
+double NodeDataW::bwdcond_dmvn(const arma::mat& x, int c){
+  // conditional of Y | x, others
+  
+  double numer = 0;
+  for(int j=0; j<x.n_cols; j++){
+    arma::vec xcentered = w_child(c).col(j) - Kcx_x(c).slice(j)*x.col(j);
+    if(Kco_wo(c).n_cols > 0){
+      xcentered -= Kco_wo(c).col(j);
+    } 
+    numer += arma::conv_to<double>::from(xcentered.t() * (*Ri_of_child(c)).slice(j) * xcentered);
+  }
+  
+  return -0.5*numer;
+}
+
+arma::vec NodeDataW::grad_bwdcond_dmvn(const arma::mat& x, int c){
+  // gradient of conditional of Y | x, others
+  arma::mat result = arma::zeros(arma::size(x));
+  for(int j=0; j<x.n_cols; j++){
+    arma::mat wccenter = w_child(c).col(j) - Kcx_x(c).slice(j) * x.col(j);
+    if(Kco_wo(c).n_cols > 0){
+      wccenter -= Kco_wo(c).col(j);
+    } 
+    result.col(j) = Kcx_x(c).slice(j).t() * (*Ri_of_child(c)).slice(j) * wccenter;
+  }
+  return arma::vectorise(result);
+}
+
+void NodeDataW::bwdconditional_mvn(double& xtarget, arma::vec& gradient, const arma::mat& x, int c){
+  
+  arma::mat result = arma::zeros(arma::size(x));
+  double numer = 0;
+  for(int j=0; j<x.n_cols; j++){
+    arma::vec xcentered = w_child(c).col(j) - Kcx_x(c).slice(j)*x.col(j);
+    if(Kco_wo(c).n_cols > 0){
+      xcentered -= Kco_wo(c).col(j);
+    } 
+    arma::vec Rix = (*Ri_of_child(c)).slice(j) * xcentered;
+    numer += arma::conv_to<double>::from(xcentered.t() * Rix);
+    result.col(j) = Kcx_x(c).slice(j).t() * Rix;
+  }
+  xtarget -= 0.5*numer;
+  gradient += arma::vectorise(result);
+}
+
+void NodeDataW::neghess_fwdcond_dmvn(arma::mat& result, const arma::mat& x){
+  
+  int k = (*Ri).n_slices;
+  int nr = (*Ri).n_rows;
+  int nc = (*Ri).n_cols;
+  
+  //Rcpp::Rcout << "neghess_fwdcond_dmvn " << arma::size((*Ri)) << "\n";
+  //arma::mat result = arma::zeros(nr * k, nc * k);
+  for(int j=0; j<k; j++){
+    result.submat(nr*j, nc*j, (j+1)*nr-1, (j+1)*nc-1) += (*Ri).slice(j);
+  }
+  //return result;
+}
+
+void NodeDataW::neghess_bwdcond_dmvn(arma::mat& result,
+                          const arma::mat& x, int c){
+  
+  int k = (*Ri_of_child(c)).n_slices;
+  int nr = Kcx_x(c).n_cols; //(*Ri_of_child).n_rows;
+  int nc = Kcx_x(c).n_cols; //(*Ri_of_child).n_cols;
+  
+  //Rcpp::Rcout << "neghess_bwdcond_dmvn " << arma::size(Kcx_x) << " " << arma::size((*Ri_of_child)) << "\n";
+  
+  //arma::mat result = arma::zeros(nr * k, nc * k);
+  for(int j=0; j<k; j++){
+    result.submat(nr*j, nc*j, (j+1)*nr-1, (j+1)*nc-1) += Kcx_x(c).slice(j).t() * (*Ri_of_child(c)).slice(j) * Kcx_x(c).slice(j);
+  }
+  
+  //return result;
+}
+
+void NodeDataW::mvn_dens_grad_neghess(double& xtarget, arma::vec& gradient, arma::mat& neghess,
+                           const arma::mat& x, int c){
+  
+  
+  int k = (*Ri_of_child(c)).n_slices;
+  int nr = Kcx_x(c).n_cols; //(*Ri_of_child).n_rows;
+  int nc = Kcx_x(c).n_cols; //(*Ri_of_child).n_cols;
+  
+  arma::mat result = arma::zeros(arma::size(x));
+  double numer = 0;
+  for(int j=0; j<k; j++){
+    arma::vec xcentered = w_child(c).col(j) - Kcx_x(c).slice(j)*x.col(j);
+    if(Kco_wo(c).n_cols > 0){
+      xcentered -= Kco_wo(c).col(j);
+    } 
+    arma::mat KRichild = Kcx_x(c).slice(j).t() * (*Ri_of_child(c)).slice(j);
+    numer += arma::conv_to<double>::from(xcentered.t() * (*Ri_of_child(c)).slice(j) * xcentered);
+    result.col(j) = KRichild * xcentered;
+    neghess.submat(nr*j, nc*j, (j+1)*nr-1, (j+1)*nc-1) += KRichild * Kcx_x(c).slice(j);
+  }
+  xtarget -= 0.5*numer;
+  gradient += arma::vectorise(result);
+  
+}
+
+
+arma::vec NodeDataW::compute_dens_and_grad(double& xtarget, const arma::mat& x){
   int nr = y.n_rows;
   int q = y.n_cols;
   int k = x.n_cols;
@@ -217,25 +288,24 @@ inline void NodeDataW::compute_dens_and_grad(double& xtarget, arma::vec& xgrad, 
   
   //double logprior = fwdcond_dmvn(x, Ri, Kcxpar);
   //arma::vec grad_logprior_par = grad_fwdcond_dmvn(x, Ri, Kcxpar);
-  fwdconditional_mvn(logprior, grad_logprior_par, x, Ri, Kcxpar);
+  fwdconditional_mvn(logprior, grad_logprior_par, x);
   
   double logprior_chi = 0;
   arma::vec grad_logprior_chi = arma::zeros(grad_logprior_par.n_elem);
   for(int c=0; c<num_children; c++ ){
-    bwdconditional_mvn(logprior_chi, grad_logprior_chi, x, w_child(c), Ri_of_child(c), 
-                             Kcx_x(c), Kco_wo(c));
+    bwdconditional_mvn(logprior_chi, grad_logprior_chi, x, c);
   }
   
   xtarget = logprior + logprior_chi + loglike;
   
-  xgrad = grad_loglike + 
+  return grad_loglike + 
     grad_logprior_par + 
     grad_logprior_chi;
 
 }
 
 // log posterior 
-inline double NodeDataW::logfullcondit(const arma::mat& x){
+double NodeDataW::logfullcondit(const arma::mat& x){
   double loglike = 0;
   
   for(int i=0; i<y.n_rows; i++){
@@ -271,15 +341,14 @@ inline double NodeDataW::logfullcondit(const arma::mat& x){
   // GP prior
   double logprior = fwdcond_dmvn(x, Ri, Kcxpar);
   for(int c=0; c<num_children; c++ ){
-    logprior += bwdcond_dmvn(x, w_child(c), Ri_of_child(c), 
-                             Kcx_x(c), Kco_wo(c));
+    logprior += bwdcond_dmvn(x, c);
     
   }
   return ( loglike + logprior );
 }
 
 // Gradient of the log posterior
-inline arma::vec NodeDataW::gradient_logfullcondit(const arma::mat& x){
+arma::vec NodeDataW::gradient_logfullcondit(const arma::mat& x){
   int q = y.n_cols;
   int k = x.n_cols;
   
@@ -357,12 +426,11 @@ inline arma::vec NodeDataW::gradient_logfullcondit(const arma::mat& x){
     }
   }
 
-  arma::vec grad_logprior_par = grad_fwdcond_dmvn(x, Ri, Kcxpar);
+  arma::vec grad_logprior_par = grad_fwdcond_dmvn(x);
   
   arma::vec grad_logprior_chi = arma::zeros(grad_logprior_par.n_elem);
   for(int c=0; c<num_children; c++ ){
-    grad_logprior_chi += grad_bwdcond_dmvn(x, w_child(c), Ri_of_child(c), 
-                                           Kcx_x(c), Kco_wo(c));
+    grad_logprior_chi += grad_bwdcond_dmvn(x, c);
   }
   
   return grad_loglike + 
@@ -370,7 +438,7 @@ inline arma::vec NodeDataW::gradient_logfullcondit(const arma::mat& x){
     grad_logprior_chi;
 }
 
-inline void NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, arma::mat& H, const arma::mat& x){
+arma::mat NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, const arma::mat& x){
   int nr = y.n_rows;
   int q = y.n_cols;
   int k = x.n_cols;
@@ -455,25 +523,29 @@ inline void NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgr
       }
     }
   }
+
   
   // GP prior
   double logprior = 0;
-  arma::vec grad_logprior_par;
+  arma::vec grad_logprior_par = arma::zeros(x.n_elem);
   
   //double logprior = fwdcond_dmvn(x, Ri, Kcxpar);
   //arma::vec grad_logprior_par = grad_fwdcond_dmvn(x, Ri, Kcxpar);
-  fwdconditional_mvn(logprior, grad_logprior_par, x, Ri, Kcxpar);
-  neghess_fwdcond_dmvn(neghess_logtarg, x, Ri);
+  
+  fwdconditional_mvn(logprior, grad_logprior_par, x); // ***
+  neghess_fwdcond_dmvn(neghess_logtarg, x);
   
   double logprior_chi = 0;
   arma::vec grad_logprior_chi = arma::zeros(grad_logprior_par.n_elem);
+  
+  
   for(int c=0; c<num_children; c++ ){
     //bwdconditional_mvn(logprior_chi, grad_logprior_chi, x, w_child(c), Ri_of_child(c), 
     //                   Kcx_x(c), Kco_wo(c));
     //neghess_bwdcond_dmvn(neghess_logtarg, x, w_child(c), Ri_of_child(c), Kcx_x(c));
     
-    mvn_dens_grad_neghess(logprior_chi, grad_logprior_chi, neghess_logtarg, x, 
-                          w_child(c), Ri_of_child(c), Kcx_x(c), Kco_wo(c));
+    // with pointer to cube -- memory leak?
+    mvn_dens_grad_neghess(logprior_chi, grad_logprior_chi, neghess_logtarg, x, c);
   }
   
   xtarget = logprior + logprior_chi + loglike;
@@ -482,13 +554,13 @@ inline void NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgr
     grad_logprior_par + 
     grad_logprior_chi;
   
-  H = neghess_logtarg;
+  return neghess_logtarg;
   
 }
 
 
 // Gradient of the log posterior
-inline arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
+arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
   int q = y.n_cols;
   int k = x.n_cols;
   
@@ -584,12 +656,12 @@ inline arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
     
   }
   
-  neghess_fwdcond_dmvn(neghess_logtarg, x, Ri);
+  neghess_fwdcond_dmvn(neghess_logtarg, x);
   
   //arma::mat neghess_logprior_chi = arma::zeros(arma::size(neghess_logprior_par));
   for(int c=0; c<num_children; c++ ){
     // adds to neghess_logprior_par
-    neghess_bwdcond_dmvn(neghess_logtarg, x, w_child(c), Ri_of_child(c), Kcx_x(c));
+    neghess_bwdcond_dmvn(neghess_logtarg, x, c);
   }
   
   
@@ -601,55 +673,11 @@ inline arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
 
 
 
-class NodeDataB : public NodeData {
-public:
-  int family; // for beta
-  
-  arma::mat X; //for updates of beta
-  double tausq; // reg variance
-  
-  // gaussian
-  arma::mat XtX;
-  arma::vec Xres;
-  
-  // binom
-  arma::vec ones;
-  
-  // beta distrib outcomes
-  arma::vec ystar;
-    
-  // for beta updates in non-Gaussian y models
-  arma::vec mstar;
-  arma::mat Vw_i;
-  
-  // mass matrix
-  arma::mat Sig;
-  arma::mat Sig_i_tchol;
-  arma::mat M;
-  arma::mat Michol;
-  
-  void initialize();
-  void update_mv(const arma::vec& new_offset, 
-                 const double& tausq_in, const arma::vec& Smu_tot, const arma::mat& Sigi_tot);
-  NodeDataB(const arma::vec& y_in, const arma::vec& offset_in, 
-                   const arma::mat& X_in, int family_in);
-  NodeDataB();
-  
-  double logfullcondit(const arma::vec& x);
-  arma::vec gradient_logfullcondit(const arma::vec& x);
-  arma::mat neghess_logfullcondit(const arma::vec& x);
-  void compute_dens_and_grad(double& xtarget, arma::vec& xgrad, const arma::mat& x);
-  void compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, arma::mat& H, const arma::mat& x);
-  //using MVDistParams::MVDistParams;
-  //using MVDistParams::logfullcondit;
-  //using MVDistParams::gradient_logfullcondit;
-};
-
-inline NodeDataB::NodeDataB(){
+NodeDataB::NodeDataB(){
   n=-1;
 }
 
-inline NodeDataB::NodeDataB(const arma::vec& y_in, const arma::vec& offset_in, 
+NodeDataB::NodeDataB(const arma::vec& y_in, const arma::vec& offset_in, 
                                           const arma::mat& X_in, int family_in){
   family = family_in;
   n = y_in.n_elem;
@@ -673,7 +701,7 @@ inline NodeDataB::NodeDataB(const arma::vec& y_in, const arma::vec& offset_in,
   initialize();
 }
 
-inline void NodeDataB::initialize(){
+void NodeDataB::initialize(){
   mstar = arma::zeros(X.n_cols);
   Vw_i = arma::eye(X.n_cols, X.n_cols);
   XtX = X.t() * X;
@@ -686,7 +714,7 @@ inline void NodeDataB::initialize(){
   } 
 }
 
-inline void NodeDataB::update_mv(const arma::vec& new_offset, const double& tausq_in, const arma::vec& Smu_tot, const arma::mat& Sigi_tot){
+void NodeDataB::update_mv(const arma::vec& new_offset, const double& tausq_in, const arma::vec& Smu_tot, const arma::mat& Sigi_tot){
   tausq = tausq_in;
   offset = new_offset;
   
@@ -703,7 +731,7 @@ inline void NodeDataB::update_mv(const arma::vec& new_offset, const double& taus
 }
 
 // log posterior 
-inline double NodeDataB::logfullcondit(const arma::vec& x){
+double NodeDataB::logfullcondit(const arma::vec& x){
   //Rcpp::Rcout << "lik " << endl;
   //std::chrono::steady_clock::time_point start;
   //std::chrono::steady_clock::time_point end;
@@ -769,7 +797,7 @@ inline double NodeDataB::logfullcondit(const arma::vec& x){
 }
 
 // Gradient of the log posterior
-inline arma::vec NodeDataB::gradient_logfullcondit(const arma::vec& x){
+arma::vec NodeDataB::gradient_logfullcondit(const arma::vec& x){
   //Rcpp::Rcout << "grad " << endl;
   //std::chrono::steady_clock::time_point start;
   //std::chrono::steady_clock::time_point end;
@@ -810,17 +838,17 @@ inline arma::vec NodeDataB::gradient_logfullcondit(const arma::vec& x){
 
 }
 
-inline arma::mat NodeDataB::neghess_logfullcondit(const arma::vec& x){
+arma::mat NodeDataB::neghess_logfullcondit(const arma::vec& x){
   return XtX + Vw_i;
 }
 
-inline void NodeDataB::compute_dens_and_grad(double& xtarget, arma::vec& xgrad, const arma::mat& x){
+arma::vec NodeDataB::compute_dens_and_grad(double& xtarget, const arma::mat& x){
   xtarget = logfullcondit(x);
-  xgrad = gradient_logfullcondit(x);
+  return gradient_logfullcondit(x);
 }
 
-inline void NodeDataB::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, arma::mat& H, const arma::mat& x){
+arma::mat NodeDataB::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, const arma::mat& x){
   xtarget = logfullcondit(x);
   xgrad = gradient_logfullcondit(x);
-  H = neghess_logfullcondit(x);
+  return neghess_logfullcondit(x);
 }

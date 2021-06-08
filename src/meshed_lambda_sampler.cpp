@@ -15,7 +15,10 @@ void Meshed::deal_with_Lambda(MeshDataLMC& data){
 }
 
 void Meshed::sample_nc_Lambda_fgrid(MeshDataLMC& data){
-  message("[gibbs_sample_Lambda_fgrid] start (sampling via Robust adaptive Metropolis)");
+  if(verbose & debug){
+    Rcpp::Rcout << "[gibbs_sample_Lambda_fgrid] start (sampling via Robust adaptive Metropolis)\n";
+  }
+  
   start = std::chrono::steady_clock::now();
   
   lambda_adapt.count_proposal();
@@ -145,25 +148,15 @@ arma::vec Meshed::sample_Lambda_row(int j){
   arma::mat Lambdarow_mu = Lprior_inv * Lprior_mean + 
     Lambdarow_Sig * Simean_L;
   
-  /*
-  // truncation limits: start with (-inf, inf) then replace lower lim at appropriate loc
-  arma::vec upper_lim = arma::zeros(subcols.n_elem);
-  upper_lim.fill(arma::datum::inf);
-  arma::vec lower_lim = arma::zeros(subcols.n_elem);
-  lower_lim.fill(-arma::datum::inf);
-  
-  if(j < q){
-    lower_lim(j) = 0;
-  }
-  
-  //arma::vec sampled = mvtruncnormal(Lambdarow_mu, lower_lim, upper_lim, Lambdarow_Sig, 1);
-   */
   arma::vec sampled = Lambdarow_mu + Sigma_chol_L.t() * arma::randn(subcols.n_elem);
   return sampled;
 }
 
 void Meshed::sample_nc_Lambda_std(){
-  message("[gibbs_sample_Lambda] starting");
+  if(verbose & debug){
+    Rcpp::Rcout << "[gibbs_sample_Lambda] starting\n";
+  }
+  
   start = std::chrono::steady_clock::now();
   
   //arma::mat wmean = LambdaHw * Lambdati;
@@ -189,7 +182,10 @@ void Meshed::sample_nc_Lambda_std(){
 }
 
 void Meshed::sample_hmc_Lambda(){
-  message("[sample_hmc_Lambda] starting");
+  if(verbose & debug){
+    Rcpp::Rcout << "[sample_hmc_Lambda] starting\n";
+  }
+  
   start = std::chrono::steady_clock::now();
   
   // new with botev's 2017 method to sample from truncated normal
@@ -255,7 +251,8 @@ void Meshed::sample_hmc_Lambda(){
   LambdaHw = w * Lambda.t();
   
   // refreshing density happens in the 'logpost_refresh_after_gibbs' function
+  if(verbose & debug){
+    Rcpp::Rcout << "[sample_hmc_Lambda] done\n";
+  }
   
-  
-  message("[sample_hmc_Lambda] done");
 }

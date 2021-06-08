@@ -1,4 +1,4 @@
-#include "irls.h"
+#include "utils_irls.h"
 
 
 using namespace std;
@@ -68,6 +68,7 @@ arma::vec irls_bayes_cpp(const arma::vec& y,
     case 3:
       return poisson_linkinv(arg);
     }
+    return arg;
   };
   
   auto mueta = [&](const arma::vec& arg){
@@ -80,6 +81,7 @@ arma::vec irls_bayes_cpp(const arma::vec& y,
     case 3:
       return poisson_mueta(arg);
     }
+    return arg;
   };
   
   auto variance = [&](const arma::vec& arg){
@@ -92,6 +94,7 @@ arma::vec irls_bayes_cpp(const arma::vec& y,
     case 3:
       return poisson_variance(arg);
     }
+    return arg;
   };
   
   for(int j=0; j<maxit; j++){
@@ -133,6 +136,7 @@ arma::vec irls_step(const arma::vec& start_x,
     case 1:
       return poisson_linkinv(arg);
     }
+    return arg;
   };
   
   auto mueta = [&](const arma::vec& arg){
@@ -145,6 +149,7 @@ arma::vec irls_step(const arma::vec& start_x,
     case 1:
       return poisson_mueta(arg);
     }
+    return arg;
   };
   
   auto variance = [&](const arma::vec& arg){
@@ -157,6 +162,7 @@ arma::vec irls_step(const arma::vec& start_x,
     case 1:
       return poisson_variance(arg);
     }
+    return arg;
   };
   
   arma::vec eta    = X * start_x + offset;

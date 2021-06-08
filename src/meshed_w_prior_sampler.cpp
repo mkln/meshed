@@ -11,7 +11,7 @@ void Meshed::w_prior_sample(MeshDataLMC& data){
   start_overall = std::chrono::steady_clock::now();
   
   int ns = coords.n_rows;
-  message("[conj_using_cg] sending to refresh_cache.");
+  
   bool acceptable = refresh_cache(data);
   
 #ifdef _OPENMP
@@ -44,7 +44,7 @@ void Meshed::w_prior_sample(MeshDataLMC& data){
     
   }
   
-  if(false || verbose & debug){
+  if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
     Rcpp::Rcout << "[w_prior_sample] loops "
                 << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()

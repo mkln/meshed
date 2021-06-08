@@ -265,16 +265,22 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
           
           w_node.at(u).w_child(c) = w.rows(c_ix);
           w_node.at(u).Ri_of_child(c) = data.w_cond_prec_ptr.at(child);
-          w_node.at(u).Kcx_x(c) = cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), pofc_ix_x);
+          
+          for(int r=0; r<k; r++){
+            w_node.at(u).Kcx_x(c).slice(r) = (*data.w_cond_mean_K_ptr.at(child)).slice(r).cols(pofc_ix_x);
+          }
           
           //Rcpp::Rcout << "hmc_sample_w " << arma::size(w_node.at(u).Kcx_x(c)) << endl;
           
           if(w_otherparents.n_rows > 0){
-            arma::cube Kcx_other = //(*param_data.w_cond_mean_K.at(child)).cols(pofc_ix_other);
-              cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), pofc_ix_other);
+            //arma::cube Kcx_other = //(*param_data.w_cond_mean_K.at(child)).cols(pofc_ix_other);
+            //  cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), pofc_ix_other);
             
-            w_node.at(u).Kco_wo(c) = cube_times_mat(Kcx_other, w_otherparents);
-            //w_node.at(u).woKoowo.col(c).fill(0);
+            w_node.at(u).Kco_wo(c) = arma::zeros(c_ix.n_elem, k); //cube_times_mat(Kcx_other, w_otherparents);
+            for(int r=0; r<k; r++){
+              w_node.at(u).Kco_wo(c).col(r) = (*data.w_cond_mean_K_ptr.at(child)).slice(r).cols(pofc_ix_other) * w_otherparents.col(r);
+            }
+            
           } else {
             w_node.at(u).Kco_wo(c) = arma::zeros(0,0);
           }
@@ -299,8 +305,8 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
         
         
         bool do_gibbs = arma::all(familyid == 0);
-        arma::mat w_temp;
-        
+        arma::mat w_temp = w_current;
+         
         if(sample){
           if(!w_hmc_nuts){
             w_temp = sample_one_mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u), 
@@ -308,7 +314,7 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
                                          rand_unif(u),
                                          w_hmc_rm, true, 
                                          do_gibbs, // gibbs
-                                         false); 
+                                         false);
             
           } else {
             w_temp = sample_one_nuts_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u)); 
@@ -350,7 +356,7 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
     Rcpp::Rcout << "[hmc_sample_w] "
                 << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()
                 << "us. " << "\n";
-    Rcpp::Rcout << "mala: " << mala_timer << endl;
+    //Rcpp::Rcout << "mala: " << mala_timer << endl;
   }
   
 }
@@ -408,7 +414,10 @@ void Meshed::gaussian_nonreference_w(int u, MeshDataLMC& data, const arma::mat& 
 void Meshed::predict(bool sample){
   start_overall = std::chrono::steady_clock::now();
   if(predict_group_exists == 1){
-    message("[predict] start ");
+    if(verbose & debug){
+      Rcpp::Rcout << "[predict] start \n";
+    }
+    
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
@@ -433,11 +442,10 @@ void Meshed::predict(bool sample){
       }
       
       //Rcpp::Rcout << "step 1 "<< endl;
+      arma::mat wpars = w.rows(predict_parent_indexing);
       
       for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
         if(na_1_blocks(u)(ix) == 0){
-          arma::mat wpars = w.rows(predict_parent_indexing);
-          
           arma::rowvec wtemp = arma::sum(arma::trans(Hpred(i).slice(ix)) % wpars, 0);
           
           if(sample){

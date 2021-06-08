@@ -1,19 +1,20 @@
 
-rmeshedgp <- function(coords, axis_partition, theta, block_size=30){
+rmeshedgp <- function(coords, theta, axis_partition=NULL, block_size=100, 
+                      n_threads=1, cache=TRUE, verbose=FALSE, debug=FALSE){
   
   dd             <- ncol(coords)
   nr             <- nrow(coords)
   orig_coords_colnames <- colnames(coords)
   
-  
-  if(length(axis_partition) == 1){
-    axis_partition <- rep(axis_partition, dd)
-  }
   if(is.null(axis_partition)){
     axis_partition <- rep(round((nr/block_size)^(1/dd)), dd)
+  } else {
+    if(length(axis_partition) == 1){
+      axis_partition <- rep(axis_partition, dd)
+    }
   }
   
-  use_cache <- T#settings$cache %>% set_default(T)
+  use_cache <- cache
   
   y <- rep(1, nr)
   na_which <- rep(1, nr)
@@ -28,10 +29,10 @@ rmeshedgp <- function(coords, axis_partition, theta, block_size=30){
     dplyr::mutate(thegrid = 0)
   absize <- round(nrow(simdata)/prod(axis_partition))
   
-  cat("Partitioning grid axes into {paste0(axis_partition, collapse=', ')} intervals. Approx block size {absize}" %>% glue::glue())
-  cat("\n")
-  
-  cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
+  if(verbose & debug){
+    cat("Partitioning grid axes into {paste0(axis_partition, collapse=', ')} intervals. Approx block size {absize}" %>% glue::glue())
+    cat("\n")
+  }
   
   simdata %<>% 
     dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
@@ -41,22 +42,22 @@ rmeshedgp <- function(coords, axis_partition, theta, block_size=30){
     as.matrix()
   sort_ix     <- simdata$ix
   
-  fixed_thresholds <- 1:dd %>% lapply(function(i) spmeshed:::kthresholdscp(coords[,i], axis_partition[i])) 
+  fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], axis_partition[i])) 
   
   
   # Domain partitioning and gibbs groups
   system.time(coords_blocking <- coords %>% 
                 as.matrix() %>%
-                spmeshed:::tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% 
+                tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% 
                 dplyr::mutate(na_which = simdata$na_which, sort_ix=sort_ix) )
   
   coords_blocking %<>% dplyr::rename(ix=sort_ix)
   
   # DAG
   if(dd < 4){
-    suppressMessages(parents_children <- spmeshed:::mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), axis_partition, F))
+    suppressMessages(parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), axis_partition, F))
   } else {
-    suppressMessages(parents_children <- spmeshed:::mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-.data$ix)))
+    suppressMessages(parents_children <- mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-.data$ix)))
   }
   parents                      <- parents_children[["parents"]] 
   children                     <- parents_children[["children"]] 
@@ -81,7 +82,7 @@ rmeshedgp <- function(coords, axis_partition, theta, block_size=30){
   indexing_obs <- indexing_grid
   
   matern_nu <- T
-  matern_fix_twonu <- 1 # not applicable
+  matern_fix_twonu <- 1
   
   # override defaults if starting values are provided
   theta %<>% matrix(ncol=1)
@@ -104,14 +105,14 @@ rmeshedgp <- function(coords, axis_partition, theta, block_size=30){
     dplyr::rename(!!!coords_renamer,
                   forced_grid=.data$thegrid)
   
-  w <- spmeshed:::rmeshedgp_internal(coords, parents, children,
+  w <- rmeshedgp_internal(coords, parents, children,
                                      block_names, block_groups,
                                      indexing_grid, indexing_obs,
                                      matern_fix_twonu,
                                      theta,
-                                     1,
+                                     n_threads,
                                      use_cache,
-                                     T, T)
+                                     verbose, debug)
   simulated_data <- coords %>% cbind(w) %>% as.data.frame()
   colnames(simulated_data)[dd+1] <- "w"
   return(simulated_data)

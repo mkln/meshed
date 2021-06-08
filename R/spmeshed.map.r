@@ -1,5 +1,6 @@
 
-spmeshed_map <- function(y, x, coords, 
+spmeshed.map <- function(y, x, coords, 
+                         family = "gaussian",
                          axis_partition = NULL, 
                          block_size = 30,
                          grid_size=NULL,
@@ -7,12 +8,11 @@ spmeshed_map <- function(y, x, coords,
                          pars = list(sigmasq=NULL, phi=NULL, tausq=NULL),
                          maxit = 1000,
                          n_threads = 4,
-                         print_every = NULL,
-                         predict_everywhere = F,
-                         family = "gaussian",
+                         verbose = FALSE,
+                         predict_everywhere = FALSE,
                          settings = list(forced_grid=NULL, cache=NULL),
-                         debug = list(casc_beta=T, casc_w=T,
-                                            verbose=F, debug=F)
+                         debug = list(map_beta=TRUE, map_w=TRUE,
+                                verbose=FALSE, debug=FALSE)
 ){
   
   # init
@@ -23,7 +23,7 @@ spmeshed_map <- function(y, x, coords,
     o --> o --> o
     ^     ^     ^
     |     |     | 
-    o --> o --> o\n\n")
+    o --> o --> o\n(maximum a posteriori)\n")
   
   set_default <- function(x, default_val){
     return(if(is.null(x)){
@@ -34,16 +34,25 @@ spmeshed_map <- function(y, x, coords,
   # data management pt 1
   if(1){
     
-    casc_w <- debug$casc_w %>% set_default(T)
-    casc_beta <- debug$casc_beta %>% set_default(F)
+    map_w <- debug$map_w %>% set_default(TRUE)
+    map_beta <- debug$map_beta %>% set_default(FALSE)
     
-    verbose <- F
-    debug <- F
+    verbose <- verbose | (debug$verbose %>% set_default(FALSE))
+    debug <- debug$debug %>% set_default(FALSE)
     
     coords %<>% as.matrix()
     
     k <- 1
+    q              <- ncol(y)
+    if(q > 1){
+      stop("Not implemented for multivariate data.")
+    }
+    
     dd             <- ncol(coords)
+    if(dd > 2){
+      stop("Not implemented for spacetime data.")
+    }
+    
     p              <- ncol(x)
     
     # data management part 0 - reshape/rename
@@ -59,18 +68,7 @@ spmeshed_map <- function(y, x, coords,
       }
     }
     
-    effective_dimension <- prod(dim(y))
-  
-    if(effective_dimension > 1e6-1){
-      print_every <- 5
-    } else {
-      if(effective_dimension > 1e5-1){
-        print_every <- 50
-      } else {
-        print_every <- 500
-      }
-    }
-    
+    print_every <- 1
   
     if(is.null(colnames(x))){
       orig_X_colnames <- colnames(x) <- paste0('X_', 1:ncol(x))
@@ -86,14 +84,14 @@ spmeshed_map <- function(y, x, coords,
       colnames(coords)     <- paste0('Var', 1:dd)
     }
     
-    q              <- ncol(y)
+    
     k              <- ifelse(is.null(k), q, k)
     
     # family id 
     family <- if(length(family)==1){rep(family, q)} else {family}
     family_in <- data.frame(family=family)
     available_families <- data.frame(id=0:3, family=c("gaussian", "poisson", "binomial", "beta"))
-    family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %$% id
+    family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %>% pull(.data$id)
     
     nr <- nrow(x)
     
@@ -110,16 +108,16 @@ spmeshed_map <- function(y, x, coords,
     # if data are not gridded, then the above should be MUCH larger than the number of rows
     # if we're not too far off maybe the dataset is actually gridded
     if(heuristic_gridded*0.5 < nrow(coords)){
-      data_likely_gridded <- T
+      data_likely_gridded <- TRUE
     } else {
-      data_likely_gridded <- F
+      data_likely_gridded <- FALSE
     }
     if(ncol(coords) == 3){
       # with time, check if there's equal spacing
       timepoints <- coords[,3] %>% unique()
       time_spacings <- timepoints %>% sort() %>% diff() %>% round(5) %>% unique()
       if(length(time_spacings) < .1 * length(timepoints)){
-        data_likely_gridded <- T
+        data_likely_gridded <- TRUE
       }
     }
     
@@ -128,19 +126,19 @@ spmeshed_map <- function(y, x, coords,
     if(is.null(settings$forced_grid)){
       if(data_likely_gridded){
         cat("I think the data look gridded so I'm setting forced_grid=F.\n")
-        use_forced_grid <- F
+        use_forced_grid <- FALSE
       } else {
         cat("I think the data don't look gridded so I'm setting forced_grid=T.\n")
-        use_forced_grid <- T
+        use_forced_grid <- TRUE
       }
     } else {
-      use_forced_grid <- settings$forced_grid %>% set_default(T)
+      use_forced_grid <- settings$forced_grid %>% set_default(TRUE)
       if(!use_forced_grid & !data_likely_gridded){
         warning("Data look not gridded: force a grid with settings$forced_grid=T.")
       }
     }
     
-    use_cache <- settings$cache %>% set_default(T)
+    use_cache <- settings$cache %>% set_default(TRUE)
     if(use_forced_grid & (!use_cache)){
       warning("Using a forced grid with no cache is a waste of resources.")
     }
@@ -203,6 +201,7 @@ spmeshed_map <- function(y, x, coords,
     simdata %<>% 
       dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
     
+    
     coords <- simdata %>% 
       dplyr::select(dplyr::contains("Var")) %>% 
       as.matrix()
@@ -233,6 +232,7 @@ spmeshed_map <- function(y, x, coords,
                   tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% 
                   dplyr::mutate(na_which = simdata$na_which, sort_ix=sort_ix) )
     
+    
     coords_blocking %<>% dplyr::rename(ix=sort_ix)
     
     # check if some blocks come up totally empty
@@ -251,6 +251,7 @@ spmeshed_map <- function(y, x, coords,
     
   }
   nr_full <- nrow(coords_blocking)
+
   
   # DAG
   if(dd < 4){
@@ -290,15 +291,23 @@ spmeshed_map <- function(y, x, coords,
     indexing_obs <- indexing_grid
   }
   
-  if(T){
+  if(TRUE){
     # prior and starting values for mcmc
-    matern_nu <- F
+    matern_nu <- FALSE
     start_nu <- 0.5
     matern_fix_twonu <- 1
     
+    if(family %in% c("gaussian", "beta")){
+      if(is.null(pars$tausq)){
+        stop("Must specify pars$tausq for this family.")
+      }
+    } else {
+      pars$tausq <- 1
+    }
+    
     all_values <- expand.grid(as.list(pars[c("phi", "sigmasq", "tausq")]))
     colnames(all_values)[1:3] <- c("phi", "sigmasq", "tausq")
-    all_values %<>% arrange(sigmasq)#mutate(microerg = sigmasq * phi^(2*start_nu)) %>% arrange(microerg) %>% dplyr::select(-microerg)
+    all_values %<>% arrange(.data$sigmasq)#mutate(microerg = sigmasq * phi^(2*start_nu)) %>% arrange(microerg) %>% dplyr::select(-microerg)
     
     theta_values <- all_values[,1:2] %>% t()
     tausq_values <- all_values[,3]
@@ -351,14 +360,14 @@ spmeshed_map <- function(y, x, coords,
   ## checking
   if(use_forced_grid){
     checking <- coordsdata %>% left_join(coords_blocking) %>% 
-      group_by(block) %>% summarise(nfg = sum(forced_grid)) %>% filter(nfg==0)
+      group_by(.data$block) %>% summarise(nfg = sum(.data$forced_grid)) %>% filter(.data$nfg==0)
     if(nrow(checking) > 0){
       stop("Partition is too fine for the current reference set. ")
     }
   }
-  
+  adaptive <- FALSE
   comp_time <- system.time({
-    results <- meshed:::meshed_casc(y, family_id, x, coords, 
+    results <- meshed_casc(y, family_id, x, coords, 
                            
                            parents, children, 
                            block_names, block_groups,
@@ -381,7 +390,7 @@ spmeshed_map <- function(y, x, coords,
                            maxit,
                            n_threads,
                            
-                           adaptive <- F, # adapting
+                           adaptive, # adapting
                            
                            use_cache,
                            use_forced_grid,
@@ -389,17 +398,19 @@ spmeshed_map <- function(y, x, coords,
                            verbose, debug, # verbose, debug
                            print_every,
                            
-                           casc_beta, casc_w) 
+                           map_beta, map_w) 
   })
   
   returning <- list(coordsdata = coordsdata,
-                    pardf = all_values,
-                    block_names = block_names,
-                    block_groups = block_groups,
-                    parents = parents,
-                    children = children,
-                    coordsblocking = coords_blocking) %>% 
+                    pardf = all_values
+                    #block_names = block_names,
+                    #block_groups = block_groups,
+                    #parents = parents,
+                    #children = children,
+                    #coordsblocking = coords_blocking
+                    ) %>% 
     c(results)
+  class(returning) <- "spmeshed.map"
   return(returning) 
   
 }

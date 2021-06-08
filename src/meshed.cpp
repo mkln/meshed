@@ -53,11 +53,11 @@ Meshed::Meshed(
   forced_grid = use_forced_grid;
   cached = use_cache;
   
-  message("Meshed::Meshed initialization.\n");
+  if(verbose & debug){
+    Rcpp::Rcout << "Meshed::Meshed initialization.\n";
+  }
   
-  start_overall = std::chrono::steady_clock::now();
   
-  message("[Meshed::Meshed] assign values.");
   // data
   y                   = y_in;
   
@@ -160,7 +160,6 @@ Meshed::Meshed(
   
   init_matern(num_threads, matern_twonu_in, use_ps);
   
-  message("LambdaHw initialize");
   LambdaHw = w * Lambda.t(); // arma::zeros(coords.n_rows, q); 
   wU = w;
   
@@ -185,14 +184,10 @@ Meshed::Meshed(
 }
 
 
-void Meshed::message(string s){
-  if(verbose & debug){
-    Rcpp::Rcout << s << "\n";
-  }
-}
-
 void Meshed::make_gibbs_groups(){
-  message("[make_gibbs_groups] start");
+  if(verbose & debug){
+    Rcpp::Rcout << "[make_gibbs_groups] start\n";
+  }
   
   // checks -- errors not allowed. use check_groups.cpp to fix errors.
   for(int g=0; g<n_gibbs_groups; g++){
@@ -206,7 +201,7 @@ void Meshed::make_gibbs_groups(){
               Rcpp::Rcout << u << " <--- " << parents(u)(pp) 
                           << ": same group (" << block_groups(u) 
                           << ")." << "\n";
-              throw 1;
+              Rcpp::stop("Invalid coloring of the DAG.\n");
             }
           }
           for(int cc=0; cc<children(u).n_elem; cc++){
@@ -214,7 +209,7 @@ void Meshed::make_gibbs_groups(){
               Rcpp::Rcout << u << " ---> " << children(u)(cc) 
                           << ": same group (" << block_groups(u) 
                           << ")." << "\n";
-              throw 1;
+              Rcpp::stop("Invalid coloring of the DAG.\n");
             }
           }
         }
@@ -293,7 +288,9 @@ void Meshed::make_gibbs_groups(){
   }
   
   // predict_initialize
-  message("predict initialize");
+  if(verbose & debug){
+    Rcpp::Rcout << "predict initialize \n";
+  }
   if(predict_group_exists == 1){
     Hpred = arma::field<arma::cube>(u_predicts.n_elem);
     Rcholpred = arma::field<arma::mat>(u_predicts.n_elem);
@@ -308,20 +305,26 @@ void Meshed::make_gibbs_groups(){
       Rcholpred(i) = arma::zeros(k,indexing_obs(u).n_elem);
     }
   }
-  
-  message("[make_gibbs_groups] done.");
+  if(verbose & debug){
+    Rcpp::Rcout << "[make_gibbs_groups] done.\n";
+  }
 }
 
 void Meshed::na_study(){
   // prepare stuff for NA management
-  message("[na_study] start");
+  if(verbose & debug){
+    Rcpp::Rcout << "[na_study] start \n"; 
+  }
   na_1_blocks = arma::field<arma::uvec> (n_blocks);
   na_0_blocks = arma::field<arma::uvec> (n_blocks);
   na_ix_blocks = arma::field<arma::uvec> (n_blocks);
   n_loc_ne_blocks = 0;
   block_ct_obs = arma::zeros(n_blocks);
   
-  message("[na_study] step 1.");
+  if(verbose & debug){
+    Rcpp::Rcout << "[na_study] step 1.\n";
+  }
+  
 #ifdef _OPENMP
   #pragma omp parallel for 
 #endif
@@ -345,7 +348,10 @@ void Meshed::na_study(){
     na_ix_blocks(i) = arma::find(na_1_blocks(i) == 1); 
   }
   
-  message("[na_study] step 2.");
+  if(verbose & debug){
+    Rcpp::Rcout << "[na_study] step 2.\n";
+  }
+  
   n_ref_blocks = 0;
   for(int i=0; i<n_blocks; i++){
     block_ct_obs(i) = arma::accu(na_1_blocks(i));
@@ -355,7 +361,10 @@ void Meshed::na_study(){
     } 
   }
   
-  message("[na_study] step 3.");
+  if(verbose & debug){
+    Rcpp::Rcout << "[na_study] step 3.\n";
+  }
+  
   int j=0;
   reference_blocks = arma::zeros<arma::uvec>(n_ref_blocks);
   //ref_block_names = arma::zeros<arma::uvec>(n_ref_blocks);
@@ -367,14 +376,20 @@ void Meshed::na_study(){
       j ++;
     } 
   }
-  message("[na_study] done.");
+  
+  if(verbose & debug){
+    Rcpp::Rcout << "[na_study] done.\n";
+  }
+  
 }
 
 void Meshed::init_cache(){
   // coords_caching stores the layer names of those layers that are representative
   // coords_caching_ix stores info on which layers are the same in terms of rel. distance
   
-  message("[init_cache]");
+  if(verbose & debug){
+    Rcpp::Rcout << "init_cache start \n";
+  }
   //coords_caching_ix = caching_pairwise_compare_uc(coords_blocks, block_names, block_ct_obs); // uses block_names(i)-1 !
   coords_caching_ix = caching_pairwise_compare_uci(coords, indexing, block_names, block_ct_obs, cached); // uses block_names(i)-1 !
   coords_caching = arma::unique(coords_caching_ix);
@@ -431,18 +446,21 @@ void Meshed::init_cache(){
     //}
   }
   
-  if(verbose & debug || true){
+  if(verbose & debug){
     Rcpp::Rcout << "Caching c: " << coords_caching.n_elem 
                 << " k: " << kr_caching.n_elem << "\n";
   }
-  message("[init_cache]");
+  
 }
 
 void Meshed::init_indexing(){
   
   parents_indexing = arma::field<arma::uvec> (n_blocks);
   
-  message("[init_indexing] parent_indexing");
+  if(verbose & debug){
+    Rcpp::Rcout << "[init_indexing] parent_indexing\n";
+  }
+  
 #ifdef _OPENMP
   #pragma omp parallel for 
 #endif
@@ -456,7 +474,11 @@ void Meshed::init_indexing(){
       parents_indexing(u) = field_v_concat_uv(pixs);
     }
   }
-  message("[init_indexing] done.");
+  
+  if(verbose & debug){
+    Rcpp::Rcout << "[init_indexing] done.\n";
+  }
+  
 }
 
 void Meshed::init_matern(int num_threads, int matern_twonu_in=1, bool use_ps=true){
@@ -471,8 +493,10 @@ void Meshed::init_matern(int num_threads, int matern_twonu_in=1, bool use_ps=tru
 }
 
 void Meshed::init_gibbs_index(){
-  message("[init_gibbs_index] dim_by_parent, parents_coords, children_coords");
   
+  if(verbose & debug){
+    Rcpp::Rcout << "[init_gibbs_index] dim_by_parent, parents_coords, children_coords\n";
+  }
   arma::field<arma::uvec> dim_by_parent(n_blocks);
   
 #ifdef _OPENMP
@@ -490,7 +514,11 @@ void Meshed::init_gibbs_index(){
       dim_by_parent(u) = arma::cumsum(dim_by_parent(u));
     }
   }
-  message("[init_gibbs_index] u_is_which_col_f");
+  
+  if(verbose & debug){
+    Rcpp::Rcout << "[init_gibbs_index] u_is_which_col_f\n";
+  }
+  
 
   for(int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
@@ -523,12 +551,16 @@ void Meshed::init_gibbs_index(){
     }
   }
   
-  message("[init_gibbs_index] done.");
+  if(verbose & debug){
+    Rcpp::Rcout << "[init_gibbs_index] done.\n";
+  }
+  
 }
 
 void Meshed::init_meshdata(const arma::mat& theta_in){
-  message("[init_meshdata]");
-  
+  if(verbose & debug){
+    Rcpp::Rcout << "[init_meshdata]\n";
+  }
   // block params
   //param_data.w_cond_mean_K = arma::field<arma::cube> (n_blocks);
   //param_data.w_cond_prec   = arma::field<arma::cube> (n_blocks);
@@ -620,13 +652,19 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
   }
   
   alter_data = param_data; 
+  if(verbose & debug){
+    Rcpp::Rcout << "[init_meshdata] done.\n";
+  }
   
-  message("[init_meshdata] done.");
 }
 
 bool Meshed::refresh_cache(MeshDataLMC& data){
   start_overall = std::chrono::steady_clock::now();
-  message("[refresh_cache] start.");
+  
+  if(verbose & debug){
+    Rcpp::Rcout << "[refresh_cache] start.\n";
+  }
+  
   
   data.Ri_chol_logdet = arma::zeros(kr_caching.n_elem);
   
@@ -760,7 +798,9 @@ void Meshed::update_block_wlogdens(int u, MeshDataLMC& data){
 }
 
 void Meshed::init_gaussian(){
-  message("[init_gaussian]");
+  if(verbose & debug){
+    Rcpp::Rcout << "init_gaussian\n";
+  }
   
   tausq_mcmc_counter = 0;
   lambda_mcmc_counter = 0;
@@ -794,8 +834,9 @@ void Meshed::init_gaussian(){
 
 
 void Meshed::init_betareg(){
-  message("[init_betareg]");
-  
+  if(verbose & debug){
+    Rcpp::Rcout << "init_betareg \n";
+  }
   tausq_unif_bounds = arma::join_horiz(1e-10 * arma::ones(q), 1e10 * arma::ones(q));
   betareg_tausq_adapt.reserve(q);
   brtausq_mcmc_counter = arma::zeros(q);
@@ -883,14 +924,14 @@ bool Meshed::calc_ywlogdens(MeshDataLMC& data){
       if(arma::all(familyid == 0)){
         calc_DplusSi(u, data, Lambda, tausq_inv);
       }
-      update_lly(u, data, LambdaHw);
+      update_lly(u, data, LambdaHw, false);
     }
   }
   
   data.loglik_w = 
     arma::accu(data.logdetCi_comps) + 
     arma::accu(data.loglik_w_comps) + 
-    arma::accu(data.ll_y);
+    arma::accu(data.ll_y); //****
   
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
@@ -962,8 +1003,9 @@ void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw, bool m
 }
 
 void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data, bool sample){
-  message("[logpost_refresh_after_gibbs]");
+  
   if(verbose & debug){
+    Rcpp::Rcout << "logpost_refresh_after_gibbs\n";
     start_overall = std::chrono::steady_clock::now();
   }
   
@@ -1016,7 +1058,9 @@ void Meshed::accept_make_change(){
 
 // --- 
 void Meshed::init_for_mcmc(){
-  message("[init_for_mcmc]");
+  if(verbose & debug){
+    Rcpp::Rcout << "[init_for_mcmc]\n";
+  }
   
   beta_node.reserve(q); // for beta
   lambda_node.reserve(q); // for lambda
@@ -1066,7 +1110,10 @@ void Meshed::init_for_mcmc(){
   w_hmc_nuts = false;
   w_hmc_rm = true;
   if(w_do_hmc){
-    message("[init nongaussian outcome]");
+    if(verbose & debug){
+      Rcpp::Rcout << "[init nongaussian outcome]\n";
+    }
+    
     w_node.reserve(n_blocks); // for w
     hmc_eps = .025 * arma::ones(n_blocks);
     hmc_eps_started_adapting = arma::zeros<arma::uvec>(n_blocks);
@@ -1105,9 +1152,14 @@ void Meshed::init_for_mcmc(){
       new_block.num_children = children(u).n_elem;
       
       new_block.w_child = arma::field<arma::mat> (children(u).n_elem); 
-      new_block.Ri_of_child = arma::field<arma::cube *> (children(u).n_elem); 
+      new_block.Ri_of_child = arma::field<arma::cube* > (children(u).n_elem); 
       new_block.Kco_wo = arma::field<arma::mat>(children(u).n_elem);
       new_block.Kcx_x = arma::field<arma::cube>(children(u).n_elem);
+      
+      for(int c=0; c<children(u).n_elem; c++){
+        int child = children(u)(c);
+        new_block.Kcx_x(c) = arma::zeros(indexing(child).n_elem, indexing(u).n_elem, k);
+      }
       
       w_node.at(u) = new_block;
     }
@@ -1148,11 +1200,11 @@ Meshed::Meshed(
   debug = debugging;
   cached = use_cache;
   
-  message("Meshed::Meshed (prior sampling) initialization.\n");
+  if(verbose & debug){
+    Rcpp::Rcout << "Meshed::Meshed (prior sampling) initialization.\n";
+  }
   
   start_overall = std::chrono::steady_clock::now();
-  
-  message("[Meshed::Meshed] assign values.");
   
   // spatial coordinates and dimension
   coords              = coords_in;

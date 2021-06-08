@@ -1,10 +1,9 @@
 #define ARMA_DONT_PRINT_ERRORS
 
-#include "utils/mesh_lmc_utils.h"
-#include "utils/interrupt_handler.h"
-#include "mcmc/parametrize.h"
-
-#include "meshed/meshed.h"
+#include "utils_lmc.h"
+#include "utils_interrupt_handler.h"
+#include "utils_parametrize.h"
+#include "meshed.h"
 
 //[[Rcpp::export]]
 Rcpp::List meshed_casc(
@@ -51,7 +50,10 @@ Rcpp::List meshed_casc(
     bool casc_beta=true,
     bool casc_w=true){
   
-  Rcpp::Rcout << "Initializing.\n";
+  if(verbose & debug){
+    Rcpp::Rcout << "Initializing.\n";
+  }
+  
   
 #ifdef _OPENMP
   omp_set_num_threads(num_threads);
@@ -216,7 +218,10 @@ Rcpp::List meshed_casc(
     end_all = std::chrono::steady_clock::now();
     double comp_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_all - start_all).count();
     
-    Rprintf("%d of %d, %d iters in %.1fs. \n", i+1, n_alts, m, comp_time/1000.0);
+    if(verbose){
+      Rprintf("%d of %d, %d iters in %.1fs. \n", i+1, n_alts, m, comp_time/1000.0);
+    }
+    
     
     bool interrupted = checkInterrupt();
     if(interrupted){

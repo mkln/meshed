@@ -8,15 +8,15 @@
 
 #include <RcppArmadillo.h>
 
-#include "../distributions/truncmvnorm.h"
-#include "../distributions/vecrandom.h"
-#include "../mcmc/mh_adapt.h"
-#include "../mcmc/hmc_sample.h"
-#include "../utils/caching_pairwise_compare.h"
-#include "../utils/mesh_utils.h"
-#include "../utils/mesh_lmc_utils.h"
-#include "../utils/irls.h"
-#include "../xcov/covariance_lmc.h"
+//#include "distrib_truncmvnorm.h"
+#include "distrib_vecrandom.h"
+#include "mcmc_ramadapt.h"
+#include "mcmc_hmc_sample.h"
+#include "utils_caching.h"
+#include "utils_lmc.h"
+#include "utils_irls.h"
+#include "utils_others.h"
+#include "covariance_lmc.h"
 
 class Meshed {
 public:
@@ -116,8 +116,6 @@ public:
   
   bool verbose;
   bool debug;
-  
-  void message(string s);
   
   // predictions
   arma::field<arma::cube> Hpred;

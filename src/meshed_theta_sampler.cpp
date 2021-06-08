@@ -3,7 +3,9 @@
 using namespace std;
 
 void Meshed::metrop_theta(){
-  message("[metrop_theta] start");
+  if(verbose & debug){
+    Rcpp::Rcout << "[metrop_theta] start\n";
+  }
   
   theta_adapt.count_proposal();
   
@@ -18,11 +20,16 @@ void Meshed::metrop_theta(){
   new_param = par_huvtransf_back(par_huvtransf_fwd(param, theta_unif_bounds) + 
     theta_adapt.paramsd * U_update, theta_unif_bounds);
   
+  //new_param(1) = 1; //***
   
   bool out_unif_bounds = unif_bounds(new_param, theta_unif_bounds);
   
   arma::mat theta_proposal = 
     arma::mat(new_param.memptr(), new_param.n_elem/k, k);
+  
+  if(matern.using_ps == false){
+    theta_proposal.tail_rows(1).fill(1);
+  }
   
   alter_data.theta = theta_proposal;
   
@@ -87,6 +94,7 @@ void Meshed::metrop_theta(){
     theta_adapt.adapt(U_update, acceptable*exp(logaccept), theta_mcmc_counter); 
   }
   theta_mcmc_counter++;
-  
-  message("[metrop_theta] end");
+  if(verbose & debug){
+    Rcpp::Rcout << "[metrop_theta] end\n";
+  }
 }

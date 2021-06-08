@@ -61,6 +61,10 @@ meshed_mcmc <- function(y, family, X, coords, k, parents, children, layer_names,
     .Call(`_meshed_meshed_mcmc`, y, family, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, adapting, use_cache, forced_grid, use_ps, verbose, debug, print_every, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w)
 }
 
+spmeshed_predict <- function(predx, predcoords, predblock, coords, parents, block_names, indexing, v_sampled, theta_sampled, lambda_sampled, beta_sampled, tausq_sampled, twonu, use_ps, verbose = FALSE, num_threads = 4L) {
+    .Call(`_meshed_spmeshed_predict`, predx, predcoords, predblock, coords, parents, block_names, indexing, v_sampled, theta_sampled, lambda_sampled, beta_sampled, tausq_sampled, twonu, use_ps, verbose, num_threads)
+}
+
 rmeshedgp_internal <- function(coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, matern_twonu, theta, num_threads = 1L, use_cache = TRUE, verbose = FALSE, debug = FALSE) {
     .Call(`_meshed_rmeshedgp_internal`, coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, matern_twonu, theta, num_threads, use_cache, verbose, debug)
 }
@@ -69,11 +73,11 @@ cube_tcrossprod <- function(x) {
     .Call(`_meshed_cube_tcrossprod`, x)
 }
 
-summary_list_mean <- function(x, num_threads = 1L) {
-    .Call(`_meshed_summary_list_mean`, x, num_threads)
+summary_list_mean <- function(x, n_threads = 1L) {
+    .Call(`_meshed_summary_list_mean`, x, n_threads)
 }
 
-summary_list_q <- function(x, q, num_threads = 1L) {
-    .Call(`_meshed_summary_list_q`, x, q, num_threads)
+summary_list_q <- function(x, q, n_threads = 1L) {
+    .Call(`_meshed_summary_list_q`, x, q, n_threads)
 }
 

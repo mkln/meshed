@@ -14,7 +14,10 @@ void Meshed::deal_with_tausq(MeshDataLMC& data, bool ref_pardata){
 
 
 void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
-  message("[gibbs_sample_tausq_std] start");
+  if(verbose & debug){
+    Rcpp::Rcout << "[gibbs_sample_tausq_std] start\n";
+  }
+  
   start = std::chrono::steady_clock::now();
   // note that at the available locations w already includes Lambda 
   
@@ -151,7 +154,10 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
 }
 
 void Meshed::gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata){
-  message("[gibbs_sample_tausq_fgrid] start (sampling via Robust adaptive Metropolis)");
+  if(verbose & debug){
+    Rcpp::Rcout << "[gibbs_sample_tausq_fgrid] start (sampling via Robust adaptive Metropolis)\n";
+  }
+  
   start = std::chrono::steady_clock::now();
   
   double aprior = tausq_ab(0);

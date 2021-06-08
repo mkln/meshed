@@ -20,7 +20,7 @@ arma::cube cube_tcrossprod(const arma::cube& x){
 }
 
 //[[Rcpp::export]]
-arma::mat summary_list_mean(const arma::field<arma::mat>& x, int num_threads=1){
+arma::mat summary_list_mean(const arma::field<arma::mat>& x, int n_threads=1){
   // all matrices in x must be the same size.
   int nrows = x(0).n_rows;
   int ncols = x(0).n_cols;
@@ -36,7 +36,7 @@ arma::mat summary_list_mean(const arma::field<arma::mat>& x, int num_threads=1){
   }
   
 #ifdef _OPENMP
-  omp_set_num_threads(num_threads);
+  omp_set_num_threads(n_threads);
 #endif
   
 #ifdef _OPENMP
@@ -100,7 +100,7 @@ double cqtile(arma::vec& v, double q){
 }
 
 //[[Rcpp::export]]
-arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int num_threads=1){
+arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int n_threads=1){
   // all matrices in x must be the same size.
   int nrows = x(0).n_rows;
   int ncols = x(0).n_cols;
@@ -116,7 +116,7 @@ arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int num_thre
   }
   
 #ifdef _OPENMP
-  omp_set_num_threads(num_threads);
+  omp_set_num_threads(n_threads);
 #endif
   
 #ifdef _OPENMP

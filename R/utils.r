@@ -54,25 +54,25 @@ tessellation_axis_parallel_fix <- function(coordsmat, thresholds, n_threads){
 }
 
 
-mesh_graph_build <- function(coords_blocking, Mv, verbose=T){
+mesh_graph_build <- function(coords_blocking, Mv, verbose=TRUE){
   cbl <- coords_blocking %>% dplyr::select(-dplyr::contains("Var"))
   if("L3" %in% colnames(coords_blocking)){
     cbl %<>% 
       dplyr::group_by(.data$L1, .data$L2, .data$L3, .data$block) %>% 
-      dplyr::summarize(na_which = sum(.data$na_which, na.rm=T)/dplyr::n())#, color=unique(color))
+      dplyr::summarize(na_which = sum(.data$na_which, na.rm=TRUE)/dplyr::n())#, color=unique(color))
   } else {
     cbl %<>% 
       dplyr::group_by(.data$L1, .data$L2, .data$block) %>% 
-      dplyr::summarize(na_which = sum(.data$na_which, na.rm=T)/dplyr::n())#, color=unique(color))
+      dplyr::summarize(na_which = sum(.data$na_which, na.rm=TRUE)/dplyr::n())#, color=unique(color))
   }
   blocks_descr <- unique(cbl) %>% as.matrix()
   
-  dag_both_axes <- T
+  dag_both_axes <- TRUE
   graphed <- mesh_graph_cpp(blocks_descr, Mv, verbose, dag_both_axes)
   
   block_ct_obs <- coords_blocking %>% 
     dplyr::group_by(.data$block) %>% 
-    dplyr::summarise(block_ct_obs = sum(.data$na_which, na.rm=T)) %>% 
+    dplyr::summarise(block_ct_obs = sum(.data$na_which, na.rm=TRUE)) %>% 
     dplyr::arrange(.data$block) %$% 
     block_ct_obs# %>% `[`(order(block_names))
   
@@ -109,7 +109,7 @@ mesh_graph_build_hypercube <- function(coords_blocking){
   
   cbl %<>% 
     dplyr::group_by(!!!rlang::syms(axes_names), .data$block) %>% 
-    dplyr::summarise(na_which = sum(.data$na_which, na.rm=T)/dplyr::n())
+    dplyr::summarise(na_which = sum(.data$na_which, na.rm=TRUE)/dplyr::n())
   
   dimen <- ncol(cbl) - 2
   u_cbl <- unique(cbl)
@@ -139,7 +139,7 @@ mesh_graph_build_hypercube <- function(coords_blocking){
   # continue
   block_ct_obs <- coords_blocking %>% 
     dplyr::group_by(.data$block) %>% 
-    dplyr::summarise(block_ct_obs = sum(.data$na_which, na.rm=T)) %>% 
+    dplyr::summarise(block_ct_obs = sum(.data$na_which, na.rm=TRUE)) %>% 
     dplyr::arrange(.data$block) %$% 
     block_ct_obs# %>% `[`(order(block_names))
   

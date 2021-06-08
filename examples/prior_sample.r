@@ -1,30 +1,35 @@
-
-library(tidyverse)
+library(ggplot2)
 library(magrittr)
+library(meshed)
 
-coords <- expand.grid(xx <- seq(0, 1, length.out=100), xx, seq(0, 1, length.out=30)) %>% 
-  arrange(Var1, Var2, Var3) %>% as.matrix()
-axis_partition <- c(100, 10, 30)
+# spatial domain (we choose a grid to make a nice image later)
+# this generates a dataset of size 32400
+xx <- seq(0, 1, length.out=180)
+coords <- expand.grid(xx, xx) %>%
+  as.matrix()
 
-simdata <- rmeshedgp(coords, axis_partition, c(1, .5, 1))
+raster_plot <- function(df){
+  ggplot(df, aes(Var1, Var2, fill=w)) +
+    geom_raster() +
+    scale_fill_viridis_c() +
+    theme_minimal() }
 
-colnames(test)[4] <- "w"
-test %<>% as.data.frame()
+# spatial data, exponential covariance
+# phi=14, sigma^2=2
+simdata <- rmeshedgp(coords, c(14, 2))
+raster_plot(simdata)
+
+# spatial data, matern covariance
+# phi=14, nu=1, sigma^2=2
+simdata <- rmeshedgp(coords, c(14, 1, 2))
+raster_plot(simdata)
 
 
-#setwd("~/")
-if(!dir.exists("plot_tests")){
-  system("mkdir plot_tests")
-}
+# spacetime data, gneiting's covariance
+# 324000 locations
+stcoords <- expand.grid(xx, xx, seq(0, 1, length.out=10))
 
-for(tt in 1:length(unique(test$Var3))){
-  plotted <- test %>% filter(Var3==unique(Var3)[tt]) %>% 
-    ggplot(aes(Var1, Var2, fill=w)) + geom_raster() + scale_fill_viridis_c() +
-    theme_void() +
-    theme(legend.position="none") + ggtitle(tt)
-  
-  fname <- sprintf("plot_tests/%02d.png", tt)
-  ggsave(plot=plotted, filename=fname, width=7, height=7)
-}
-system("convert -delay 25 -loop 0 -resize 350 plot_tests/*.png out_alt.gif")
-system("rm -R plot_tests")
+# it should take less than a couple of seconds
+simdata <- rmeshedgp(stcoords, c(1, 14, .5, 2))
+# plot data at 7th time period
+raster_plot(simdata %>% dplyr::filter(Var3==unique(Var3)[7])) 

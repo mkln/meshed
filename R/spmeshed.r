@@ -1,38 +1,41 @@
 spmeshed <- function(y, x, coords, k=NULL,
-                     axis_partition = NULL, 
-                     block_size = 30,
-                     grid_size=NULL,
-                     grid_custom = NULL,
-                   n_samples = 1000,
-                   n_burnin = 100,
-                   n_thin = 1,
-                   n_threads = 4,
-                   print_every = NULL,
-                   predict_everywhere = F,
-                   family = "gaussian",
-                   settings    = list(adapting=T, forced_grid=NULL, cache=NULL, ps=T, saving=F),
-                   prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
-                                      phi=NULL, nu = NULL,
-                                      toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
-                   starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, w=NULL, 
-                                      nu = NULL,
-                                      mcmcsd=.05, 
-                                      mcmc_startfrom=0),
-                   debug       = list(sample_beta=T, sample_tausq=T, 
-                                      sample_theta=T, sample_w=T, sample_lambda=T,
-                                      verbose=F, debug=F),
-                   indpart=F
-                   ){
+             family = "gaussian",
+             axis_partition = NULL, 
+             block_size = 30,
+             grid_size=NULL,
+             grid_custom = NULL,
+             n_samples = 1000,
+             n_burnin = 100,
+             n_thin = 1,
+             n_threads = 4,
+             verbose = 0,
+             predict_everywhere = FALSE,
+             settings = list(adapting=TRUE, forced_grid=NULL, cache=NULL, 
+                                ps=TRUE, saving=TRUE),
+             prior = list(beta=NULL, tausq=NULL, sigmasq = NULL,
+                          phi=NULL, nu = NULL,
+                          toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
+             starting = list(beta=NULL, tausq=NULL, theta=NULL, 
+                             lambda=NULL, w=NULL, nu = NULL,
+                             mcmcsd=.05, mcmc_startfrom=0),
+             debug = list(sample_beta=TRUE, sample_tausq=TRUE, 
+                          sample_theta=TRUE, sample_w=TRUE, sample_lambda=TRUE,
+                          verbose=FALSE, debug=FALSE),
+             indpart=FALSE
+){
 
   # init
-  cat("Bayesian Meshed GP regression model\n
+  if(verbose > 0){
+    cat("Bayesian Meshed GP regression model fit via Markov chain Monte Carlo\n")
+  }
+  model_tag <- "Bayesian Meshed GP regression model\n
     o --> o --> o
     ^     ^     ^
     |     |     | 
     o --> o --> o
     ^     ^     ^
     |     |     | 
-    o --> o --> o\n\n")
+    o --> o --> o\n(Markov chain Monte Carlo)\n"
   
   set_default <- function(x, default_val){
     return(if(is.null(x)){
@@ -46,11 +49,11 @@ spmeshed <- function(y, x, coords, k=NULL,
     mcmc_burn <- n_burnin
     mcmc_thin <- n_thin
     
-    mcmc_adaptive    <- settings$adapting %>% set_default(T)
-    mcmc_verbose     <- debug$verbose %>% set_default(F)
-    mcmc_debug       <- debug$debug %>% set_default(F)
-    saving <- settings$saving %>% set_default(F)
-    use_ps <- settings$ps %>% set_default(T)
+    mcmc_adaptive    <- settings$adapting %>% set_default(TRUE)
+    mcmc_verbose     <- debug$verbose %>% set_default(FALSE)
+    mcmc_debug       <- debug$debug %>% set_default(FALSE)
+    saving <- settings$saving %>% set_default(FALSE)
+    use_ps <- settings$ps %>% set_default(TRUE)
     
     coords %<>% as.matrix()
     
@@ -70,20 +73,21 @@ spmeshed <- function(y, x, coords, k=NULL,
       }
     }
     
-    effective_dimension <- prod(dim(y))
-    if(is.null(print_every)){
-      if(effective_dimension > 1e6-1){
-        mcmc_print_every <- 5
+    if(verbose == 0){
+      mcmc_print_every <- 0
+    } else {
+      if(verbose <= 20){
+        mcmc_tot <- mcmc_burn + mcmc_thin * mcmc_keep
+        mcmc_print_every <- 1+round(mcmc_tot / verbose)
       } else {
-        if(effective_dimension > 1e5-1){
-          mcmc_print_every <- 50
+        if(is.infinite(verbose)){
+          mcmc_print_every <- 1
         } else {
-          mcmc_print_every <- 500
+          mcmc_print_every <- verbose
         }
       }
-    } else {
-      mcmc_print_every <- print_every
     }
+    
     
     if(is.null(colnames(x))){
       orig_X_colnames <- colnames(x) <- paste0('X_', 1:ncol(x))
@@ -106,7 +110,7 @@ spmeshed <- function(y, x, coords, k=NULL,
     family <- if(length(family)==1){rep(family, q)} else {family}
     family_in <- data.frame(family=family)
     available_families <- data.frame(id=0:3, family=c("gaussian", "poisson", "binomial", "beta"))
-    family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %$% id
+    family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %>% pull(.data$id)
     
     latent <- "gaussian"
     if(!(latent %in% c("gaussian"))){
@@ -131,48 +135,46 @@ spmeshed <- function(y, x, coords, k=NULL,
     # if data are not gridded, then the above should be MUCH larger than the number of rows
     # if we're not too far off maybe the dataset is actually gridded
     if(heuristic_gridded*0.5 < nrow(coords)){
-      data_likely_gridded <- T
+      data_likely_gridded <- TRUE
     } else {
-      data_likely_gridded <- F
+      data_likely_gridded <- FALSE
     }
     if(ncol(coords) == 3){
       # with time, check if there's equal spacing
       timepoints <- coords[,3] %>% unique()
       time_spacings <- timepoints %>% sort() %>% diff() %>% round(5) %>% unique()
       if(length(time_spacings) < .1 * length(timepoints)){
-        data_likely_gridded <- T
+        data_likely_gridded <- TRUE
       }
     }
     
-    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
-    
     if(is.null(settings$forced_grid)){
       if(data_likely_gridded){
-        cat("I think the data look gridded so I'm setting forced_grid=F.\n")
-        use_forced_grid <- F
+        #cat("I think the data look gridded so I'm setting forced_grid=F.\n")
+        use_forced_grid <- FALSE
       } else {
-        cat("I think the data don't look gridded so I'm setting forced_grid=T.\n")
-        use_forced_grid <- T
+        #cat("I think the data don't look gridded so I'm setting forced_grid=T.\n")
+        use_forced_grid <- TRUE
       }
     } else {
-      use_forced_grid <- settings$forced_grid %>% set_default(T)
+      use_forced_grid <- settings$forced_grid %>% set_default(TRUE)
       if(!use_forced_grid & !data_likely_gridded){
         warning("Data look not gridded: force a grid with settings$forced_grid=T.")
       }
     }
     
     
-    use_cache <- settings$cache %>% set_default(T)
+    use_cache <- settings$cache %>% set_default(TRUE)
     if(use_forced_grid & (!use_cache)){
       warning("Using a forced grid with no cache is a waste of resources.")
     }
      
     # what are we sampling
-    sample_w       <- debug$sample_w %>% set_default(T)
-    sample_beta    <- debug$sample_beta %>% set_default(T)
-    sample_tausq   <- debug$sample_tausq %>% set_default(T)
-    sample_theta   <- debug$sample_theta %>% set_default(T)
-    sample_lambda  <- debug$sample_lambda %>% set_default(T)
+    sample_w       <- debug$sample_w %>% set_default(TRUE)
+    sample_beta    <- debug$sample_beta %>% set_default(TRUE)
+    sample_tausq   <- debug$sample_tausq %>% set_default(TRUE)
+    sample_theta   <- debug$sample_theta %>% set_default(TRUE)
+    sample_lambda  <- debug$sample_lambda %>% set_default(TRUE)
 
   }
 
@@ -185,9 +187,9 @@ spmeshed <- function(y, x, coords, k=NULL,
       as.data.frame()
     
     #####
-    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
-    cat("{q} outcome variables on {nrow(unique(coords))} unique locations." %>% glue::glue())
-    cat("\n")
+    #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
+    #cat("{q} outcome variables on {nrow(unique(coords))} unique locations." %>% glue::glue())
+    #cat("\n")
     if(use_forced_grid){ 
       # user showed intention to use fixed grid
       if(!is.null(grid_custom$grid)){
@@ -210,8 +212,8 @@ spmeshed <- function(y, x, coords, k=NULL,
         gridcoords_lmc <- expand.grid(xgrids)
       }
       
-      cat("Forced grid built with {nrow(gridcoords_lmc)} locations." %>% glue::glue())
-      cat("\n")
+      #cat("Forced grid built with {nrow(gridcoords_lmc)} locations." %>% glue::glue())
+      #cat("\n")
       simdata <- dplyr::bind_rows(simdata %>% dplyr::mutate(thegrid=0), 
                            gridcoords_lmc %>% dplyr::mutate(thegrid=1))
       
@@ -224,10 +226,10 @@ spmeshed <- function(y, x, coords, k=NULL,
         dplyr::mutate(thegrid = 0)
       absize <- round(nrow(simdata)/prod(axis_partition))
     }
-    cat("Partitioning grid axes into {paste0(axis_partition, collapse=', ')} intervals. Approx block size {absize}" %>% glue::glue())
-    cat("\n")
+    #cat("Partitioning grid axes into {paste0(axis_partition, collapse=', ')} intervals. Approx block size {absize}" %>% glue::glue())
+    #cat("\n")
     
-    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
+    #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     
     simdata %<>% 
       dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
@@ -331,12 +333,12 @@ spmeshed <- function(y, x, coords, k=NULL,
     indexing_obs <- indexing_grid
   }
   
-  if(T){
+  if(1){
     # prior and starting values for mcmc
     
     # nu
     if(is.null(prior$nu)){
-      matern_nu <- F
+      matern_nu <- FALSE
       if(is.null(starting$nu)){
         start_nu <- 0.5
         matern_fix_twonu <- 1
@@ -351,7 +353,7 @@ spmeshed <- function(y, x, coords, k=NULL,
       if(length(nu_limits)==1){
         matern_fix_twonu <- floor(nu_limits)*2 + 1
         start_nu <- matern_fix_twonu
-        matern_nu <- F
+        matern_nu <- FALSE
         strmessage <- paste0("nu set to ", start_nu/2)
         message(strmessage)
       } else {
@@ -367,7 +369,7 @@ spmeshed <- function(y, x, coords, k=NULL,
           } else {
             start_nu <- starting$nu
           }
-          matern_nu <- T
+          matern_nu <- TRUE
           matern_fix_twonu <- 1 # not applicable
         }
       }
@@ -432,9 +434,14 @@ spmeshed <- function(y, x, coords, k=NULL,
           set_unif_bounds[seq(2, npar*k, npar),] <- matrix(nu_limits,nrow=1) %x% matrix(1, nrow=k)
           start_theta[2,] <- start_nu
           
-          # sigmasq --overpar
+          # sigmasq expansion
           set_unif_bounds[seq(3, npar*k, npar),] <- matrix(c(btmlim, toplim),nrow=1) %x% matrix(1, nrow=k)
-          start_theta[3,] <- btmlim + 1
+          if((q>1) & (!use_ps)){
+            # multivariate without expansion: sigmasq=1 fixed.
+            start_theta[3,] <- 1
+          } else {
+            start_theta[3,] <- btmlim + 1  
+          }
           
         } else {
           theta_names <- c("phi", "sigmasq")
@@ -447,9 +454,14 @@ spmeshed <- function(y, x, coords, k=NULL,
           set_unif_bounds[seq(1, npar*k, npar),] <- matrix(phi_limits,nrow=1) %x% matrix(1, nrow=k)
           start_theta[1,] <- start_phi
           
-          # sigmasq --overpar
+          # sigmasq expansion
           set_unif_bounds[seq(2, npar*k, npar),] <- matrix(c(btmlim, toplim),nrow=1) %x% matrix(1, nrow=k)
-          start_theta[2,] <- btmlim + 1
+          if((q>1) & (!use_ps)){
+            # multivariate without expansion: sigmasq=1 fixed.
+            start_theta[2,] <- 1
+          } else {
+            start_theta[2,] <- btmlim + 1  
+          }
         }
       } else {
         theta_names <- c("a", "phi", "beta", "sigmasq")
@@ -470,9 +482,15 @@ spmeshed <- function(y, x, coords, k=NULL,
         set_unif_bounds[seq(3, npar*k, npar),] <- matrix(c(0,1),nrow=1) %x% matrix(1, nrow=k)
         start_theta[3,] <- 0.5
         
-        # sigmasq --overpar
+        # sigmasq expansion
         set_unif_bounds[seq(4, npar*k, npar),] <- matrix(c(btmlim, toplim),nrow=1) %x% matrix(1, nrow=k)
-        start_theta[4,] <- btmlim + 1
+        if((q>1) & (!use_ps)){
+          # multivariate without expansion: sigmasq=1 fixed.
+          start_theta[4,] <- 1
+        } else {
+          start_theta[4,] <- btmlim + 1  
+        }
+        
       }
       
     } else {
@@ -503,7 +521,7 @@ spmeshed <- function(y, x, coords, k=NULL,
     
     if(is.null(starting$lambda)){
       start_lambda <- matrix(0, nrow=q, ncol=k)
-      diag(start_lambda) <- 10 #*** 10
+      diag(start_lambda) <- if(use_ps){10} else {1}
     } else {
       start_lambda <- starting$lambda
     }
@@ -568,16 +586,15 @@ spmeshed <- function(y, x, coords, k=NULL,
   ## checking
   if(use_forced_grid){
     checking <- coordsdata %>% left_join(coords_blocking) %>% 
-      group_by(block) %>% summarise(nfg = sum(forced_grid)) %>% filter(nfg==0)
+      group_by(.data$block) %>% summarise(nfg = sum(.data$forced_grid)) %>% filter(.data$nfg==0)
     if(nrow(checking) > 0){
       stop("Partition is too fine for the current reference set. ")
     }
   }
   
-  
-  
-  
-  cat("Sending to MCMC > ")
+  if(verbose > 0){
+    cat("Sending to MCMC.\n")
+  }
   
   mcmc_run <- meshed_mcmc
   
@@ -640,6 +657,7 @@ spmeshed <- function(y, x, coords, k=NULL,
     
     saved <- listN(y, x, coords, k,
       
+                   family,
       parents, children, 
       block_names, block_groups,
       
@@ -670,6 +688,8 @@ spmeshed <- function(y, x, coords, k=NULL,
       mcmc_adaptive, # adapting
       
       use_forced_grid,
+      use_ps,
+      matern_fix_twonu,
       
       mcmc_verbose, mcmc_debug, # verbose, debug
       mcmc_print_every, # print all iter
@@ -677,19 +697,18 @@ spmeshed <- function(y, x, coords, k=NULL,
       # beta tausq sigmasq theta w
       sample_beta, sample_tausq, 
       sample_lambda,
-      sample_theta, sample_w)
+      sample_theta, sample_w,
+      fixed_thresholds)
   } else {
     saved <- "Model data not saved."
   }
   
   returning <- list(coordsdata = coordsdata,
-                    savedata = saved,
-                    block_names = block_names,
-                    block_groups = block_groups,
-                    parents = parents,
-                    children = children,
-                    coordsblocking = coords_blocking) %>% 
+                    savedata = saved) %>% 
     c(results)
+  
+  class(returning) <- "spmeshed"
+  
   return(returning) 
     
 }

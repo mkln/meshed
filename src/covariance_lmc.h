@@ -27,6 +27,9 @@ void kernelp_inplace(arma::mat& res,
 arma::mat Correlationf(const arma::mat& coords, const arma::uvec& ix, const arma::uvec& iy, 
                        const arma::vec& theta, MaternParams& matern, bool same);
 
+arma::mat Correlationc(const arma::mat& coordsx, const arma::mat& coordsy, 
+                       const arma::vec& theta, MaternParams& matern, bool same);
+
 // inplace functions
 void CviaKron_invsympd_(arma::cube& CCi, 
                         const arma::mat& coords, const arma::uvec& indx, 

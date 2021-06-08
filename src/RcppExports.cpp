@@ -282,6 +282,32 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// spmeshed_predict
+Rcpp::List spmeshed_predict(const arma::mat& predx, const arma::mat& predcoords, const arma::uvec& predblock, const arma::mat& coords, const arma::field<arma::uvec>& parents, const arma::uvec& block_names, const arma::field<arma::uvec>& indexing, const arma::field<arma::mat>& v_sampled, const arma::cube& theta_sampled, const arma::cube& lambda_sampled, const arma::cube& beta_sampled, const arma::mat& tausq_sampled, int twonu, bool use_ps, bool verbose, int num_threads);
+RcppExport SEXP _meshed_spmeshed_predict(SEXP predxSEXP, SEXP predcoordsSEXP, SEXP predblockSEXP, SEXP coordsSEXP, SEXP parentsSEXP, SEXP block_namesSEXP, SEXP indexingSEXP, SEXP v_sampledSEXP, SEXP theta_sampledSEXP, SEXP lambda_sampledSEXP, SEXP beta_sampledSEXP, SEXP tausq_sampledSEXP, SEXP twonuSEXP, SEXP use_psSEXP, SEXP verboseSEXP, SEXP num_threadsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type predx(predxSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type predcoords(predcoordsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type predblock(predblockSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords(coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type block_names(block_namesSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
+    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type v_sampled(v_sampledSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type theta_sampled(theta_sampledSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type lambda_sampled(lambda_sampledSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type beta_sampled(beta_sampledSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type tausq_sampled(tausq_sampledSEXP);
+    Rcpp::traits::input_parameter< int >::type twonu(twonuSEXP);
+    Rcpp::traits::input_parameter< bool >::type use_ps(use_psSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(spmeshed_predict(predx, predcoords, predblock, coords, parents, block_names, indexing, v_sampled, theta_sampled, lambda_sampled, beta_sampled, tausq_sampled, twonu, use_ps, verbose, num_threads));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rmeshedgp_internal
 arma::mat rmeshedgp_internal(const arma::mat& coords, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& indexing_obs, int matern_twonu, const arma::mat& theta, int num_threads, bool use_cache, bool verbose, bool debug);
 RcppExport SEXP _meshed_rmeshedgp_internal(SEXP coordsSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP matern_twonuSEXP, SEXP thetaSEXP, SEXP num_threadsSEXP, SEXP use_cacheSEXP, SEXP verboseSEXP, SEXP debugSEXP) {
@@ -317,27 +343,27 @@ BEGIN_RCPP
 END_RCPP
 }
 // summary_list_mean
-arma::mat summary_list_mean(const arma::field<arma::mat>& x, int num_threads);
-RcppExport SEXP _meshed_summary_list_mean(SEXP xSEXP, SEXP num_threadsSEXP) {
+arma::mat summary_list_mean(const arma::field<arma::mat>& x, int n_threads);
+RcppExport SEXP _meshed_summary_list_mean(SEXP xSEXP, SEXP n_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(summary_list_mean(x, num_threads));
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(summary_list_mean(x, n_threads));
     return rcpp_result_gen;
 END_RCPP
 }
 // summary_list_q
-arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int num_threads);
-RcppExport SEXP _meshed_summary_list_q(SEXP xSEXP, SEXP qSEXP, SEXP num_threadsSEXP) {
+arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int n_threads);
+RcppExport SEXP _meshed_summary_list_q(SEXP xSEXP, SEXP qSEXP, SEXP n_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type x(xSEXP);
     Rcpp::traits::input_parameter< double >::type q(qSEXP);
-    Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
-    rcpp_result_gen = Rcpp::wrap(summary_list_q(x, q, num_threads));
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(summary_list_q(x, q, n_threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -358,6 +384,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_mesh_graph_hyper", (DL_FUNC) &_meshed_mesh_graph_hyper, 7},
     {"_meshed_meshed_casc", (DL_FUNC) &_meshed_meshed_casc, 28},
     {"_meshed_meshed_mcmc", (DL_FUNC) &_meshed_meshed_mcmc, 40},
+    {"_meshed_spmeshed_predict", (DL_FUNC) &_meshed_spmeshed_predict, 16},
     {"_meshed_rmeshedgp_internal", (DL_FUNC) &_meshed_rmeshedgp_internal, 13},
     {"_meshed_cube_tcrossprod", (DL_FUNC) &_meshed_cube_tcrossprod, 1},
     {"_meshed_summary_list_mean", (DL_FUNC) &_meshed_summary_list_mean, 2},
