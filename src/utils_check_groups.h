@@ -1,5 +1,4 @@
 #include "RcppArmadillo.h"
-#include "omp.h"
 
 arma::vec check_gibbs_groups(
            arma::vec block_groups,

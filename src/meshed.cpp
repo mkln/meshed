@@ -590,7 +590,7 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
   #pragma omp parallel for 
 #endif
   for(int i=0; i<n_blocks; i++){
-    int u=block_names(i) - 1;
+    //int u=block_names(i) - 1;
     //param_data.w_cond_mean_K(i) = arma::zeros(indexing(i).n_elem, parents_indexing(i).n_elem, k);
     //param_data.w_cond_prec(i) = arma::zeros(indexing(i).n_elem, indexing(i).n_elem, k);
     
@@ -864,7 +864,7 @@ void Meshed::init_betareg(){
 
 void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const arma::vec& tsqi){
   //message("[calc_DplusSi] start.");
-  int indxsize = indexing(u).n_elem;
+  //int indxsize = indexing(u).n_elem;
   
   if((k==1) & (q==1)){
     for(unsigned int ix=0; ix<indexing_obs(u).n_elem; ix++){

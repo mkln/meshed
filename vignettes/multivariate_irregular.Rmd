@@ -115,7 +115,7 @@ mesh_total_time <- system.time({
                     verbose=1
   )})
 ```
-Some postprocessing. Let's look at the factor loadings $\Lambda$. True values in red.
+Some post-processing. Let's look at the factor loadings $\Lambda$. True values in red.
 
 ```{r, echo=FALSE, include=FALSE}
 plot_cube <- function(cube_mcmc, q, k, Ptrue, Pname, full=F){

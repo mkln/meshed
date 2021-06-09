@@ -185,7 +185,7 @@ Rcpp::List meshed_mcmc(
   int m=0; int mx=0; int num_chol_fails=0;
   int mcmc_saved = 0; int w_saved = 0;
   try {
-    for(m=0; m<mcmc & (!interrupted); m++){
+    for(m=0; (m<mcmc) & (!interrupted); m++){
       
       msp.predicting = false;
       mx = m-mcmc_burn;
