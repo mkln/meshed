@@ -2,10 +2,10 @@
 \alias{rmeshedgp}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Sampling from a Meshed Gaussian Process
+Prior sampling from a Meshed Gaussian Process
 }
 \description{
-Generates samples from a (univariate) Meshed Gaussian Process assuming a cubic directed acyclic graph and axis-parallel domain partitioning.
+Generates samples from a (univariate) MGP assuming a cubic directed acyclic graph and axis-parallel domain partitioning.
 }
 \usage{
 rmeshedgp(coords, theta, 
@@ -18,7 +18,7 @@ rmeshedgp(coords, theta,
   matrix of spatial or spatiotemporal coordinates with \eqn{d=2} or \eqn{d=3} columns for spatial or spatiotemporal data, respectively.
 }
   \item{theta}{
-  vector with covariance parameters. If \eqn{d=2} and \code{theta} is a 2-dimensional vector then \eqn{\theta = (\phi, \sigma^2)} where \eqn{\phi} is the spatial decay and \eqn{\sigma^2} is the spatial variance in the exponential covariance model. If \eqn{d=2} and \code{theta} is a 3-dimensional vector then \eqn{\theta = (\phi, \nu, \sigma^2)} and a Matern model with smoothness \eqn{nu} is used instead. If \eqn{d=3}, \code{theta} must be a 4-dimensional vector and \eqn{\theta=(a, \phi, b, \sigma^2)} using Gneiting's non-separable spatiotemporal covariance detailed below.
+  vector with covariance parameters. If \eqn{d=2} and \code{theta} is a 2-dimensional vector then \eqn{\theta = (\phi, \sigma^2)} where \eqn{\phi} is the spatial decay and \eqn{\sigma^2} is the spatial variance in the exponential covariance model. If \eqn{d=2} and \code{theta} is a 3-dimensional vector then \eqn{\theta = (\phi, \nu, \sigma^2)} and a Matern model with smoothness \eqn{\nu} is used instead. If \eqn{d=3}, \code{theta} must be a 4-dimensional vector and \eqn{\theta=(a, \phi, b, \sigma^2)} using Gneiting's non-separable spatiotemporal covariance detailed below.
 }
   \item{axis_partition}{
   integer vector of length \eqn{d} with the number of intervals along which each axis should be partitioned. The domain will be partitioned into \code{prod(axis_partition)} blocks. This argument can be left blank when using \code{block_size}.
@@ -51,7 +51,7 @@ rmeshedgp(coords, theta,
   \deqn{C(h) = \sigma^2  \frac{2^{1-\nu}}{\Gamma(\nu)} \phi^{\nu} h^{\nu} K_{\nu} ( \phi h ),
   }
   where \eqn{K_{\nu}} is the modified Bessel function of the second kind of order \eqn{\nu}.
-  For spatiotemporal data (\eqn{d=3}) the covariance function between locations \eqn{(s, t)} and \eqn{(s', t')} with distance \eqn{h = \| s-s' \|} and \eqn{u = \| t-t' \|} is defined as
+  For spatiotemporal data (\eqn{d=3}) the covariance function between locations \eqn{(s, t)} and \eqn{(s', t')} with distance \eqn{h = \| s-s' \|} and time lag \eqn{u = \| t-t' \|} is defined as
   \deqn{ C(h, u) = \sigma^2 / (a u + 1.0) \exp \{ -\phi h (a u + 1)^{-b/2} \}, }
   which is a special case of non-separable spacetime covariance as introduced by Gneiting (2002).
 }

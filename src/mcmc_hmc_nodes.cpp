@@ -34,7 +34,7 @@ NodeDataW::NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
   
   if(arma::any(family == 3)){
     ystar = arma::zeros(arma::size(y));
-    for(int j=0; j<y.n_cols; j++){
+    for(unsigned int j=0; j<y.n_cols; j++){
       if(family(j) == 3){
         ystar.col(j) = log( y.col(j) / (1.0-y.col(j)) );
       }  
@@ -55,7 +55,7 @@ void NodeDataW::initialize(){
 void NodeDataW::update_mv(const arma::mat& offset_all, const arma::vec& tausq_in,
                                      const arma::mat& Lambda_lmc_in){
   // arma::mat tausqmat = arma::zeros<arma::umat>(arma::size(new_offset));
-  // for(int i=0; i<tausqmat.n_cols; i++){
+  // for(unsigned int i=0; i<tausqmat.n_cols; i++){
   //   tausqmat.col(i).fill(tausq(i));
   // }
   // tausq_long = arma::vectorise(tausqmat);
@@ -71,7 +71,7 @@ double NodeDataW::fwdcond_dmvn(const arma::mat& x,
   // conditional of x | parents
   
   double numer = 0;
-  for(int j=0; j<x.n_cols; j++){
+  for(unsigned int j=0; j<x.n_cols; j++){
     arma::vec xcentered = x.col(j);
     if(Kcxpar.n_cols > 0){ // meaning w_parents.n_rows > 0
       xcentered -= Kcxpar.col(j);
@@ -85,7 +85,7 @@ arma::vec NodeDataW::grad_fwdcond_dmvn(const arma::mat& x){
   
   // gradient of conditional of x | parents
   arma::mat norm_grad = arma::zeros(arma::size(x));
-  for(int j=0; j<x.n_cols; j++){
+  for(unsigned int j=0; j<x.n_cols; j++){
     arma::vec xcentered = x.col(j);
     if(Kcxpar.n_cols > 0){ // meaning w_parents.n_rows > 0
       xcentered -= Kcxpar.col(j);
@@ -99,7 +99,7 @@ void NodeDataW::fwdconditional_mvn(double& logtarget, arma::vec& gradient,
                         const arma::mat& x){
   arma::mat norm_grad = arma::zeros(arma::size(x));
   double numer = 0;
-  for(int j=0; j<x.n_cols; j++){
+  for(unsigned int j=0; j<x.n_cols; j++){
     arma::vec xcentered = x.col(j);
     if(Kcxpar.n_cols > 0){ // meaning w_parents.n_rows > 0
       xcentered -= Kcxpar.col(j);
@@ -118,7 +118,7 @@ double NodeDataW::bwdcond_dmvn(const arma::mat& x, int c){
   // conditional of Y | x, others
   
   double numer = 0;
-  for(int j=0; j<x.n_cols; j++){
+  for(unsigned int j=0; j<x.n_cols; j++){
     arma::vec xcentered = w_child(c).col(j) - Kcx_x(c).slice(j)*x.col(j);
     if(Kco_wo(c).n_cols > 0){
       xcentered -= Kco_wo(c).col(j);
@@ -132,7 +132,7 @@ double NodeDataW::bwdcond_dmvn(const arma::mat& x, int c){
 arma::vec NodeDataW::grad_bwdcond_dmvn(const arma::mat& x, int c){
   // gradient of conditional of Y | x, others
   arma::mat result = arma::zeros(arma::size(x));
-  for(int j=0; j<x.n_cols; j++){
+  for(unsigned int j=0; j<x.n_cols; j++){
     arma::mat wccenter = w_child(c).col(j) - Kcx_x(c).slice(j) * x.col(j);
     if(Kco_wo(c).n_cols > 0){
       wccenter -= Kco_wo(c).col(j);
@@ -146,7 +146,7 @@ void NodeDataW::bwdconditional_mvn(double& xtarget, arma::vec& gradient, const a
   
   arma::mat result = arma::zeros(arma::size(x));
   double numer = 0;
-  for(int j=0; j<x.n_cols; j++){
+  for(unsigned int j=0; j<x.n_cols; j++){
     arma::vec xcentered = w_child(c).col(j) - Kcx_x(c).slice(j)*x.col(j);
     if(Kco_wo(c).n_cols > 0){
       xcentered -= Kco_wo(c).col(j);
@@ -308,14 +308,14 @@ arma::vec NodeDataW::compute_dens_and_grad(double& xtarget, const arma::mat& x){
 double NodeDataW::logfullcondit(const arma::mat& x){
   double loglike = 0;
   
-  for(int i=0; i<y.n_rows; i++){
+  for(unsigned int i=0; i<y.n_rows; i++){
     arma::mat wloc;
     if(fgrid){
       wloc = arma::sum(arma::trans((*Hproject).slice(i) % arma::trans(x)), 0);
     } else {
       wloc = x.row(i);
     }
-    for(int j=0; j<y.n_cols; j++){
+    for(unsigned int j=0; j<y.n_cols; j++){
       //Rcpp::Rcout << i << " - " << j << endl;
       if(na_mat(i, j) > 0){
         double xstar = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
@@ -373,7 +373,7 @@ arma::vec NodeDataW::gradient_logfullcondit(const arma::mat& x){
         }
       }
       
-      for(int j=0; j<y.n_cols; j++){
+      for(unsigned int j=0; j<y.n_cols; j++){
         if(na_mat(i, j) > 0){
           arma::vec gradloc;
           double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
@@ -399,7 +399,7 @@ arma::vec NodeDataW::gradient_logfullcondit(const arma::mat& x){
     for(int i=0; i<nr; i++){
       arma::mat wloc = x.row(i);
       
-      for(int j=0; j<y.n_cols; j++){
+      for(unsigned int j=0; j<y.n_cols; j++){
         if(na_mat(i, j) > 0){
           arma::vec gradloc = arma::zeros(k);
           arma::mat LambdaHt = Lambda_lmc.row(j).t();
@@ -616,7 +616,7 @@ arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
     
     for(int i=0; i<nr; i++){
       
-      for(int j=0; j<y.n_cols; j++){
+      for(unsigned int j=0; j<y.n_cols; j++){
         
         if(na_mat(i, j) > 0){
           double mult = 1;
@@ -764,7 +764,7 @@ double NodeDataB::logfullcondit(const arma::vec& x){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-    for(int i=0; i<y.n_elem; i++){
+    for(unsigned int i=0; i<y.n_elem; i++){
       logcomps(i) = lgtsq - R::lgammafn(sigmoid(i) / tausq) - R::lgammafn((1.0-sigmoid(i)) / tausq) +
         (sigmoid(i) / tausq - 1.0) * log(y(i)) + 
         ((1.0-sigmoid(i)) / tausq - 1.0) * log(1.0-y(i));
@@ -822,7 +822,7 @@ arma::vec NodeDataB::gradient_logfullcondit(const arma::vec& x){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-    for(int i=0; i<y.n_elem; i++){
+    for(unsigned int i=0; i<y.n_elem; i++){
       double oneminusmu = 1.0-sigmoid(i);
       mustar(i) = R::digamma(sigmoid(i) / tausq) - R::digamma(oneminusmu / tausq);
       Tym(i) = sigmoid(i) * (1-sigmoid(i)) * (ystar(i) - mustar(i));

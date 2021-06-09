@@ -28,7 +28,7 @@ inline arma::vec vrpois(const arma::vec& lambdas){
 
 inline arma::vec vrunif(int n){
   arma::vec result = arma::zeros(n);
-  for(int i=0; i<n; i++){
+  for(unsigned int i=0; i<n; i++){
     result(i) = R::runif(0, 1);
   }
   return result;
@@ -37,7 +37,7 @@ inline arma::vec vrunif(int n){
 inline arma::vec vrbern(const arma::vec& p){
   arma::vec result = arma::zeros(p.n_elem);
   
-  for(int i=0; i<p.n_elem; i++){
+  for(unsigned int i=0; i<p.n_elem; i++){
     result(i) = R::rbinom(1, p(i));
   }
   return result;
@@ -45,7 +45,7 @@ inline arma::vec vrbern(const arma::vec& p){
 
 inline arma::vec vrbeta(const arma::vec& a, const arma::vec& b){
   arma::vec result = arma::zeros(a.n_elem);
-  for(int i=0; i<a.n_elem; i++){
+  for(unsigned int i=0; i<a.n_elem; i++){
     result(i) = R::rbeta(a(i), b(i));
   }
   return result;

@@ -1,8 +1,8 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^examples$
-^man/spmeshed.map.Rd
-^cran-comments.md
+^man/spmeshed\.map\.Rd
+^cran-comments\.md
 ^LICENSE\.md$
 ^CRAN-RELEASE$
-^cran-comments\.md$
+

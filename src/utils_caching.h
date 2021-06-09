@@ -17,11 +17,11 @@ inline arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for(int i=0; i<blocks.n_elem; i++){
+  for(unsigned int i=0; i<blocks.n_elem; i++){
     sorted(i) = blocks(i);
     //Rcpp::Rcout << "i: " << i << endl;
     if(blocks(i).n_rows > 1){
-      for(int j=0; j<blocks(i).n_rows; j++){
+      for(unsigned int j=0; j<blocks(i).n_rows; j++){
         sorted(i).row(j) = blocks(i).row(j) - blocks(i).row(0);
       }
     }
@@ -31,7 +31,7 @@ inline arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for(int j=0; j<blocks.n_elem; j++){
+  for(unsigned int j=0; j<blocks.n_elem; j++){
     int u_target = names(j)-1;
     if(block_ct_obs(u_target) > 0){
       bool foundsame = false;
@@ -78,11 +78,11 @@ inline arma::uvec caching_pairwise_compare_uc(const arma::field<arma::mat>& bloc
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for(int i=0; i<blocks.n_elem; i++){
+  for(unsigned int i=0; i<blocks.n_elem; i++){
     sorted(i) = blocks(i);
     //Rcpp::Rcout << "i: " << i << endl;
     if(blocks(i).n_rows > 1){
-      for(int j=0; j<blocks(i).n_rows; j++){
+      for(unsigned int j=0; j<blocks(i).n_rows; j++){
         sorted(i).row(j) = blocks(i).row(j) - blocks(i).row(0);
       }
     }
@@ -92,7 +92,7 @@ inline arma::uvec caching_pairwise_compare_uc(const arma::field<arma::mat>& bloc
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for(int j=0; j<blocks.n_elem; j++){
+  for(unsigned int j=0; j<blocks.n_elem; j++){
     int u_target = names(j)-1;
     if((!cached) || (ct_obs(u_target) == 0)){
       result(u_target) = u_target;
@@ -147,12 +147,12 @@ inline arma::uvec caching_pairwise_compare_uci(const arma::mat& coords,
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for(int i=0; i<indexing.n_elem; i++){
+  for(unsigned int i=0; i<indexing.n_elem; i++){
     sorted(i) = coords.rows(indexing(i));
     //Rcpp::Rcout << "i: " << i << endl;
     if(indexing(i).n_elem > 1){
       arma::mat cmat = coords.rows(indexing(i));
-      for(int j=0; j<indexing(i).n_elem; j++){
+      for(unsigned int j=0; j<indexing(i).n_elem; j++){
         sorted(i).row(j) = cmat.row(j) - cmat.row(0);
       }
     }
@@ -162,7 +162,7 @@ inline arma::uvec caching_pairwise_compare_uci(const arma::mat& coords,
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for(int j=0; j<indexing.n_elem; j++){
+  for(unsigned int j=0; j<indexing.n_elem; j++){
     int u_target = names(j)-1;
     if(cached){ //ct_obs(u_target) == 0){
       //  result(u_target) = u_target;

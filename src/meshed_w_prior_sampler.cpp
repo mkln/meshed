@@ -10,9 +10,12 @@ void Meshed::w_prior_sample(MeshDataLMC& data){
   
   start_overall = std::chrono::steady_clock::now();
   
-  int ns = coords.n_rows;
+  //int ns = coords.n_rows;
   
   bool acceptable = refresh_cache(data);
+  if(!acceptable){
+    Rcpp::stop("Something went wrong went getting the conditional Gaussians. Try different theta? ");
+  }
   
 #ifdef _OPENMP
 #pragma omp parallel for 
@@ -46,6 +49,7 @@ void Meshed::w_prior_sample(MeshDataLMC& data){
   
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
+    
     Rcpp::Rcout << "[w_prior_sample] loops "
                 << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()
                 << "us. " << "\n";

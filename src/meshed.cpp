@@ -204,7 +204,7 @@ void Meshed::make_gibbs_groups(){
       if(block_groups(u) == block_groups_labels(g)){
         if(indexing(u).n_elem > 0){ //**
           
-          for(int pp=0; pp<parents(u).n_elem; pp++){
+          for(unsigned int pp=0; pp<parents(u).n_elem; pp++){
             if(block_groups(parents(u)(pp)) == block_groups_labels(g)){
               Rcpp::Rcout << u << " <--- " << parents(u)(pp) 
                           << ": same group (" << block_groups(u) 
@@ -212,7 +212,7 @@ void Meshed::make_gibbs_groups(){
               Rcpp::stop("Invalid coloring of the DAG.\n");
             }
           }
-          for(int cc=0; cc<children(u).n_elem; cc++){
+          for(unsigned int cc=0; cc<children(u).n_elem; cc++){
             if(block_groups(children(u)(cc)) == block_groups_labels(g)){
               Rcpp::Rcout << u << " ---> " << children(u)(cc) 
                           << ": same group (" << block_groups(u) 
@@ -305,7 +305,7 @@ void Meshed::make_gibbs_groups(){
     Hpred = arma::field<arma::cube>(u_predicts.n_elem);
     Rcholpred = arma::field<arma::mat>(u_predicts.n_elem);
     
-    for(int i=0; i<u_predicts.n_elem; i++){
+    for(unsigned int i=0; i<u_predicts.n_elem; i++){
       int u = u_predicts(i);
       if(block_ct_obs(u) > 0){
         Hpred(i) = arma::zeros(k,indexing(u).n_elem,indexing_obs(u).n_elem);
@@ -344,7 +344,7 @@ void Meshed::na_study(){
     na_0_blocks(i) = arma::zeros<arma::uvec>(yvec.n_rows);
     // consider NA if all margins are missing
     // otherwise it's available
-    for(int ix=0; ix<yvec.n_rows; ix++){
+    for(unsigned int ix=0; ix<yvec.n_rows; ix++){
       arma::uvec yfinite_row = arma::find_finite(yvec.row(ix));
       if(yfinite_row.n_elem > 0){
         // at least one is available
@@ -478,7 +478,7 @@ void Meshed::init_indexing(){
     int u = block_names(i)-1;
     if(parents(u).n_elem > 0){
       arma::field<arma::uvec> pixs(parents(u).n_elem);
-      for(int pi=0; pi<parents(u).n_elem; pi++){
+      for(unsigned int pi=0; pi<parents(u).n_elem; pi++){
         pixs(pi) = indexing(parents(u)(pi));
       }
       parents_indexing(u) = field_v_concat_uv(pixs);
@@ -518,7 +518,7 @@ void Meshed::init_gibbs_index(){
     if(indexing_obs(u).n_elem > 0){ 
       // number of coords of the jth parent of the child
       dim_by_parent(u) = arma::zeros<arma::uvec>(parents(u).n_elem + 1);
-      for(int j=0; j<parents(u).n_elem; j++){
+      for(unsigned int j=0; j<parents(u).n_elem; j++){
         dim_by_parent(u)(j+1) = indexing(parents(u)(j)).n_elem;
       }
       dim_by_parent(u) = arma::cumsum(dim_by_parent(u));
@@ -536,7 +536,7 @@ void Meshed::init_gibbs_index(){
       // children-parent relationship variables
       u_is_which_col_f(u) = arma::field<arma::field<arma::uvec> > (children(u).n_elem);
       
-      for(int c=0; c<children(u).n_elem; c++){
+      for(unsigned int c=0; c<children(u).n_elem; c++){
         int child = children(u)(c);
         // which parent of child is u which we are sampling
         arma::uvec u_is_which = arma::find(parents(child) == u, 1, "first"); 
@@ -603,7 +603,7 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
     param_data.Smu_start(i) = arma::zeros(k*indexing(i).n_elem, 1);
     param_data.Sigi_chol(i) = arma::zeros(k*indexing(i).n_elem, k*indexing(i).n_elem);
     param_data.AK_uP(i) = arma::field<arma::cube>(children(i).n_elem);
-    for(int c=0; c<children(i).n_elem; c++){
+    for(unsigned int c=0; c<children(i).n_elem; c++){
       int child = children(i)(c);
       param_data.AK_uP(i)(c) = arma::zeros(indexing(i).n_elem, indexing(child).n_elem, k);
     }
@@ -621,7 +621,7 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
   }
   
   param_data.Kxxi_cache = arma::field<arma::cube>(coords_caching.n_elem);
-  for(int i=0; i<coords_caching.n_elem; i++){
+  for(unsigned int i=0; i<coords_caching.n_elem; i++){
     int u = coords_caching(i);
     param_data.Kxxi_cache(i) = arma::zeros(indexing(u).n_elem, indexing(u).n_elem, k);
     if(block_ct_obs(u) > 0){
@@ -649,7 +649,7 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
   param_data.H_cache = arma::field<arma::cube> (kr_caching.n_elem);
   param_data.Ri_cache = arma::field<arma::cube> (kr_caching.n_elem);
   param_data.Kppi_cache = arma::field<arma::cube> (kr_caching.n_elem);
-  for(int i=0; i<kr_caching.n_elem; i++){
+  for(unsigned int i=0; i<kr_caching.n_elem; i++){
     int u = kr_caching(i);
     param_data.Ri_cache(i) = 
       arma::zeros(indexing(u).n_elem, indexing(u).n_elem, k);
@@ -682,7 +682,7 @@ bool Meshed::refresh_cache(MeshDataLMC& data){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-  for(int i=0; i<coords_caching.n_elem; i++){
+  for(unsigned int i=0; i<coords_caching.n_elem; i++){
     int u = coords_caching(i); 
     if(block_ct_obs(u) > 0){
       for(int j=0; j<k; j++){
@@ -695,7 +695,7 @@ bool Meshed::refresh_cache(MeshDataLMC& data){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-  for(int it=0; it<cx_and_kr_caching.n_elem; it++){
+  for(unsigned int it=0; it<cx_and_kr_caching.n_elem; it++){
     int i = 0;
     if(it < starting_kr){
       // this means we are caching coords
@@ -867,7 +867,7 @@ void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const
   int indxsize = indexing(u).n_elem;
   
   if((k==1) & (q==1)){
-    for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+    for(unsigned int ix=0; ix<indexing_obs(u).n_elem; ix++){
       if(na_1_blocks(u)(ix) == 1){
         arma::mat Dtau = Lam(0, 0) * Lam(0, 0) * data.Rproject(u).slice(ix) + 1.0/tsqi(0);
         // fill 
@@ -877,7 +877,7 @@ void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const
       }
     }
   } else {
-    for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+    for(unsigned int ix=0; ix<indexing_obs(u).n_elem; ix++){
       if(na_1_blocks(u)(ix) == 1){
         arma::mat Dtau = Lam * data.Rproject(u).slice(ix) * Lam.t();
         arma::vec II = arma::ones(q);
@@ -971,7 +971,7 @@ void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw, bool m
   data.ll_y.rows(indexing_obs(u)).fill(0.0);
   
   if(arma::all(familyid == 0) & (!map)){
-    for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+    for(unsigned int ix=0; ix<indexing_obs(u).n_elem; ix++){
       if(na_1_blocks(u)(ix) == 1){
         // at least one outcome available
         arma::vec ymean = arma::trans(y.row(indexing_obs(u)(ix)) - 
@@ -1164,7 +1164,7 @@ void Meshed::init_for_mcmc(){
       new_block.Kco_wo = arma::field<arma::mat>(children(u).n_elem);
       new_block.Kcx_x = arma::field<arma::cube>(children(u).n_elem);
       
-      for(int c=0; c<children(u).n_elem; c++){
+      for(unsigned int c=0; c<children(u).n_elem; c++){
         int child = children(u)(c);
         new_block.Kcx_x(c) = arma::zeros(indexing(child).n_elem, indexing(u).n_elem, k);
       }
@@ -1264,7 +1264,7 @@ Meshed::Meshed(
   }
   
   param_data.Kxxi_cache = arma::field<arma::cube>(coords_caching.n_elem);
-  for(int i=0; i<coords_caching.n_elem; i++){
+  for(unsigned int i=0; i<coords_caching.n_elem; i++){
     int u = coords_caching(i);
     param_data.Kxxi_cache(i) = arma::zeros(indexing(u).n_elem, indexing(u).n_elem, k);
     if(block_ct_obs(u) > 0){
@@ -1275,7 +1275,7 @@ Meshed::Meshed(
   param_data.H_cache = arma::field<arma::cube> (kr_caching.n_elem);
   param_data.Ri_cache = arma::field<arma::cube> (kr_caching.n_elem);
   param_data.Kppi_cache = arma::field<arma::cube> (kr_caching.n_elem);
-  for(int i=0; i<kr_caching.n_elem; i++){
+  for(unsigned int i=0; i<kr_caching.n_elem; i++){
     int u = kr_caching(i);
     param_data.Ri_cache(i) = 
       arma::zeros(indexing(u).n_elem, indexing(u).n_elem, k);

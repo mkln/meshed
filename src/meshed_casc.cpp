@@ -69,9 +69,9 @@ Rcpp::List meshed_casc(
   bool printall = print_every == 1;
   bool verbose_mcmc = printall;
   
-  int n = coords.n_rows;
-  int d = coords.n_cols;
-  int q  = y.n_cols;
+  //int n = coords.n_rows;
+  //int d = coords.n_cols;
+  //int q  = y.n_cols;
   int k = 1; // univariate process only
     
   int n_alts = theta_values.n_cols;
@@ -88,6 +88,7 @@ Rcpp::List meshed_casc(
   arma::mat unused_mcmcsd, unused_unifbounds;
   bool unused_adapting=false;
   bool use_ps = false;
+  bool acceptable=true;
   
   arma::mat start_lambda = arma::ones(1,1);
   arma::mat start_theta = theta_values.col(0);
@@ -111,7 +112,7 @@ Rcpp::List meshed_casc(
              verbose, debug, num_threads);
   
 
-  bool acceptable = false;
+  //bool acceptable = false;
   
   if(verbose & debug){
     Rcpp::Rcout << "Starting... " << endl; 
@@ -135,7 +136,7 @@ Rcpp::List meshed_casc(
     }
     double current_loglik = msp.param_data.loglik_w;
     
-    for(m=0; m<maxit & keep_running; m++){
+    for(m=0; (m<maxit) & keep_running; m++){
       msp.predicting = false;
       
       

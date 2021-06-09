@@ -52,7 +52,7 @@ spmeshed <- function(y, x, coords, k=NULL,
     mcmc_adaptive    <- settings$adapting %>% set_default(TRUE)
     mcmc_verbose     <- debug$verbose %>% set_default(FALSE)
     mcmc_debug       <- debug$debug %>% set_default(FALSE)
-    saving <- settings$saving %>% set_default(FALSE)
+    saving <- settings$saving %>% set_default(TRUE)
     use_ps <- settings$ps %>% set_default(TRUE)
     
     coords %<>% as.matrix()

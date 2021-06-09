@@ -39,7 +39,7 @@ inline arma::vec par_transf_back(arma::vec par){
 }
 
 inline arma::vec par_huvtransf_fwd(arma::vec par, const arma::mat& set_unif_bounds){
-  for(int j=0; j<par.n_elem; j++){
+  for(unsigned int j=0; j<par.n_elem; j++){
     
     if( (set_unif_bounds(j, 0) > -arma::datum::inf) || (set_unif_bounds(j, 1) < arma::datum::inf) ){
       if(set_unif_bounds(j, 1) == arma::datum::inf){
@@ -55,7 +55,7 @@ inline arma::vec par_huvtransf_fwd(arma::vec par, const arma::mat& set_unif_boun
 }
 
 inline arma::vec par_huvtransf_back(arma::vec par, const arma::mat& set_unif_bounds){
-  for(int j=0; j<par.n_elem; j++){
+  for(unsigned int j=0; j<par.n_elem; j++){
     if( (set_unif_bounds(j, 0) > -arma::datum::inf) || (set_unif_bounds(j, 1) < arma::datum::inf) ){
       if(set_unif_bounds(j, 1) == arma::datum::inf){
         // lognormal proposal
@@ -71,7 +71,7 @@ inline arma::vec par_huvtransf_back(arma::vec par, const arma::mat& set_unif_bou
 
 inline bool unif_bounds(arma::vec& par, const arma::mat& bounds){
   bool out_of_bounds = false;
-  for(int i=0; i<par.n_elem; i++){
+  for(unsigned int i=0; i<par.n_elem; i++){
     arma::rowvec ibounds = bounds.row(i);
     if( par(i) < ibounds(0) ){
       out_of_bounds = true;
@@ -115,7 +115,7 @@ inline double calc_jacobian(const arma::vec& new_param, const arma::vec& param,
                             const arma::mat& set_unif_bounds){
   
   double jac = 0;
-  for(int j=0; j<param.n_elem; j++){
+  for(unsigned int j=0; j<param.n_elem; j++){
     if( (set_unif_bounds(j, 0) > -arma::datum::inf) || (set_unif_bounds(j, 1) < arma::datum::inf) ){
       if(set_unif_bounds(j, 1) == arma::datum::inf){
         // lognormal proposal
@@ -136,7 +136,7 @@ inline double calc_prior_logratio(const arma::vec& new_param,
                             const arma::vec& param, double a=2.01, double b=1){
   
   double plr=0;
-  for(int j=0; j<param.n_elem; j++){
+  for(unsigned int j=0; j<param.n_elem; j++){
     plr += 
       invgamma_logdens(new_param(0), a, b) -
       invgamma_logdens(param(0), a, b);

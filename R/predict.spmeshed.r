@@ -80,6 +80,8 @@ predict.spmeshed <- function(object,
             verbose,
             n_threads)
   
+  colnames(returning$coords_out) <- cname
+  returning$coords_out %<>% as.data.frame()
   
   return(returning) 
   

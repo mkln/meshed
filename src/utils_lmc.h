@@ -69,7 +69,7 @@ inline arma::uvec field_v_concat_uv(arma::field<arma::uvec> const& fuv){
   // takes a field of matrices (same n cols) and outputs a single matrix concatenating all
   arma::vec ddims = drowcol_uv(fuv);
   arma::uvec result = arma::zeros<arma::uvec>(ddims(fuv.n_elem));
-  for(int j=0; j<fuv.n_elem; j++){
+  for(unsigned int j=0; j<fuv.n_elem; j++){
     if(fuv(j).n_elem>0){
       result.rows(ddims(j), ddims(j+1)-1) = fuv(j);
     }
@@ -145,7 +145,7 @@ inline void add_smu_parents_ptr_(arma::mat& result,
 
 inline arma::cube AKuT_x_R(arma::cube& result, const arma::cube& x, const arma::cube& y){ 
   //arma::cube result = arma::zeros(x.n_cols, y.n_cols, x.n_slices);
-  for(int i=0; i<x.n_slices; i++){
+  for(unsigned int i=0; i<x.n_slices; i++){
     result.slice(i) = arma::trans(x.slice(i)) * y.slice(i); 
   }
   return result;
@@ -153,7 +153,7 @@ inline arma::cube AKuT_x_R(arma::cube& result, const arma::cube& x, const arma::
 
 inline arma::cube AKuT_x_R_ptr(arma::cube& result, const arma::cube& x, const arma::cube* y){ 
   //arma::cube result = arma::zeros(x.n_cols, y.n_cols, x.n_slices);
-  for(int i=0; i<x.n_slices; i++){
+  for(unsigned int i=0; i<x.n_slices; i++){
     result.slice(i) = arma::trans(x.slice(i)) * (*y).slice(i); 
   }
   return result;
@@ -202,9 +202,9 @@ inline void add_lambda_crossprod(arma::mat& result, const arma::mat& X, int j, i
   for(int i=0; i<kstar; i++){
     lambda_nnz(i+1) = q + i;
   }
-  for(int h=0; h<lambda_nnz.n_elem; h++){
+  for(unsigned int h=0; h<lambda_nnz.n_elem; h++){
     int indh = lambda_nnz(h);
-    for(int i=h; i<lambda_nnz.n_elem; i++){
+    for(unsigned int i=h; i<lambda_nnz.n_elem; i++){
       int indi = lambda_nnz(i);
       result.submat(indi*blocksize, indh*blocksize, (indi+1)*blocksize-1, (indh+1)*blocksize-1) +=
         X.cols(indi*blocksize, (indi+1)*blocksize-1).t() * X.cols(indh*blocksize, (indh+1)*blocksize-1);
@@ -218,12 +218,12 @@ inline void add_LtLxD(arma::mat& result, const arma::mat& LjtLj, const arma::vec
   int blockx = Ddiagvec.n_elem;
   int blocky = Ddiagvec.n_elem;
   
-  for(int i=0; i<LjtLj.n_rows; i++){
+  for(unsigned int i=0; i<LjtLj.n_rows; i++){
     int startrow = i*blockx;
-    for(int j=0; j<LjtLj.n_cols; j++){
+    for(unsigned int j=0; j<LjtLj.n_cols; j++){
       int startcol = j*blocky;
       if(LjtLj(i,j) != 0){
-        for(int h=0; h<Ddiagvec.n_elem; h++){
+        for(unsigned int h=0; h<Ddiagvec.n_elem; h++){
           if(Ddiagvec(h) != 0){
             result(startrow + h, startcol+h) += LjtLj(i, j) * Ddiagvec(h);
           }
@@ -258,7 +258,7 @@ inline arma::mat build_block_diagonal(const arma::cube& x){
 
 inline arma::cube cube_cols(const arma::cube& x, const arma::uvec& sel_cols){
   arma::cube result = arma::zeros(x.n_rows, sel_cols.n_elem, x.n_slices);
-  for(int i=0; i<x.n_slices; i++){
+  for(unsigned int i=0; i<x.n_slices; i++){
     result.slice(i) = x.slice(i).cols(sel_cols);
   }
   return result;
@@ -266,7 +266,7 @@ inline arma::cube cube_cols(const arma::cube& x, const arma::uvec& sel_cols){
 
 inline arma::cube cube_cols_ptr(const arma::cube* x, const arma::uvec& sel_cols){
   arma::cube result = arma::zeros((*x).n_rows, sel_cols.n_elem, (*x).n_slices);
-  for(int i=0; i<(*x).n_slices; i++){
+  for(unsigned int i=0; i<(*x).n_slices; i++){
     result.slice(i) = (*x).slice(i).cols(sel_cols);
   }
   return result;
@@ -274,7 +274,7 @@ inline arma::cube cube_cols_ptr(const arma::cube* x, const arma::uvec& sel_cols)
 
 inline arma::cube subcube_ptr(const arma::cube* x, const arma::uvec& sel_rows, const arma::uvec& sel_cols){
   arma::cube result = arma::zeros(sel_rows.n_elem, sel_cols.n_elem, (*x).n_slices);
-  for(int i=0; i<(*x).n_slices; i++){
+  for(unsigned int i=0; i<(*x).n_slices; i++){
     result.slice(i) = (*x).slice(i).submat(sel_rows, sel_cols);
   }
   return result;

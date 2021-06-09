@@ -22,7 +22,7 @@ void Meshed::metrop_theta(){
   
   //new_param(1) = 1; //***
   
-  bool out_unif_bounds = unif_bounds(new_param, theta_unif_bounds);
+  //bool out_unif_bounds = unif_bounds(new_param, theta_unif_bounds);
   
   arma::mat theta_proposal = 
     arma::mat(new_param.memptr(), new_param.n_elem/k, k);
@@ -46,9 +46,10 @@ void Meshed::metrop_theta(){
   if(acceptable){
     new_loglik = alter_data.loglik_w;
     
-    double before_loglik = param_data.loglik_w;
+    //double before_loglik = param_data.loglik_w;
     
-    bool from = get_loglik_comps_w( param_data );
+    acceptable = get_loglik_comps_w( param_data );
+    
     current_loglik = param_data.loglik_w;
     
     prior_logratio = calc_prior_logratio(

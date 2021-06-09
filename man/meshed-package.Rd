@@ -6,7 +6,7 @@
 \docType{package}
 
 \title{
-methods for fitting regression models based on Meshed Gaussian Processes
+Methods for fitting models based on Meshed Gaussian Processes (MGPs)
 }
 
 \description{
@@ -14,11 +14,11 @@ methods for fitting regression models based on Meshed Gaussian Processes
 }
 
 \details{
-  The functions \code{\link{rmeshedgp}} and \code{\link{spmeshed}} are provided for prior or posterior sampling (respectively) of Bayesian regression models based on Meshed Gaussian Processes as introduced by Peruzzi, Banerjee, and Finley (2020). Posterior sampling via \code{\link{spmeshed}} proceeds by default via GriPS as detailed in Peruzzi, Banerjee, Dunson, and Finley (2021). When at least one outcome is not modeled with Gaussian errors, sampling proceeds taking advantage of Metropolis-adjusted Langevin dynamics.
+  The functions \code{\link{rmeshedgp}} and \code{\link{spmeshed}} are provided for prior and posterior sampling (respectively) of Bayesian spatial or spatiotemporal multivariate regression models based on Meshed Gaussian Processes as introduced by Peruzzi, Banerjee, and Finley (2020). Posterior sampling via \code{\link{spmeshed}} proceeds by default via GriPS as detailed in Peruzzi, Banerjee, Dunson, and Finley (2021). When at least one outcome is not modeled with Gaussian errors, sampling proceeds taking advantage of Metropolis-adjusted Langevin dynamics.
 }
 
 \author{
-Michele Peruzzi <michele.peruzzi@duke.edu>
+Michele Peruzzi 
 }
 
 \references{

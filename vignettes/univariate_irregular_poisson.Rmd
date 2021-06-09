@@ -1,0 +1,134 @@
+---
+title: "MGPs for univariate non-Gaussian data at irregularly spaced locations"
+author: "M Peruzzi"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{MGPs for univariate spatial non-Gaussian data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  out.width = '40%', fig.align="center",
+  message=FALSE
+)
+```
+
+Compared to the univariate gridded Gaussian case, we now place the data irregularly and assume we observe counts rather than a Gaussian response.
+
+```{r}
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(meshed)
+set.seed(2021)
+
+SS <- 50 # coord values for jth dimension 
+dd <- 2 # spatial dimension
+n <- SS^2 # number of locations
+p <- 3 # number of covariates
+
+# irregularly spaced
+coords <- cbind(runif(n), runif(n))
+colnames(coords) <- c("Var1", "Var2")
+
+sigmasq <- 1.5
+nu <- 0.5
+phi <- 10
+
+# covariance at coordinates
+CC <- sigmasq * exp(-phi * as.matrix(dist(coords)))
+# cholesky of covariance matrix
+LC <- t(chol(CC))
+# spatial latent effects are a GP
+w <- LC %*% rnorm(n)
+
+# covariates and coefficients 
+X <- matrix(rnorm(n*p), ncol=p)
+Beta <- matrix(rnorm(p), ncol=1)
+
+# univariate outcome, fully observed
+y_full <- rpois(n, exp(-3 + X %*% Beta + w))
+
+# now introduce some NA values in the outcomes
+y <- y_full %>% matrix(ncol=1)
+y[sample(1:n, n/5, replace=FALSE), ] <- NA
+
+simdata <- coords %>%
+  cbind(data.frame(Outcome_full= y_full, 
+                   Outcome_obs = y,
+                   w = w)) 
+
+simdata %>% ggplot(aes(Var1, Var2, color=w)) +
+    geom_point() + 
+    scale_color_viridis_c() +
+  theme_minimal() + ggtitle("w: Latent GP")
+simdata %>% ggplot(aes(Var1, Var2, color=y)) +
+    geom_point() + 
+    scale_color_viridis_c() + 
+  theme_minimal() + ggtitle("y: Observed outcomes")
+```
+We now fit the following spatial regression model 
+$$ y ~ Poisson(\eta), $$
+where $log(\eta) = X %*% Beta + w$, and $w \sim MGP$ are spatial random effects. For spatial data, an exponential covariance function is used by default: $C(h) = \sigma^2 \exp( -\phi h )$ where $h$ is the spatial distance.
+
+The prior for the spatial decay $\phi$ is $U[l,u]$ and the values of $l$ and $u$ must be specified. We choose $l=1$, $u=30$ for this dataset.^[`spmeshed` implements a model which can be interpreted as assigning $\sigma^2$ a folded-t via parameter expansion if `settings$ps=TRUE`, or an inverse Gamma with parameters $a=2$ and $b=1$ if `settings$ps=FALSE`, which cannot be changed at this time. $\tau^2$ is assigned an exponential prior.] 
+
+Setting `verbose=3` tells `spmeshed` to output 3 intermediate messages while running MCMC. For brevity, we opt to run a very short chain of MCMC with only 2000 iterations, of which we discard the first third. Since the data are irregularly spaced, we build a grid of knots of size 1600 using argument `grid_size`, which will facilitate computations.
+Then, just like in the gridded case we use `block_size=20` to specify the coarseness of domain partitioning. 
+
+Finally, we note that `NA` values for the outcome are OK since the full dataset is on a grid. `spmeshed` will figure this out and use settings optimized for partly observed lattices, and automatically predict the outcomes at missing locations. On the other hand, `X` values are assumed to not be missing. 
+
+````{r}
+mcmc_keep <- 1000
+mcmc_burn <- 1000
+mcmc_thin <- 1
+
+mesh_total_time <- system.time({
+  meshout <- spmeshed(y, X, coords,
+                      family="poisson",
+                      grid_size=c(40, 40),
+                      block_size = 20,
+                      n_samples = mcmc_keep, n_burn = mcmc_burn, n_thin = mcmc_thin, 
+                      n_threads = 4,
+                      verbose = 3,
+                      prior=list(phi=c(1,30))
+  )})
+```
+We can now do some postprocessing of the results. We extract posterior marginal summaries for $\sigma^2$, $\phi$, $\tau^2$, and $\beta_2$. The model that `spmeshed` targets is a slight reparametrization of the above:^[At its core, `spmeshed` implements the spatial factor model $Y(s) ~ Poisson( exp(X(s)\beta + \Lambda v(s)) )$ where $w(s) = \Lambda v(s)$ is modeled via linear coregionalization.]
+$$ log(\eta) = X \beta + \lambda w, $$
+where $w\sim MGP$ has unitary variance. This model is equivalent to the previous one and in fact we find $\sigma^2=\lambda^2$. Naturally, it is much more difficult to estimate parameters when data are counts.
+
+```{r}
+summary(meshout$lambda_mcmc[1,1,]^2)
+summary(meshout$theta_mcmc[1,1,])
+summary(meshout$beta_mcmc[1,1,])
+```
+We proceed to plot predictions across the domain along with the recovered latent effects. We plot the latent effects at the grid we used for fitting `spmeshed`. Instead, we plot our predictions at the original data locations. We may see some pattern by plotting the data on the log scale.
+
+```{r}
+# process means
+wmesh <- data.frame(w_mgp = meshout$w_mcmc %>% summary_list_mean())
+# predictions
+ymesh <- data.frame(y_mgp = meshout$yhat_mcmc %>% summary_list_mean())
+
+outdf <- meshout$coordsdata %>% 
+  cbind(wmesh, ymesh) %>%
+  left_join(simdata, by = c("Var1", "Var2"))
+
+outdf %>% filter(forced_grid==1) %>%
+    ggplot(aes(Var1, Var2, fill=w_mgp)) +
+    geom_raster() +
+    scale_fill_viridis_c() +
+    theme_minimal() + ggtitle("w: recovered")
+
+outdf %>% filter(forced_grid==0) %>%
+    ggplot(aes(Var1, Var2, color=y_mgp)) +
+    geom_point() +
+    scale_color_viridis_c() +
+    theme_minimal() + ggtitle("y: predictions")
+```

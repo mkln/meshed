@@ -361,7 +361,7 @@ inline arma::mat sample_one_nuts_cpp(arma::mat current_q,
   
   // Build a trajectory until the NUTS criterion is no longer satisfied
   int depth_ = 0;
-  int divergent_ = 0;
+  //int divergent_ = 0;
   util.n_tree = 0;
   util.sum_prob = 0;
   
@@ -438,7 +438,7 @@ inline arma::mat newton_step(arma::mat current_q,
   
   std::chrono::steady_clock::time_point t0;
   std::chrono::steady_clock::time_point t1;
-  double timer=0;
+  //double timer=0;
   
   // currents
   arma::vec xgrad;

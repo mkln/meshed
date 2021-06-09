@@ -71,7 +71,7 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-      for(int ix=0; ix<ix_by_q_a(j).n_elem; ix++){
+      for(unsigned int ix=0; ix<ix_by_q_a(j).n_elem; ix++){
         int i = ix_by_q_a(j)(ix);
         
         double sigmoid = 1.0/(1.0 + exp(-offsets(i, j) - XB(i, j) - LHW(i, j)));

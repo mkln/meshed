@@ -9,9 +9,9 @@ arma::mat CmaternInv(const arma::mat& x,
 
   double pow2_nu1_gammanu = pow(2.0, 1.0-nu) / R::gammafn(nu);
   arma::mat res = arma::zeros(x.n_rows, x.n_rows);
-  for(int i = 0; i < x.n_rows; i++){
+  for(unsigned int i = 0; i < x.n_rows; i++){
     arma::rowvec cri = x.row(i);
-    for(int j = i; j < x.n_rows; j++){
+    for(unsigned int j = i; j < x.n_rows; j++){
       arma::rowvec delta = cri - x.row(j);
       double hphi = arma::norm(delta) * phi;
       if(hphi > 0.0){
@@ -46,9 +46,9 @@ void matern_internal_inplace(arma::mat& res,
   double pow2_nu1_gammanu_sigmasq_reparam = sigmasq_reparam * pow(2.0, 1.0-nu) / R::gammafn(nu);
   
   if(same){
-    for(int i=0; i<ix.n_rows; i++){
+    for(unsigned int i=0; i<ix.n_rows; i++){
       arma::rowvec cri = coords.row(ix(i));//x.row(i);
-      for(int j=i; j<iy.n_rows; j++){
+      for(unsigned int j=i; j<iy.n_rows; j++){
         arma::rowvec delta = cri - coords.row(iy(j));//y.row(j);
         double hphi = arma::norm(delta) * phi;
         if(hphi > 0.0){
@@ -61,9 +61,9 @@ void matern_internal_inplace(arma::mat& res,
     }
     res = arma::symmatu(res);
   } else {
-    for(int i=0; i<ix.n_rows; i++){
+    for(unsigned int i=0; i<ix.n_rows; i++){
       arma::rowvec cri = coords.row(ix(i));//x.row(i);
-      for(int j=0; j<iy.n_rows; j++){
+      for(unsigned int j=0; j<iy.n_rows; j++){
         arma::rowvec delta = cri - coords.row(iy(j));//y.row(j);
         double hphi = arma::norm(delta) * phi;
         if(hphi > 0.0){
@@ -90,9 +90,9 @@ void matern_halfint_inplace(arma::mat& res,
   double sigmasq_reparam = sigmasq/reparam;
   
   if(same){
-    for(int i=0; i<ix.n_rows; i++){
+    for(unsigned int i=0; i<ix.n_rows; i++){
       arma::rowvec cri = coords.row(ix(i)); //x.row(i);
-      for(int j=i; j<iy.n_rows; j++){
+      for(unsigned int j=i; j<iy.n_rows; j++){
         arma::rowvec delta = cri - coords.row(iy(j)); //y.row(j);
         double hphi = arma::norm(delta) * phi;
         if(hphi > 0.0){
@@ -114,9 +114,9 @@ void matern_halfint_inplace(arma::mat& res,
     }
     res = arma::symmatu(res);
   } else {
-    for(int i=0; i<ix.n_rows; i++){
+    for(unsigned int i=0; i<ix.n_rows; i++){
       arma::rowvec cri = coords.row(ix(i)); //x.row(i);
-      for(int j=0; j<iy.n_rows; j++){
+      for(unsigned int j=0; j<iy.n_rows; j++){
         arma::rowvec delta = cri - coords.row(iy(j)); //y.row(j);
         double hphi = arma::norm(delta) * phi;
         if(hphi > 0.0){
@@ -150,9 +150,9 @@ void powerexp_inplace(arma::mat& res,
 
   double sigmasq_reparam = sigmasq / reparam;
   if(same){
-    for(int i=0; i<ix.n_rows; i++){
+    for(unsigned int i=0; i<ix.n_rows; i++){
       arma::rowvec cri = coords.row(ix(i));
-      for(int j=i; j<iy.n_rows; j++){
+      for(unsigned int j=i; j<iy.n_rows; j++){
         arma::rowvec delta = cri - coords.row(iy(j));
         double hnuphi = pow(arma::norm(delta), nu) * phi;
         if(hnuphi > 0.0){
@@ -164,9 +164,9 @@ void powerexp_inplace(arma::mat& res,
     }
     res = arma::symmatu(res);
   } else {
-    for(int i=0; i<ix.n_rows; i++){
+    for(unsigned int i=0; i<ix.n_rows; i++){
       arma::rowvec cri = coords.row(ix(i));
-      for(int j=0; j<iy.n_rows; j++){
+      for(unsigned int j=0; j<iy.n_rows; j++){
         arma::rowvec delta = cri - coords.row(iy(j));
         double hnuphi = pow(arma::norm(delta), nu) * phi;
         if(hnuphi > 0.0){
@@ -187,10 +187,10 @@ void gneiting2002_inplace(arma::mat& res, const arma::mat& coords,
   //arma::mat res = arma::zeros(ix.n_rows, iy.n_rows);
   arma::uvec timecol = arma::ones<arma::uvec>(1) * 2;
   if(same){
-    for(int i=0; i<ix.n_rows; i++){
+    for(unsigned int i=0; i<ix.n_rows; i++){
       arma::rowvec cri = coords.row(ix(i)).subvec(0, 1); //x.row(i);
       double ti = coords(ix(i), 2);
-      for(int j=i; j<iy.n_rows; j++){
+      for(unsigned int j=i; j<iy.n_rows; j++){
         double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
         double u = abs(coords(iy(j), 2) - ti);
         double umod = 1.0 / (a * u + 1.0);
@@ -199,10 +199,10 @@ void gneiting2002_inplace(arma::mat& res, const arma::mat& coords,
     }
     res = arma::symmatu(res);
   } else {
-    for(int i=0; i<ix.n_rows; i++){
+    for(unsigned int i=0; i<ix.n_rows; i++){
       arma::rowvec cri = coords.row(ix(i)).subvec(0, 1); //x.row(i);
       double ti = coords(ix(i), 2);
-      for(int j=0; j<iy.n_rows; j++){
+      for(unsigned int j=0; j<iy.n_rows; j++){
         double h = arma::norm(cri - coords.submat(iy(j), 0, iy(j), 1)); //y.row(j);
         double u = abs(coords(iy(j), 2) - ti);
         double umod = 1.0 / (a * u + 1.0);
@@ -220,11 +220,10 @@ void kernelp_inplace(arma::mat& res,
   double sigmasq = theta(0);
   arma::vec kweights = theta.subvec(1, theta.n_elem-1);
   
-  int p = Xcoords.n_cols;
   if(same){
-    for(int i=0; i<ind1.n_elem; i++){
+    for(unsigned int i=0; i<ind1.n_elem; i++){
       arma::rowvec cri = Xcoords.row(ind1(i));
-      for(int j=i; j<ind2.n_elem; j++){
+      for(unsigned int j=i; j<ind2.n_elem; j++){
         arma::rowvec deltasq = cri - Xcoords.row(ind2(j));
         double weighted = (arma::accu(kweights.t() % deltasq % deltasq));
         res(i, j) = sigmasq * exp(-weighted) + (weighted == 0? 1e-6 : 0);
@@ -233,9 +232,9 @@ void kernelp_inplace(arma::mat& res,
     res = arma::symmatu(res);
   } else {
     //int cc = 0;
-    for(int i=0; i<ind1.n_elem; i++){
+    for(unsigned int i=0; i<ind1.n_elem; i++){
       arma::rowvec cri = Xcoords.row(ind1(i));
-      for(int j=0; j<ind2.n_elem; j++){
+      for(unsigned int j=0; j<ind2.n_elem; j++){
         arma::rowvec deltasq = cri - Xcoords.row(ind2(j));
         double weighted = (arma::accu(kweights.t() % deltasq % deltasq));
         res(i, j) = sigmasq * exp(-weighted) + (weighted == 0? 1e-6 : 0);
@@ -416,7 +415,7 @@ void CviaKron_HRj_bdiag_(
     arma::mat Cyy_i = Kxxi_cache.slice(j);// 
     //arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), matern, true) );
     
-    for(int ix=0; ix<indx.n_rows; ix++){
+    for(unsigned int ix=0; ix<indx.n_rows; ix++){
       if(naix(ix) == 1){
         arma::uvec indxi = oneuv*indx(ix);
         
@@ -446,7 +445,7 @@ void CviaKron_HRj_chol_bdiag_wcache(
     arma::mat Cyy_i = Kxxi_cache.slice(j);//
     //arma::inv_sympd( Correlationf(coordsy, coordsy, theta.col(j), true) );
     
-    for(int ix=0; ix<indx.n_rows; ix++){
+    for(unsigned int ix=0; ix<indx.n_rows; ix++){
       if(naix(ix) == 0){ // otherwise it's not missing
         arma::uvec indxi = oneuv * indx(ix);
         arma::mat Cxx = Correlationf(coords, indxi, indxi, 
@@ -476,7 +475,7 @@ void CviaKron_HRj_chol_bdiag(
   for(int j=0; j<k; j++){
     Kxxi.slice(j) = arma::inv_sympd( Correlationf(coords, indy, indy, 
                                      theta.col(j), matern, true) );
-    for(int ix=0; ix<indx.n_rows; ix++){
+    for(unsigned int ix=0; ix<indx.n_rows; ix++){
       if(naix(ix) == 0){ // otherwise it's not missing
         arma::uvec indxi = oneuv * indx(ix);
         arma::mat Cxx = Correlationf(coords, indxi, indxi, 

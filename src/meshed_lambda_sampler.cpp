@@ -54,9 +54,9 @@ void Meshed::sample_nc_Lambda_fgrid(MeshDataLMC& data){
   arma::vec Lambda_d = Lambda.diag();
   arma::mat L_prior_prec = 1e-6 * 
     arma::eye(Lambda_d.n_elem, Lambda_d.n_elem);
-  double log_prior_ratio = arma::conv_to<double>::from(
-    -0.5*Lambda_prop_d.t() * L_prior_prec * Lambda_prop_d
-    +0.5*Lambda_d.t() * L_prior_prec * Lambda_d);
+  //double log_prior_ratio = arma::conv_to<double>::from(
+  //  -0.5*Lambda_prop_d.t() * L_prior_prec * Lambda_prop_d
+  //  +0.5*Lambda_d.t() * L_prior_prec * Lambda_d);
     
     double new_logpost = arma::accu(alter_data.ll_y);
     double start_logpost = arma::accu(param_data.ll_y);

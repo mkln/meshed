@@ -9,7 +9,7 @@ using namespace std;
 arma::vec noseqdup(arma::vec x, bool& has_changed, int maxc, int na=-1, int pred=4){
   arma::uvec locs = arma::find( (x != na) % (x != pred) );
   arma::vec xlocs = x.elem(locs);
-  for(int i=1; i<xlocs.n_elem; i++){
+  for(unsigned int i=1; i<xlocs.n_elem; i++){
     if(xlocs(i)==xlocs(i-1)){
       xlocs(i) += 1+maxc;
       has_changed = true;
@@ -33,15 +33,15 @@ arma::field<arma::uvec> blanket(const arma::field<arma::uvec>& parents,
     if(block_ct_obs(u) > 0){
       // block cannot be the same color as other nodes in blanket
       arma::uvec u_blanket = arma::zeros<arma::uvec>(0);
-      for(int p=0; p<parents(u).n_elem; p++){
+      for(unsigned int p=0; p<parents(u).n_elem; p++){
         int px = parents(u)(p);
         u_blanket = arma::join_vert(u_blanket, px*oneuv);
       }
-      for(int c=0; c<children(u).n_elem; c++){
+      for(unsigned int c=0; c<children(u).n_elem; c++){
         int cx = children(u)(c);
         u_blanket = arma::join_vert(u_blanket, cx*oneuv);
         
-        for(int pc=0; pc<parents(cx).n_elem; pc++){
+        for(unsigned int pc=0; pc<parents(cx).n_elem; pc++){
           int pcx = parents(cx)(pc);
           if(pcx != u){
             u_blanket = arma::join_vert(u_blanket, pcx*oneuv);
@@ -107,9 +107,9 @@ arma::ivec coloring(const arma::field<arma::uvec>& blanket, const arma::uvec& bl
 
 arma::vec turbocolthreshold(const arma::vec& col1, const arma::vec& thresholds){
   arma::vec result = arma::zeros(col1.n_elem);
-  for(int i=0; i<col1.n_elem; i++){
+  for(unsigned int i=0; i<col1.n_elem; i++){
     int overthreshold = 1;
-    for(int j=0; j<thresholds.n_elem; j++){
+    for(unsigned int j=0; j<thresholds.n_elem; j++){
       if(col1(i) >= thresholds(j)){
         overthreshold += 1;
       }
@@ -141,7 +141,7 @@ arma::mat part_axis_parallel(const arma::mat& coords, const arma::vec& Mv, int n
   arma::mat resultmat = arma::zeros(arma::size(coords));
   
 //#pragma omp parallel for num_threads(n_threads)
-  for(int j=0; j<coords.n_cols; j++){
+  for(unsigned int j=0; j<coords.n_cols; j++){
     arma::vec cja = coords.col(j);
     arma::vec thresholds = kthresholdscp(cja, Mv(j));
     resultmat.col(j) = turbocolthreshold(coords.col(j), thresholds);
@@ -159,7 +159,7 @@ arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<ar
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for(int j=0; j<thresholds.n_elem; j++){
+  for(unsigned int j=0; j<thresholds.n_elem; j++){
     arma::vec cja = coords.col(j);
     arma::vec thresholds_col = thresholds(j);
     resultmat.col(j) = turbocolthreshold(coords.col(j), thresholds_col);
@@ -215,10 +215,10 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for(int i=1; i<Mv(0)+1; i++){
+    for(unsigned int i=1; i<Mv(0)+1; i++){
       arma::mat filter_i    = blocks_ref.rows(arma::find(blocks_ref.col(0) == i));
       if(filter_i.n_rows > 0){
-        for(int j=1; j<Mv(1)+1; j++){
+        for(unsigned int j=1; j<Mv(1)+1; j++){
           arma::mat filter_j    = filter_i.rows(arma::find(filter_i.col(1) == j));
           if(filter_j.n_rows > 0){ 
             Qm(i-1, j-1) = filter_j(0, 2);
@@ -231,10 +231,10 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for(int i=1; i<Mv(0)+1; i++){
+    for(unsigned int i=1; i<Mv(0)+1; i++){
       arma::mat filter_alli = layers_descr.rows(arma::find(layers_descr.col(0) == i));
       if(filter_alli.n_rows > 0){
-        for(int j=1; j<Mv(1)+1; j++){
+        for(unsigned int j=1; j<Mv(1)+1; j++){
           arma::mat filter_allj = filter_alli.rows(arma::find(filter_alli.col(1) == j));
           if(filter_allj.n_rows > 0){
             Qmall(i-1, j-1) = filter_allj(0, 2);
@@ -252,8 +252,8 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for(int i=1; i<Mv(0)+1; i++){
-      for(int j=1; j<Mv(1)+1; j++){
+    for(unsigned int i=1; i<Mv(0)+1; i++){
+      for(unsigned int j=1; j<Mv(1)+1; j++){
         int layern = Qm(i-1, j-1);
         if(layern != -1){
           
@@ -294,7 +294,7 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for(int i=0; i<empties.n_elem; i++){
+    for(unsigned int i=0; i<empties.n_elem; i++){
       arma::uvec ijh = arma::ind2sub(arma::size(Qm), empties(i));
       
       int layern = Qmall(ijh(0), ijh(1));
@@ -351,13 +351,13 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for(int i=1; i<Mv(0)+1; i++){
+    for(unsigned int i=1; i<Mv(0)+1; i++){
       arma::mat filter_i = blocks_ref.rows(arma::find(blocks_ref.col(0) == i));
       if(filter_i.n_rows > 0){
-        for(int j=1; j<Mv(1)+1; j++){
+        for(unsigned int j=1; j<Mv(1)+1; j++){
           arma::mat filter_j = filter_i.rows(arma::find(filter_i.col(1) == j));
           if(filter_j.n_rows > 0){
-            for(int h=1; h<Mv(2)+1; h++){
+            for(unsigned int h=1; h<Mv(2)+1; h++){
               arma::mat filter_h = filter_j.rows(arma::find(filter_j.col(2) == h));
               if(filter_h.n_rows > 0){ 
                 Q(i-1, j-1, h-1) = filter_h(0, 3);
@@ -373,13 +373,13 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for(int i=1; i<Mv(0)+1; i++){
+    for(unsigned int i=1; i<Mv(0)+1; i++){
       arma::mat filter_alli = layers_descr.rows(arma::find(layers_descr.col(0) == i));
       if(filter_alli.n_rows > 0){
-        for(int j=1; j<Mv(1)+1; j++){
+        for(unsigned int j=1; j<Mv(1)+1; j++){
           arma::mat filter_allj = filter_alli.rows(arma::find(filter_alli.col(1) == j));
           if(filter_allj.n_rows > 0){
-            for(int h=1; h<Mv(2)+1; h++){
+            for(unsigned int h=1; h<Mv(2)+1; h++){
               arma::mat filter_allh = filter_allj.rows(arma::find(filter_allj.col(2) == h));
               if(filter_allh.n_rows > 0){ 
                 Qall(i-1, j-1, h-1) = filter_allh(0, 3);
@@ -399,9 +399,9 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    for(int i=1; i<Mv(0)+1; i++){
-      for(int j=1; j<Mv(1)+1; j++){
-        for(int h=1; h<Mv(2)+1; h++){
+    for(unsigned int i=1; i<Mv(0)+1; i++){
+      for(unsigned int j=1; j<Mv(1)+1; j++){
+        for(unsigned int h=1; h<Mv(2)+1; h++){
           int layern = Q(i-1, j-1, h-1);
           if(layern != -1){
             
@@ -451,7 +451,7 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
     
     start = std::chrono::steady_clock::now();
     arma::uvec empties = arma::find(Q == -1);
-    for(int i=0; i<empties.n_elem; i++){
+    for(unsigned int i=0; i<empties.n_elem; i++){
       arma::uvec ijh = arma::ind2sub(arma::size(Q), empties(i));
       
       int layern = Qall(ijh(0), ijh(1), ijh(2));
@@ -526,7 +526,7 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
-  for(int i=0; i<parents.n_elem; i++){
+  for(unsigned int i=0; i<parents.n_elem; i++){
     parents(i) = parents(i).elem(arma::find(parents(i) != -1));
     children(i) = children(i).elem(arma::find(children(i) != -1));
   }
@@ -555,7 +555,7 @@ arma::umat filter_col_equal(const arma::umat& base_mat, int r_col_ix, int value)
 
 arma::umat filter_cols_equal(const arma::umat& base_mat, const arma::uvec& r_col_ix, const arma::uvec& values){
   arma::uvec all_conditions = arma::ones<arma::uvec>(base_mat.n_rows);
-  for(int j=0; j<r_col_ix.n_elem; j++){
+  for(unsigned int j=0; j<r_col_ix.n_elem; j++){
     all_conditions %= base_mat.col(r_col_ix(j)-1) == values(j);
   }
   return base_mat.rows(arma::find(all_conditions));
@@ -563,14 +563,14 @@ arma::umat filter_cols_equal(const arma::umat& base_mat, const arma::uvec& r_col
 
 arma::mat edist(const arma::mat& x, const arma::mat& y, const arma::vec& w, bool same){
   // 0 based indexing
-  double weighted;
+  
   arma::rowvec delta;
   arma::rowvec xi;
   arma::mat res = arma::zeros(x.n_rows, y.n_rows);
   if(same){
-    for(int i=0; i<x.n_rows; i++){
+    for(unsigned int i=0; i<x.n_rows; i++){
       xi = x.row(i);
-      for(int j=i; j<y.n_rows; j++){
+      for(unsigned int j=i; j<y.n_rows; j++){
         delta = xi - y.row(j);
         res(i, j) = arma::accu(w.t() % delta % delta);
       }
@@ -578,9 +578,9 @@ arma::mat edist(const arma::mat& x, const arma::mat& y, const arma::vec& w, bool
     res = arma::symmatu(res);
   } else {
     //int cc = 0;
-    for(int i=0; i<x.n_rows; i++){
+    for(unsigned int i=0; i<x.n_rows; i++){
       xi = x.row(i);
-      for(int j=0; j<y.n_rows; j++){
+      for(unsigned int j=0; j<y.n_rows; j++){
         delta = xi - y.row(j);
         res(i, j) = arma::accu(w.t() % delta % delta);
       }
@@ -593,7 +593,7 @@ arma::mat edist(const arma::mat& x, const arma::mat& y, const arma::vec& w, bool
 arma::umat knn_naive(const arma::mat& x, const arma::mat& search_here, const arma::vec& weights){
   arma::mat D = edist(x, search_here, weights, false);
   arma::umat Dfound = arma::zeros<arma::umat>(arma::size(D));
-  for(int i=0; i<x.n_rows; i++){
+  for(unsigned int i=0; i<x.n_rows; i++){
     Dfound.row(i) = arma::trans(arma::sort_index(D.row(i)));
   }
   return Dfound;

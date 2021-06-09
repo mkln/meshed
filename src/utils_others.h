@@ -64,7 +64,7 @@ inline arma::vec armacolsum(const arma::mat& x){
 
 inline arma::mat diagmultiply(const arma::vec& d, arma::mat X){
   // returns DX where D is diagonal
-  for(int i=0; i<X.n_rows; i++){
+  for(unsigned int i=0; i<X.n_rows; i++){
     X.row(i) *= d(i);
   }
   return X;

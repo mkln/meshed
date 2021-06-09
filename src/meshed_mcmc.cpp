@@ -162,7 +162,6 @@ Rcpp::List meshed_mcmc(
   }
   
   bool acceptable = false;
-  
   if(mcmc > 0){
     acceptable = msp.get_loglik_comps_w( msp.param_data );
     acceptable = msp.get_loglik_comps_w( msp.alter_data );
@@ -174,7 +173,7 @@ Rcpp::List meshed_mcmc(
   }
   
   double logaccept;
-
+  
   bool interrupted = false;
   
   if(verbose){
@@ -327,7 +326,7 @@ Rcpp::List meshed_mcmc(
           
           if(msp.param_data.theta.n_elem < 10){
             Rprintf("  theta = ");
-            for(int pp=0; pp<msp.param_data.theta.n_elem; pp++){
+            for(unsigned int pp=0; pp<msp.param_data.theta.n_elem; pp++){
               Rprintf("%.3f ", msp.param_data.theta(pp));
             }
           }
@@ -351,12 +350,12 @@ Rcpp::List meshed_mcmc(
           if(use_ps || q > 1){
             arma::vec lvec = arma::vectorise(msp.Lambda);
             Rprintf("\n  lambdastar = ");
-            for(int pp=0; pp<lvec.n_elem; pp++){
+            for(unsigned int pp=0; pp<lvec.n_elem; pp++){
               Rprintf("%.3f ", lvec(pp));
             }
             lvec = arma::vectorise(lambda_transf_back);
             Rprintf("\n  lambda = ");
-            for(int pp=0; pp<lvec.n_elem; pp++){
+            for(unsigned int pp=0; pp<lvec.n_elem; pp++){
               Rprintf("%.3f ", lvec(pp));
             }
           }

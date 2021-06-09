@@ -52,7 +52,7 @@ Rcpp::List spmeshed_predict(
   arma::field<arma::mat> coords_out_list(ublock.n_elem);
   arma::field<arma::cube> preds_out_list(ublock.n_elem);
   
-  for(int i=0; i<ublock.n_elem; i++){
+  for(unsigned int i=0; i<ublock.n_elem; i++){
     if(verbose){
       Rcpp::Rcout << "Block " << i+1 << " of " << ublock.n_elem << endl;
     }
@@ -74,7 +74,7 @@ Rcpp::List spmeshed_predict(
     }
     
     arma::field<arma::uvec> pixs(block_parents.n_elem);
-    for(int pi=0; pi<block_parents.n_elem; pi++){
+    for(unsigned int pi=0; pi<block_parents.n_elem; pi++){
       pixs(pi) = indexing(block_parents(pi));
     }
     arma::uvec parents_indexing = field_v_concat_uv(pixs);
@@ -93,7 +93,7 @@ Rcpp::List spmeshed_predict(
         arma::mat Cyy = Correlationc(parents_coords, parents_coords, theta.col(j), matern, true);
         arma::mat Cyyi = arma::inv_sympd(Cyy);
         
-        for(int ix=0; ix<block_coords.n_rows; ix++){
+        for(unsigned int ix=0; ix<block_coords.n_rows; ix++){
           arma::mat Cxx = Correlationc(block_coords.rows(oneuv*ix), block_coords.rows(oneuv*ix), 
                                        theta.col(j), matern, true);
           arma::mat Cxy = Correlationc(block_coords.rows(oneuv*ix), parents_coords,  
@@ -113,7 +113,7 @@ Rcpp::List spmeshed_predict(
       
       arma::mat Lambda = reparametrize_lambda_forward(lambda_sampled.slice(m), theta, d, matern.twonu, matern.using_ps);
       
-      for(int ix=0; ix<block_coords.n_rows; ix++){
+      for(unsigned int ix=0; ix<block_coords.n_rows; ix++){
         arma::rowvec wtemp = arma::sum(arma::trans(Hpred.slice(ix)) % wpars, 0);
         arma::vec normrnd = arma::randn(k);
         wtemp += arma::trans(Rcholpred.col(ix) % normrnd);

@@ -13,7 +13,7 @@ arma::cube cube_tcrossprod(const arma::cube& x){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-  for(int i=0; i<x.n_slices; i++){
+  for(unsigned int i=0; i<x.n_slices; i++){
     result.slice(i) = x.slice(i) * x.slice(i).t();
   }
   return result;
@@ -29,7 +29,7 @@ arma::mat summary_list_mean(const arma::field<arma::mat>& x, int n_threads=1){
   
   // check how many list elements are nonempty
   int n = 0;
-  for(int i=0; i<x.n_elem; i++){
+  for(unsigned int i=0; i<x.n_elem; i++){
     if(x(i).n_rows > 0){
       n ++;
     }
@@ -109,7 +109,7 @@ arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int n_thread
   
   // check how many list elements are nonempty
   int n = 0;
-  for(int i=0; i<x.n_elem; i++){
+  for(unsigned int i=0; i<x.n_elem; i++){
     if(x(i).n_rows > 0){
       n ++;
     }

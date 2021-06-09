@@ -22,7 +22,7 @@ void Meshed::update_block_w_cache(int u, MeshDataLMC& data){
   arma::mat Sigi_tot = build_block_diagonal_ptr(data.w_cond_prec_ptr.at(u));
   
   arma::mat Smu_tot = arma::zeros(k*indexing(u).n_elem, 1); // replace with fill(0)
-  for(int c=0; c<children(u).n_elem; c++){
+  for(unsigned c=0; c<children(u).n_elem; c++){
     int child = children(u)(c);
     arma::cube AK_u = cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), u_is_which_col_f(u)(c)(0));
     AKuT_x_R_ptr(data.AK_uP(u)(c), AK_u, data.w_cond_prec_ptr.at(child)); 
@@ -32,7 +32,7 @@ void Meshed::update_block_w_cache(int u, MeshDataLMC& data){
   if(forced_grid){
     int indxsize = indexing(u).n_elem;
     arma::mat yXB = arma::trans(y.rows(indexing_obs(u)) - XB.rows(indexing_obs(u)));
-    for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+    for(unsigned ix=0; ix<indexing_obs(u).n_elem; ix++){
       if(na_1_blocks(u)(ix) == 1){
         arma::mat LambdaH = arma::zeros(q, k*indxsize);
         for(int j=0; j<q; j++){
@@ -56,7 +56,7 @@ void Meshed::update_block_w_cache(int u, MeshDataLMC& data){
     arma::mat ytilde = arma::zeros(indexing_obs(u).n_elem, q);
     
     for(int j=0; j<q; j++){
-      for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+      for(unsigned ix=0; ix<indexing_obs(u).n_elem; ix++){
         if(na_mat(indexing_obs(u)(ix), j) == 1){
           u_tau_inv(ix, j) = pow(tausq_inv(j), .5);
           ytilde(ix, j) = (y(indexing_obs(u)(ix), j) - XB(indexing_obs(u)(ix), j))*u_tau_inv(ix, j);
@@ -124,7 +124,7 @@ void Meshed::gaussian_w(MeshDataLMC& data, bool sample=true){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-    for(int i=0; i<u_by_block_groups(g).n_elem; i++){
+    for(unsigned i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
       
       if((block_ct_obs(u) > 0)){
@@ -139,7 +139,7 @@ void Meshed::gaussian_w(MeshDataLMC& data, bool sample=true){
         } 
         
         
-        for(int c=0; c<children(u).n_elem; c++){
+        for(unsigned c=0; c<children(u).n_elem; c++){
           int child = children(u)(c);
           //---------------------
           arma::cube AK_u = cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), u_is_which_col_f(u)(c)(0));
@@ -177,7 +177,7 @@ void Meshed::gaussian_w(MeshDataLMC& data, bool sample=true){
         wU.rows(indexing(u)) = w.rows(indexing(u));
         
         if(forced_grid){
-          for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+          for(unsigned ix=0; ix<indexing_obs(u).n_elem; ix++){
             if(na_1_blocks(u)(ix) == 1){
               arma::mat wtemp = arma::sum(arma::trans(data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u)))), 0);
               
@@ -210,8 +210,8 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
   }
   
   start_overall = std::chrono::steady_clock::now();
-  double part1 = 0;
-  double part2 = 0;
+  //double part1 = 0;
+  //double part2 = 0;
   
   int mala_timer = 0;
   
@@ -221,7 +221,7 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-    for(int i=0; i<u_by_block_groups(g).n_elem; i++){
+    for(unsigned i=0; i<u_by_block_groups(g).n_elem; i++){
       int u = u_by_block_groups(g)(i);
       
       if((block_ct_obs(u) > 0)){
@@ -251,7 +251,7 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
           w_node.at(u).Kcxpar = arma::zeros(0,0);
         }
           
-        for(int c=0; c<w_node.at(u).num_children; c++ ){
+        for(unsigned c=0; c<w_node.at(u).num_children; c++ ){
           int child = children(u)(c);
           //Rcpp::Rcout << "child [" << child << "]\n";
           arma::uvec c_ix = indexing(child);
@@ -331,7 +331,7 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
         wU.rows(indexing(u)) = w.rows(indexing(u));
         
         if(forced_grid){
-          for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+          for(unsigned ix=0; ix<indexing_obs(u).n_elem; ix++){
             if(na_1_blocks(u)(ix) == 1){
               arma::mat wtemp = arma::sum(arma::trans(data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u)))), 0);
               
@@ -366,7 +366,7 @@ void Meshed::gaussian_nonreference_w(int u, MeshDataLMC& data, const arma::mat& 
   // for updating lambda and tau which will only look at observed locations
   // centered updates instead use the partially marginalized thing
   
-  for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+  for(unsigned ix=0; ix<indexing_obs(u).n_elem; ix++){
     if(na_1_blocks(u)(ix) == 1){
       arma::mat Stemp = data.Riproject(u).slice(ix);
       arma::mat tsqi = tausq_inv;
@@ -421,7 +421,7 @@ void Meshed::predict(bool sample){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-    for(int i=0; i<u_predicts.n_elem; i++){ //*** subset to blocks with NA
+    for(unsigned i=0; i<u_predicts.n_elem; i++){ //*** subset to blocks with NA
       int u = u_predicts(i);// u_predicts(i);
       // only predictions at this block. 
       arma::uvec predict_parent_indexing, cx;
@@ -444,7 +444,7 @@ void Meshed::predict(bool sample){
       //Rcpp::Rcout << "step 1 "<< endl;
       arma::mat wpars = w.rows(predict_parent_indexing);
       
-      for(int ix=0; ix<indexing_obs(u).n_elem; ix++){
+      for(unsigned ix=0; ix<indexing_obs(u).n_elem; ix++){
         if(na_1_blocks(u)(ix) == 0){
           arma::rowvec wtemp = arma::sum(arma::trans(Hpred(i).slice(ix)) % wpars, 0);
           

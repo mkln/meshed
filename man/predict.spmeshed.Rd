@@ -1,11 +1,10 @@
 \name{predict.spmeshed}
 \alias{predict.spmeshed}
-\title{Predictions for spatial MGP models after running MCMC}
-\description{This function performs predictions after having run MCMC using \code{spmeshed}.}
+\title{Posterior predictive sampling for models based on MGPs}
+\description{Sample from the posterior predictive distribution of the outcomes at new spatial or spatiotemporal locations after MCMC.}
 \usage{
-\method{predict}{spmeshed}(object,
-               newx, newcoords, n_threads=4,
-               verbose=FALSE, ...)
+\method{predict}{spmeshed}(object, newx, newcoords, 
+    n_threads=4, verbose=FALSE, ...)
         
 }
 \arguments{
@@ -22,11 +21,11 @@
 \item{...}{other arguments (unused).}
 }
 \details{
-While this function can always be used to make predictions, in most cases it is more efficient to just include the prediction locations in the main data as \code{NA} values. The \code{predict} function is only recommended when all 4 of the following are true:
+While this function can always be used to make predictions, in most cases it is more efficient to just include the prediction locations in the main data as \code{NA} values; \code{\link{spmeshed}} will sample from the posterior predictive distribution at those locations while doing MCMC. The \code{predict} method is only recommended when all 4 of the following are true:
 
 (1) \code{spmeshed} was run with \code{settings$forced_grid=FALSE} and
 
-(2) the prediction locations are uniformly scattered on the domain and
+(2) the prediction locations are uniformly scattered on the domain (or rather, they are not clustered as a large empty area) and
 
 (3) the number of prediction locations is a large portion of the number of observed data points and 
 
@@ -37,7 +36,7 @@ In all other cases the main \code{spmeshed} function is setup to be more efficie
 \value{
 \item{coords_out}{matrix with the prediction location coordinates (order updated after predictions).}
 
-\item{preds_out}{\code{array} of dimension (\eqn{n_{o}, q, m}) where \eqn{n_{o}} is the number of prediction locations, \eqn{q} is the output dimension, \eqn{m} is the number of MCMC samples.}
+\item{preds_out}{array of dimension (\eqn{n_{o}, q, m}) where \eqn{n_{o}} is the number of prediction locations, \eqn{q} is the output dimension, \eqn{m} is the number of MCMC samples.}
 }
 
 \references{
@@ -53,20 +52,75 @@ In all other cases the main \code{spmeshed} function is setup to be more efficie
 }
 
 \examples{
-\dontrun{
 
-    new_X <- matrix(rnorm(10), ncol=1)
-    new_coords <- cbind(runif(10), runif(10))
-    meshed_preds <- predict(meshout, 
-                          newx = new_X, 
-                          newcoords = new_coords, 
-                          verbose=F, num_threads=16)
-                          
-    y.mesh.out <- mesh_preds$coords_out \%>\% 
-      as.data.frame() 
-      cbind(data.frame(ymesh_1=mesh_preds$preds_out[,1,] \%>\% apply(1, mean),
-                       yhi_1=mesh_preds$preds_out[,1,] \%>\% apply(1, quantile, .975),
-                       ylo_1=mesh_preds$preds_out[,1,] \%>\% apply(1, quantile, .025)))
-    
-}
+# toy example with tiny dataset and short MCMC
+# on a univariate outcome
+library(magrittr)
+library(dplyr)
+library(meshed)
+
+set.seed(2021)
+
+SS <- 12
+n <- SS^2 # total n. locations, including missing ones
+
+coords <- data.frame(Var1=runif(n), Var2=runif(n)) \%>\%
+  as.matrix()
+
+# generate data
+sigmasq <- 2.3
+phi <- 6
+tausq <- .1
+B <- c(-1,.5,1)
+
+CC <- sigmasq * exp(-phi * as.matrix(dist(coords)))
+LC <- t(chol(CC))
+w <- LC \%*\% rnorm(n)
+p <- length(B)
+X <- rnorm(n * p) \%>\% matrix(ncol=p)
+y_full <- X \%*\% B + w + tausq^.5 * rnorm(n)
+
+set_missing <- rbinom(n, 1, 0.1)
+
+simdata <- data.frame(coords,
+                      y_full = y_full,
+                      w_latent = w) \%>\%
+  mutate(y_observed = ifelse(set_missing==1, NA, y_full))
+
+# MCMC setup
+mcmc_keep <- 500
+mcmc_burn <- 100
+mcmc_thin <- 2
+
+y <- simdata$y_observed
+ybar <- mean(y, na.rm=TRUE)
+
+# training set
+y_in <- (y-ybar)[!is.na(y)]
+X_in <- X[!is.na(y),]
+coords_in <- coords[!is.na(y),]
+
+# suppose we dont want to have gridded knots
+# i.e. we are fixing the MGP reference set at the observed locations
+# (this may be inefficient in big data settings)
+meshout <- spmeshed(y_in, X_in, coords_in,
+                    axis_partition=c(4,4),
+                    n_samples = mcmc_keep, 
+                    n_burn = mcmc_burn, 
+                    n_thin = mcmc_thin, 
+                    settings = list(forced_grid=FALSE, cache=FALSE),
+                    prior=list(phi=c(1,15)),
+                    verbose = 0,
+                    n_threads = 1)
+
+# test set
+coords_out <- coords[is.na(y),]
+X_out <- X[is.na(y),]
+
+df_predict <- predict(meshout, newx=X_out, newcoords=coords_out)
+
+y_posterior_predictive_mean <- df_predict$preds_out[,1,] \%>\% 
+  apply(1, mean) \%>\% add(ybar)
+df_predicted <- df_predict$coords_out \%>\% cbind(y_posterior_predictive_mean)
+
 }

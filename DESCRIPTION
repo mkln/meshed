@@ -1,12 +1,13 @@
 Package: meshed
 Type: Package
-Title: Meshed Gaussian Process Regression
+Title: Bayesian Regression with Meshed Gaussian Processes
 Version: 0.1.0
-Date: 2021-06-08
+Date: 2021-06-09
 Author: Michele Peruzzi
 Maintainer: Michele Peruzzi <michele.peruzzi@duke.edu>
-Description: Fits Bayesian spatial regression models based on latent Meshed GPs as described in Peruzzi, Banerjee, Finley (2020) <doi:10.1080/01621459.2020.1833889> and Peruzzi, Banerjee, Dunson, and Finley (2021) <arXiv:2101.03579>.
+Description: Fits Bayesian spatial or spatiotemporal multivariate regression models based on latent Meshed Gaussian Processes (MGP) as described in Peruzzi, Banerjee, Finley (2020) <doi:10.1080/01621459.2020.1833889> and Peruzzi, Banerjee, Dunson, and Finley (2021) <arXiv:2101.03579>.
 License: GPL (>= 3)
 Imports: Rcpp (>= 1.0.5), stats, dplyr, glue, rlang, magrittr
-Suggests: ggplot2, abind
+Suggests: ggplot2, abind, rmarkdown, knitr, tidyr
 LinkingTo: Rcpp, RcppArmadillo
+VignetteBuilder: knitr

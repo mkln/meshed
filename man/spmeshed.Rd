@@ -1,7 +1,7 @@
 \name{spmeshed}
 \alias{spmeshed}
-\title{Meshed GP multivariate regression}
-\description{This function fits Bayesian multivariate spatial or spatiotemporal regressions with latent MGPs via Markov chain Monte Carlo. }
+\title{Posterior sampling for models based on MGPs}
+\description{Fits Bayesian multivariate spatial or spatiotemporal regression models with latent MGPs via Markov chain Monte Carlo.}
 \usage{
 spmeshed(y, x, coords, k=NULL,
        family = "gaussian",
@@ -82,16 +82,16 @@ where \eqn{y(s)} is a \eqn{q}-dimensional vector of outcomes at spatial location
 }
 
 \value{
-\item{coordsdata}{A \code{data.frame} including the original \eqn{n} coordinates plus the \eqn{n_g} knot coordinates if the model was run on a forced grid. The additional column \code{forced_grid} has value 1 if the corresponding coordinate is a knot in the forced grid. See examples.}
+\item{coordsdata}{data.frame including the original \eqn{n} coordinates plus the \eqn{n_g} knot coordinates if the model was run on a forced grid. The additional column \code{forced_grid} has value 1 if the corresponding coordinate is a knot in the forced grid. See examples.}
 \item{savedata}{Available if \code{settings$saving==TRUE}. Needed for making predictions using \code{predict()} after MCMC. Note: \code{NA} values of the output are automatically and more efficiently predicted when running \code{spmeshed}.}
-\item{yhat_mcmc}{A list of length \code{n_samples} whose elements are matrices with \eqn{n + n_g} rows and \eqn{q} columns. Each matrix in the list is a posterior predictive sample of the latent spatial process. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{y}.}
-\item{v_mcmc}{A list of length \code{n_samples} whose elements are matrices with \eqn{n + n_g} rows and \eqn{k} columns. Each matrix in the list is a posterior sample of the \eqn{k} latent spatial process. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{v}.}
-\item{w_mcmc}{A list of length \code{n_samples} whose elements are matrices with \eqn{n + n_g} rows and \eqn{q} columns. Each matrix in the list is a posterior sample of \eqn{w = \Lambda v}. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{w}.}
-\item{lp_mcmc}{A list of length \code{n_samples} whose elements are matrices with \eqn{n + n_g} rows and \eqn{q} columns. Each matrix in the list is a posterior sample of the linear predicto \eqn{X\beta + \Lambda v}. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{w}.}
-\item{beta_mcmc}{An array of size \code{(p, q, n_thin*n_samples)} with the posterior sample for the static regression coefficients \eqn{\beta}. The \eqn{j}th column of each matrix (\eqn{p} rows and \eqn{q} columns) corresponds to the \eqn{p} linear effects on the \eqn{j}th outcome. The full chain minus burn-in is returned NOT thinned since \code{p} and \code{q} are relatively small.}
-\item{tausq_mcmc}{A matrix of size \code{(q, n_thin*n_samples)}. Each row corresponds to the full MCMC chain for the nugget \eqn{\tau^2_j} of the \eqn{j}th outcome in the coregionalization/factor model. The full chain minus burn-in is returned NOT thinned since \code{q} is relatively small.}
-\item{theta_mcmc}{This is an array of size \code{(h, k, n_thin*n_samples)} with the posterior sample for the correlation function parameters \eqn{\theta}. \code{h} is 2 for spatial data (corresponding to the spatial decay of the exponential covariance (\eqn{\phi_i, i=1, \dots, k}), and the variance \eqn{\sigma^2_i, i=1, \dots, k}), 4 for spacetime data (corresponding to temporal decay, spatial decay, and separability -- these are referred to as \eqn{a_i}, \eqn{c_i}, and \eqn{\beta_i, i=1, \dots, k}, in Gneiting (2002), see \url{https://doi.org/10.1198/016214502760047113}, plus the variance \eqn{\sigma^2, i=1, \dots, k}). The full chain minus burn-in is returned NOT thinned since \code{h} and \code{k} are relatively small. If \code{settings$ps=TRUE}, the MCMC output for \eqn{\sigma^2_i} (last row of \code{theta_mcmc}) should be discarded and \eqn{\Lambda} used instead.}
-\item{lambda_mcmc}{An array of size \code{(q, k, n_thin*n_samples)}. Each matrix (of size \eqn{(q,k)}) is a posterior sample for \eqn{\Lambda} in the coregionalization/factor model. In univariate models, this is usually called \eqn{\sigma}. The full chain minus burn-in is returned NOT thinned since \code{q} and \code{k} are relatively small.}
+\item{yhat_mcmc}{list of length \code{n_samples} whose elements are matrices with \eqn{n + n_g} rows and \eqn{q} columns. Each matrix in the list is a posterior predictive sample of the latent spatial process. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{y}.}
+\item{v_mcmc}{list of length \code{n_samples} whose elements are matrices with \eqn{n + n_g} rows and \eqn{k} columns. Each matrix in the list is a posterior sample of the \eqn{k} latent spatial process. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{v}.}
+\item{w_mcmc}{list of length \code{n_samples} whose elements are matrices with \eqn{n + n_g} rows and \eqn{q} columns. Each matrix in the list is a posterior sample of \eqn{w = \Lambda v}. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{w}.}
+\item{lp_mcmc}{list of length \code{n_samples} whose elements are matrices with \eqn{n + n_g} rows and \eqn{q} columns. Each matrix in the list is a posterior sample of the linear predictor \eqn{X\beta + \Lambda v}. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{w}.}
+\item{beta_mcmc}{array of size \code{(p, q, n_thin*n_samples)} with the posterior sample for the static regression coefficients \eqn{\beta}. The \eqn{j}th column of each matrix (\eqn{p} rows and \eqn{q} columns) corresponds to the \eqn{p} linear effects on the \eqn{j}th outcome. The full chain minus burn-in is returned NOT thinned since \code{p} and \code{q} are relatively small.}
+\item{tausq_mcmc}{matrix of size \code{(q, n_thin*n_samples)}. Each row corresponds to the full MCMC chain for the nugget \eqn{\tau^2_j} of the \eqn{j}th outcome in the coregionalization/factor model. The full chain minus burn-in is returned NOT thinned since \code{q} is relatively small.}
+\item{theta_mcmc}{array of size \code{(h, k, n_thin*n_samples)} with the posterior sample for the correlation function parameters \eqn{\theta}. \code{h} is 2 for spatial data (corresponding to the spatial decay of the exponential covariance (\eqn{\phi_i, i=1, \dots, k}), and the variance \eqn{\sigma^2_i, i=1, \dots, k}), 4 for spacetime data (corresponding to temporal decay, spatial decay, and separability -- these are referred to as \eqn{a_i}, \eqn{c_i}, and \eqn{\beta_i, i=1, \dots, k}, in Gneiting (2002), see \doi{10.1198/016214502760047113}, plus the variance \eqn{\sigma^2, i=1, \dots, k}). The full chain minus burn-in is returned NOT thinned since \code{h} and \code{k} are relatively small. If \code{settings$ps=TRUE}, the MCMC output for \eqn{\sigma^2_i} (last row of \code{theta_mcmc}) should be discarded and \eqn{\Lambda} used instead.}
+\item{lambda_mcmc}{array of size \code{(q, k, n_thin*n_samples)}. Each matrix (of size \eqn{(q,k)}) is a posterior sample for \eqn{\Lambda} in the coregionalization/factor model. In univariate models, this is usually called \eqn{\sigma}. The full chain minus burn-in is returned NOT thinned since \code{q} and \code{k} are relatively small.}
 \item{paramsd}{Cholesky factorization of the proposal covariance for adaptive MCMC, after adaptation.}
 \item{mcmc}{Total number of MCMC iterations performed.}
 \item{mcmc_time}{Time in seconds taken for MCMC (not including preprocessing).}
@@ -137,20 +137,21 @@ LC <- t(chol(CC))
 w <- LC \%*\% rnorm(n)
 p <- length(B)
 X <- rnorm(n * p) \%>\% matrix(ncol=p)
-y <- X \%*\% B + w + tausq^.5 * rnorm(n)
+y_full <- X \%*\% B + w + tausq^.5 * rnorm(n)
 
 set_missing <- rbinom(n, 1, 0.1)
 
 simdata <- data.frame(coords,
-                      y_full = y,
+                      y_full = y_full,
                       w_latent = w) \%>\%
   mutate(y_observed = ifelse(set_missing==1, NA, y_full))
 
 # MCMC setup
-mcmc_keep <- 1000
+mcmc_keep <- 500
 mcmc_burn <- 100
-mcmc_thin <- 1
+mcmc_thin <- 2
 
+y <- simdata$y_observed
 ybar <- mean(y, na.rm=TRUE)
 
 meshout <- spmeshed(y-ybar, X, coords,
@@ -159,6 +160,7 @@ meshout <- spmeshed(y-ybar, X, coords,
                     n_burn = mcmc_burn, 
                     n_thin = mcmc_thin, 
                     prior=list(phi=c(1,15)),
+                    verbose = 0,
                     n_threads = 1)
 
 # posterior means
@@ -188,5 +190,6 @@ latent_plot <- outdf \%>\%
 # estimation of regression coefficients
 plot(density(meshout$beta_mcmc[1,1,]))
 abline(v=B[1], col="red")
+
 
 }

@@ -38,7 +38,7 @@ arma::vec check_gibbs_groups(arma::vec block_groups,
           int n_in_block = thisblock.n_elem;
           if(n_in_block > 0){ //**
             //Rcpp::Rcout << "yes." << endl;
-            for(int pp=0; pp<parents(u).n_elem; pp++){
+            for(unsigned int pp=0; pp<parents(u).n_elem; pp++){
               //Rcpp::Rcout << "parent: #" << pp << " is:" << parents(u)(pp) << endl;
               if(block_groups(parents(u)(pp)) == unique_groups(g)){
                 //Rcpp::Rcout << u << " <--- " << parents(u)(pp) 
@@ -50,7 +50,7 @@ arma::vec check_gibbs_groups(arma::vec block_groups,
                 changes(g, i) = 1;
               }
             }
-            for(int cc=0; cc<children(u).n_elem; cc++){
+            for(unsigned int cc=0; cc<children(u).n_elem; cc++){
               //Rcpp::Rcout << "child: #" << cc << " is:" << children(u)(cc) << endl;
               if(block_groups(children(u)(cc)) == unique_groups(g)){
                 //Rcpp::Rcout << u << " ---> " << children(u)(cc) 

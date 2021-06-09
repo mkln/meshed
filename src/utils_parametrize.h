@@ -15,7 +15,7 @@ inline arma::mat reparametrize_lambda_back(const arma::mat& Lambda_in, const arm
     if(theta.n_rows > 2){
       // full matern
       arma::vec rdiag = arma::zeros(theta.n_cols);
-      for(int j=0; j<rdiag.n_elem; j++){
+      for(unsigned int j=0; j<rdiag.n_elem; j++){
         rdiag(j) = pow(theta(0, j), -theta(1, j));
       }
       reparametrizer = 
@@ -49,7 +49,7 @@ inline arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in, const 
     if(theta.n_rows > 2){
       // full matern: builds lambda*phi^nu
       arma::vec rdiag = arma::zeros(theta.n_cols);
-      for(int j=0; j<rdiag.n_elem; j++){
+      for(unsigned int j=0; j<rdiag.n_elem; j++){
         rdiag(j) = pow(theta(0, j), theta(1, j));
       }
       reparametrizer = 
