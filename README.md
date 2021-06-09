@@ -9,8 +9,9 @@ This package provides functions for fitting big data Bayesian geostatistics mode
  - spatial or spatiotemporal factor models;
  - outcomes of different types.
  
-All these use-cases are implemented via the `spmeshed` function. The package also provides a function for sampling MGPs a priori: the `rmeshedgp` function allows to simulate smooth correlated data at millions of spatial or spatiotemporal locations with minimal resources.
-General MGPs are described in Peruzzi et al (2020). This package implements cubic MGPs (QMGPs). Posterior sampling of all unknowns is performed via MCMC as detailed in Peruzzi et al (2021).
+All these use-cases are implemented via the `spmeshed` function. See vignettes.
+The package also provides a function for sampling MGPs a priori: the `rmeshedgp` function allows to simulate smooth correlated data at millions of spatial or spatiotemporal locations with minimal resources.
+General MGPs are described in Peruzzi et al (2020). This package implements cubic MGPs (QMGPs). Posterior sampling of all unknowns is performed via MCMC-GriPS as detailed in Peruzzi et al (2021).
 
 
 ### Highly Scalable Bayesian Geostatistical Modeling via Meshed Gaussian Processes on Partitioned Domains

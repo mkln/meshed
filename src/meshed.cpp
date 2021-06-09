@@ -86,7 +86,9 @@ Meshed::Meshed(
   ix_by_q_a = arma::field<arma::uvec>(q);
   for(int j=0; j<q; j++){
     ix_by_q_a(j) = arma::find_finite(y.col(j));
-    Rcpp::Rcout << "Y(" << j+1 << ") : " << ix_by_q_a(j).n_elem << " observed locations.\n";
+    if(verbose){
+      Rcpp::Rcout << "Y(" << j+1 << ") : " << ix_by_q_a(j).n_elem << " observed locations.\n";
+    }
   }
   
   // DAG
@@ -105,7 +107,10 @@ Meshed::Meshed(
   // initial values
   w = w_in; 
   
-  Rcpp::Rcout << "Lambda size: " << arma::size(Lambda) << "\n";
+  if(verbose & debug){
+    Rcpp::Rcout << "Lambda size: " << arma::size(Lambda) << "\n";
+  }
+  
   
   
   tausq_inv = tausq_inv_in;
@@ -117,7 +122,10 @@ Meshed::Meshed(
     XB.col(j) = X * Bcoeff.col(j);
   }
   
-  Rcpp::Rcout << "Beta size: " << arma::size(Bcoeff) << "\n"; 
+  if(verbose & debug){
+    Rcpp::Rcout << "Beta size: " << arma::size(Bcoeff) << "\n"; 
+  }
+  
   
   // prior params
   // XtX = arma::field<arma::mat>(q);
@@ -284,7 +292,9 @@ void Meshed::make_gibbs_groups(){
       }
     }
   } else {
-    Rcpp::Rcout << "No prediction group " << endl;
+    if(verbose & debug){
+      Rcpp::Rcout << "No prediction group " << endl;
+    }
   }
   
   // predict_initialize
@@ -1072,8 +1082,6 @@ void Meshed::init_for_mcmc(){
   lambda_hmc_started = arma::zeros<arma::uvec>(q);
   
   arma::mat LHW = w * Lambda.t();
-  
-  Rcpp::Rcout << arma::size(LHW) << endl;
   
   for(int j=0; j<q; j++){
     arma::vec yj_obs = y( ix_by_q_a(j), oneuv * j );

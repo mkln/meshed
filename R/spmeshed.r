@@ -110,7 +110,9 @@ spmeshed <- function(y, x, coords, k=NULL,
     family <- if(length(family)==1){rep(family, q)} else {family}
     family_in <- data.frame(family=family)
     available_families <- data.frame(id=0:3, family=c("gaussian", "poisson", "binomial", "beta"))
-    family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %>% pull(.data$id)
+    
+    suppressMessages(family_id <- family_in %>% 
+                       left_join(available_families, by=c("family"="family")) %>% pull(.data$id))
     
     latent <- "gaussian"
     if(!(latent %in% c("gaussian"))){
@@ -585,8 +587,8 @@ spmeshed <- function(y, x, coords, k=NULL,
   
   ## checking
   if(use_forced_grid){
-    checking <- coordsdata %>% left_join(coords_blocking) %>% 
-      group_by(.data$block) %>% summarise(nfg = sum(.data$forced_grid)) %>% filter(.data$nfg==0)
+    suppressMessages(checking <- coordsdata %>% left_join(coords_blocking) %>% 
+      group_by(.data$block) %>% summarise(nfg = sum(.data$forced_grid)) %>% filter(.data$nfg==0))
     if(nrow(checking) > 0){
       stop("Partition is too fine for the current reference set. ")
     }
