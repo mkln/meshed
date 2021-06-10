@@ -152,10 +152,10 @@ spmeshed <- function(y, x, coords, k=NULL,
     
     if(is.null(settings$forced_grid)){
       if(data_likely_gridded){
-        #cat("I think the data look gridded so I'm setting forced_grid=F.\n")
+        #cat("I think the data look gridded so I'm setting forced_grid=FALSE.\n")
         use_forced_grid <- FALSE
       } else {
-        #cat("I think the data don't look gridded so I'm setting forced_grid=T.\n")
+        #cat("I think the data don't look gridded so I'm setting forced_grid=TRUE.\n")
         use_forced_grid <- TRUE
       }
     } else {

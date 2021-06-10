@@ -78,7 +78,7 @@ where $log(\eta) = X %*% Beta + w$, and $w \sim MGP$ are spatial random effects.
 
 The prior for the spatial decay $\phi$ is $U[l,u]$ and the values of $l$ and $u$ must be specified. We choose $l=1$, $u=30$ for this dataset.^[`spmeshed` implements a model which can be interpreted as assigning $\sigma^2$ a folded-t via parameter expansion if `settings$ps=TRUE`, or an inverse Gamma with parameters $a=2$ and $b=1$ if `settings$ps=FALSE`, which cannot be changed at this time. $\tau^2$ is assigned an exponential prior.] 
 
-Setting `verbose=3` tells `spmeshed` to output 3 intermediate messages while running MCMC. For brevity, we opt to run a very short chain of MCMC with only 2000 iterations, of which we discard the first third. Since the data are irregularly spaced, we build a grid of knots of size 1600 using argument `grid_size`, which will facilitate computations.
+Setting `verbose` tells `spmeshed` how many intermediate messages to output while running MCMC. For brevity, we opt to run a very short chain of MCMC with only 2000 iterations, of which we discard the first third. Since the data are irregularly spaced, we build a grid of knots of size 1600 using argument `grid_size`, which will facilitate computations.
 Then, just like in the gridded case we use `block_size=20` to specify the coarseness of domain partitioning. 
 
 Finally, we note that `NA` values for the outcome are OK since the full dataset is on a grid. `spmeshed` will figure this out and use settings optimized for partly observed lattices, and automatically predict the outcomes at missing locations. On the other hand, `X` values are assumed to not be missing. 
@@ -95,7 +95,7 @@ mesh_total_time <- system.time({
                       block_size = 20,
                       n_samples = mcmc_keep, n_burn = mcmc_burn, n_thin = mcmc_thin, 
                       n_threads = 4,
-                      verbose = 3,
+                      verbose = 0,
                       prior=list(phi=c(1,30))
   )})
 ```

@@ -164,7 +164,7 @@ meshout <- spmeshed(y-ybar, X, coords,
                     n_threads = 1)
 
 # posterior means
-meshout$beta_mcmc \%>\% apply(1:2, mean)
+best_post_mean <- meshout$beta_mcmc \%>\% apply(1:2, mean)
   
 # process means
 wmesh <- data.frame(w_mgp = meshout$w_mcmc \%>\% summary_list_mean())

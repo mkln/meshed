@@ -112,14 +112,14 @@ mesh_total_time <- system.time({
                     n_thin = mcmc_thin, 
                     n_threads = 4,
                     prior = list(phi=c(2, 20)),
-                    verbose=1
+                    verbose=0
   )})
 ```
 Some post-processing. Let's look at the factor loadings $\Lambda$. True values in red.
 
 ```{r, echo=FALSE, include=FALSE}
 plot_cube <- function(cube_mcmc, q, k, Ptrue, Pname, full=F){
-  par(mar=c(2.5,2,1,1), mfrow=c(q,k))
+  oldpar <- par(mar=c(2.5,2,1,1), mfrow=c(q,k))
   for(i in 1:q){
     for(j in 1:k){
       if(full|(j<=i)){
@@ -130,6 +130,7 @@ plot_cube <- function(cube_mcmc, q, k, Ptrue, Pname, full=F){
       }
     }
   }
+  par(oldpar)
 }
 ```
 

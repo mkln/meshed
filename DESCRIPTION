@@ -1,8 +1,8 @@
 Package: meshed
 Type: Package
 Title: Bayesian Regression with Meshed Gaussian Processes
-Version: 0.1.0
-Date: 2021-06-09
+Version: 0.1.1
+Date: 2021-06-10
 Author: Michele Peruzzi
 Maintainer: Michele Peruzzi <michele.peruzzi@duke.edu>
 Description: Fits Bayesian spatial or spatiotemporal multivariate regression models based on latent Meshed Gaussian Processes (MGP) as described in Peruzzi, Banerjee, Finley (2020) <doi:10.1080/01621459.2020.1833889> and Peruzzi, Banerjee, Dunson, and Finley (2021) <arXiv:2101.03579>.

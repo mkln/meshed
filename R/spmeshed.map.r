@@ -14,16 +14,17 @@ spmeshed.map <- function(y, x, coords,
                          debug = list(map_beta=TRUE, map_w=TRUE,
                                 verbose=FALSE, debug=FALSE)
 ){
-  
-  # init
-  cat("Bayesian Meshed GP regression model\n
+  if(verbose){
+    cat("Bayesian Meshed GP regression model via Maximum a Posteriori\n")
+  }
+  model_tag <- "Bayesian Meshed GP regression model\n
     o --> o --> o
     ^     ^     ^
     |     |     | 
     o --> o --> o
     ^     ^     ^
     |     |     | 
-    o --> o --> o\n(maximum a posteriori)\n")
+    o --> o --> o\n(maximum a posteriori)\n"
   
   set_default <- function(x, default_val){
     return(if(is.null(x)){
@@ -121,14 +122,14 @@ spmeshed.map <- function(y, x, coords,
       }
     }
     
-    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
+    #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     
     if(is.null(settings$forced_grid)){
       if(data_likely_gridded){
-        cat("I think the data look gridded so I'm setting forced_grid=F.\n")
+        #cat("I think the data look gridded so I'm setting forced_grid=F.\n")
         use_forced_grid <- FALSE
       } else {
-        cat("I think the data don't look gridded so I'm setting forced_grid=T.\n")
+        #cat("I think the data don't look gridded so I'm setting forced_grid=T.\n")
         use_forced_grid <- TRUE
       }
     } else {
@@ -154,9 +155,9 @@ spmeshed.map <- function(y, x, coords,
       as.data.frame()
     
     #####
-    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
-    cat("{q} outcome variables on {nrow(unique(coords))} unique locations." %>% glue::glue())
-    cat("\n")
+    #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
+    #cat("{q} outcome variables on {nrow(unique(coords))} unique locations." %>% glue::glue())
+    #cat("\n")
     if(use_forced_grid){ 
       # user showed intention to use fixed grid
       if(!is.null(grid_custom$grid)){
@@ -179,8 +180,8 @@ spmeshed.map <- function(y, x, coords,
         gridcoords_lmc <- expand.grid(xgrids)
       }
       
-      cat("Forced grid built with {nrow(gridcoords_lmc)} locations." %>% glue::glue())
-      cat("\n")
+      #cat("Forced grid built with {nrow(gridcoords_lmc)} locations." %>% glue::glue())
+      #cat("\n")
       simdata <- dplyr::bind_rows(simdata %>% dplyr::mutate(thegrid=0), 
                                   gridcoords_lmc %>% dplyr::mutate(thegrid=1))
       
@@ -193,10 +194,10 @@ spmeshed.map <- function(y, x, coords,
         dplyr::mutate(thegrid = 0)
       absize <- round(nrow(simdata)/prod(axis_partition))
     }
-    cat("Partitioning grid axes into {paste0(axis_partition, collapse=', ')} intervals. Approx block size {absize}" %>% glue::glue())
-    cat("\n")
+    #cat("Partitioning grid axes into {paste0(axis_partition, collapse=', ')} intervals. Approx block size {absize}" %>% glue::glue())
+    #cat("\n")
     
-    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
+    #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     
     simdata %<>% 
       dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
@@ -307,7 +308,7 @@ spmeshed.map <- function(y, x, coords,
     
     all_values <- expand.grid(as.list(pars[c("phi", "sigmasq", "tausq")]))
     colnames(all_values)[1:3] <- c("phi", "sigmasq", "tausq")
-    all_values %<>% arrange(.data$sigmasq)#mutate(microerg = sigmasq * phi^(2*start_nu)) %>% arrange(microerg) %>% dplyr::select(-microerg)
+    all_values %<>% arrange(.data$sigmasq)
     
     theta_values <- all_values[,1:2] %>% t()
     tausq_values <- all_values[,3]
@@ -326,7 +327,6 @@ spmeshed.map <- function(y, x, coords,
     lambda_mask <- matrix(1, nrow=1, ncol=1)
     
     start_w <- matrix(0, nrow = nrow(simdata_in), ncol = k)
-      #rnorm(nrow(simdata_in)) %>% matrix(nrow=nrow(simdata_in), ncol = k)
   }
   
   # finally prepare data
@@ -359,8 +359,8 @@ spmeshed.map <- function(y, x, coords,
   
   ## checking
   if(use_forced_grid){
-    checking <- coordsdata %>% left_join(coords_blocking) %>% 
-      group_by(.data$block) %>% summarise(nfg = sum(.data$forced_grid)) %>% filter(.data$nfg==0)
+    suppressMessages(checking <- coordsdata %>% left_join(coords_blocking) %>% 
+      group_by(.data$block) %>% summarise(nfg = sum(.data$forced_grid)) %>% filter(.data$nfg==0))
     if(nrow(checking) > 0){
       stop("Partition is too fine for the current reference set. ")
     }

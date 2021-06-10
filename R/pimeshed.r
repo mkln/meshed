@@ -1,11 +1,11 @@
 pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
+                     family = "gaussian",
                    block_size = 30,
                    n_samples = 1000,
                    n_burnin = 100,
                    n_thin = 1,
                    n_threads = 4,
-                   print_every = NULL,
-                   family = "gaussian",
+                   verbose = 0,
                    settings    = list(adapting=TRUE, ps=TRUE, saving=FALSE),
                    prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
@@ -16,15 +16,18 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
                                       verbose=FALSE, debug=FALSE)
 ){
   
+  if(verbose > 0){
+    cat("Bayesian pi-Meshed GP regression model fit via Markov chain Monte Carlo\n")
+  }
   # init
-  cat("Bayesian pi-Meshed GP regression\n
+  model_tag <- "Bayesian pi-Meshed GP regression\n
     o --> o --> o
     ^     ^     ^
     |     |     | 
     o --> o --> o
     ^     ^     ^
     |     |     | 
-    o --> o --> o\n\n")
+    o --> o --> o\n\n"
   
   set_default <- function(x, default_val){
     return(if(is.null(x)){
@@ -58,19 +61,19 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
       }
     }
     
-    effective_dimension <- prod(dim(y))
-    if(is.null(print_every)){
-      if(effective_dimension > 1e6-1){
-        mcmc_print_every <- 5
+    if(verbose == 0){
+      mcmc_print_every <- 0
+    } else {
+      if(verbose <= 20){
+        mcmc_tot <- mcmc_burn + mcmc_thin * mcmc_keep
+        mcmc_print_every <- 1+round(mcmc_tot / verbose)
       } else {
-        if(effective_dimension > 1e5-1){
-          mcmc_print_every <- 50
+        if(is.infinite(verbose)){
+          mcmc_print_every <- 1
         } else {
-          mcmc_print_every <- 500
+          mcmc_print_every <- verbose
         }
       }
-    } else {
-      mcmc_print_every <- print_every
     }
     
     
@@ -138,9 +141,9 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
       as.data.frame()
     
     #####
-    cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
-    cat("{q} outcome variables" %>% glue::glue())
-    cat("\n")
+    #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
+    #cat("{q} outcome variables" %>% glue::glue())
+    #cat("\n")
   
     simdata %<>% 
       dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
@@ -345,7 +348,7 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
   
   coordsdata <- simdata_in %>% 
     dplyr::select(1:dd) 
-  cat("Sending to MCMC > ")
+  #cat("Sending to MCMC > ")
   
   mcmc_run <- meshed_mcmc
   
