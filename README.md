@@ -14,8 +14,23 @@ The package also provides a function for sampling MGPs a priori via the `rmeshed
 MGPs are introduced in Peruzzi et al. (2020). This package implements cubic MGPs (QMGPs). Posterior sampling of all unknowns is performed via MCMC-GriPS as detailed in Peruzzi et al. (2021).
 
 
+### Install from CRAN: `install.packages("meshed")`
+
+Alternatively, `devtools::install_github("mkln/meshed")` installs from GitHub.
+
+#### Tips for best performance:
+
+ - `meshed` works best with OpenMP and OpenBLAS or Intel MKL. 
+ - [Dirk Eddelbuettel has a great guide on installing Intel MKL on Debian/Ubuntu systems](http://dirk.eddelbuettel.com/blog/2018/04/15/#018_mkl_for_debian_ubuntu). In that case it is important to add `MKL_THREADING_LAYER=GNU` to `~/.Renviron`. 
+ - On systems with AMD CPUs, it may be best to install `intel-mkl-2019.5-075` and then also add the line `MKL_DEBUG_CPU_TYPE=5` to `~/.Renviron`. I have not tested more recent versions of Intel MKL.
+ - If using OpenBLAS, it might be important to let OpenMP do *all* the parallelization when running `meshed`. I think this can be done with the [RhpcBLASctl](https://CRAN.R-project.org/package=RhpcBLASctl) package. YMMV.
+
+### Vignettes
+
+Some super toy examples just to get a feel of how `meshed::spmeshed` works are available [at the CRAN page for `meshed`](https://CRAN.R-project.org/package=meshed ).
+
 ### Poster
-![MGPs in meshed](img/poster.jpg?raw=true)
+![](img/poster.jpg?raw=true)
 
 
 ### Highly Scalable Bayesian Geostatistical Modeling via Meshed Gaussian Processes on Partitioned Domains
