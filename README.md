@@ -14,6 +14,10 @@ The package also provides a function for sampling MGPs a priori via the `rmeshed
 MGPs are introduced in Peruzzi et al. (2020). This package implements cubic MGPs (QMGPs). Posterior sampling of all unknowns is performed via MCMC-GriPS as detailed in Peruzzi et al. (2021).
 
 
+### Poster
+![MGPs in meshed](img/poster.jpg?raw=true)
+
+
 ### Highly Scalable Bayesian Geostatistical Modeling via Meshed Gaussian Processes on Partitioned Domains
 M Peruzzi, S Banerjee, AO Finley (2020). [JASA](https://doi.org/10.1080/01621459.2020.1833889), [arXiv](https://arxiv.org/abs/2003.11208).
 

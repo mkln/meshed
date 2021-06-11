@@ -1,6 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^examples$
+^img$
 ^man/spmeshed\.map\.Rd
 ^cran-comments\.md
 ^LICENSE\.md$

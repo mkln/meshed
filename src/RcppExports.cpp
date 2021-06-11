@@ -151,8 +151,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // mesh_graph_cpp
-Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr, const arma::uvec& Mv, bool verbose, bool both_spatial_axes);
-RcppExport SEXP _meshed_mesh_graph_cpp(SEXP layers_descrSEXP, SEXP MvSEXP, SEXP verboseSEXP, SEXP both_spatial_axesSEXP) {
+Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr, const arma::uvec& Mv, bool verbose, bool both_spatial_axes, int n_threads);
+RcppExport SEXP _meshed_mesh_graph_cpp(SEXP layers_descrSEXP, SEXP MvSEXP, SEXP verboseSEXP, SEXP both_spatial_axesSEXP, SEXP n_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -160,7 +160,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::uvec& >::type Mv(MvSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
     Rcpp::traits::input_parameter< bool >::type both_spatial_axes(both_spatial_axesSEXP);
-    rcpp_result_gen = Rcpp::wrap(mesh_graph_cpp(layers_descr, Mv, verbose, both_spatial_axes));
+    Rcpp::traits::input_parameter< int >::type n_threads(n_threadsSEXP);
+    rcpp_result_gen = Rcpp::wrap(mesh_graph_cpp(layers_descr, Mv, verbose, both_spatial_axes, n_threads));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -379,7 +380,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_kthresholdscp", (DL_FUNC) &_meshed_kthresholdscp, 2},
     {"_meshed_part_axis_parallel", (DL_FUNC) &_meshed_part_axis_parallel, 4},
     {"_meshed_part_axis_parallel_fixed", (DL_FUNC) &_meshed_part_axis_parallel_fixed, 3},
-    {"_meshed_mesh_graph_cpp", (DL_FUNC) &_meshed_mesh_graph_cpp, 4},
+    {"_meshed_mesh_graph_cpp", (DL_FUNC) &_meshed_mesh_graph_cpp, 5},
     {"_meshed_knn_naive", (DL_FUNC) &_meshed_knn_naive, 3},
     {"_meshed_mesh_graph_hyper", (DL_FUNC) &_meshed_mesh_graph_hyper, 7},
     {"_meshed_meshed_casc", (DL_FUNC) &_meshed_meshed_casc, 28},

@@ -52,7 +52,7 @@ rmeshedgp(coords, theta,
   }
   where \eqn{K_{\nu}} is the modified Bessel function of the second kind of order \eqn{\nu}.
   For spatiotemporal data (\eqn{d=3}) the covariance function between locations \eqn{(s, t)} and \eqn{(s', t')} with distance \eqn{h = \| s-s' \|} and time lag \eqn{u = \| t-t' \|} is defined as
-  \deqn{ C(h, u) = \sigma^2 / (a u + 1.0) \exp \{ -\phi h (a u + 1)^{-b/2} \}, }
+  \deqn{ C(h, u) = \sigma^2 / (a u + 1) \exp \{ -\phi h (a u + 1)^{-b/2} \}, }
   which is a special case of non-separable spacetime covariance as introduced by Gneiting (2002).
 }
 \value{

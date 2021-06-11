@@ -42,22 +42,33 @@ rmeshedgp <- function(coords, theta, axis_partition=NULL, block_size=100,
     as.matrix()
   sort_ix     <- simdata$ix
   
+  if(verbose & debug){
+    cat("Finding thresholds...\n")
+  }
   fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], axis_partition[i])) 
   
-  
+  if(verbose & debug){
+    cat("Domain partitioning...\n")
+  }
   # Domain partitioning and gibbs groups
   system.time(coords_blocking <- coords %>% 
                 as.matrix() %>%
-                tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% 
+                tessellation_axis_parallel_fix(fixed_thresholds, n_threads) %>% 
                 dplyr::mutate(na_which = simdata$na_which, sort_ix=sort_ix) )
   
   coords_blocking %<>% dplyr::rename(ix=sort_ix)
   
+  if(verbose & debug){
+    cat("Building DAG...\n")
+  }
   # DAG
   if(dd < 4){
-    suppressMessages(parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), axis_partition, F))
+    suppressMessages(parents_children <- 
+                       mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), 
+                                        axis_partition, FALSE, n_threads))
   } else {
-    suppressMessages(parents_children <- mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-.data$ix)))
+    suppressMessages(parents_children <- 
+                       mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-.data$ix)))
   }
   parents                      <- parents_children[["parents"]] 
   children                     <- parents_children[["children"]] 
@@ -105,6 +116,9 @@ rmeshedgp <- function(coords, theta, axis_partition=NULL, block_size=100,
     dplyr::rename(!!!coords_renamer,
                   forced_grid=.data$thegrid)
   
+  if(verbose & debug){
+    cat("Sending to C++ for sampling.\n")
+  }
   w <- rmeshedgp_internal(coords, parents, children,
                                      block_names, block_groups,
                                      indexing_grid, indexing_obs,

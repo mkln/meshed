@@ -41,8 +41,8 @@ part_axis_parallel_fixed <- function(coords, thresholds, n_threads) {
     .Call(`_meshed_part_axis_parallel_fixed`, coords, thresholds, n_threads)
 }
 
-mesh_graph_cpp <- function(layers_descr, Mv, verbose = TRUE, both_spatial_axes = TRUE) {
-    .Call(`_meshed_mesh_graph_cpp`, layers_descr, Mv, verbose, both_spatial_axes)
+mesh_graph_cpp <- function(layers_descr, Mv, verbose = TRUE, both_spatial_axes = TRUE, n_threads = 1L) {
+    .Call(`_meshed_mesh_graph_cpp`, layers_descr, Mv, verbose, both_spatial_axes, n_threads)
 }
 
 knn_naive <- function(x, search_here, weights) {

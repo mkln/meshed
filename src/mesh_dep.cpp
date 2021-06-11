@@ -140,7 +140,9 @@ arma::mat part_axis_parallel(const arma::mat& coords, const arma::vec& Mv, int n
   }
   arma::mat resultmat = arma::zeros(arma::size(coords));
   
-//#pragma omp parallel for num_threads(n_threads)
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(n_threads)
+#endif
   for(unsigned int j=0; j<coords.n_cols; j++){
     arma::vec cja = coords.col(j);
     arma::vec thresholds = kthresholdscp(cja, Mv(j));
@@ -157,7 +159,7 @@ arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<ar
   arma::mat resultmat = arma::zeros(arma::size(coords));
   
 #ifdef _OPENMP
-#pragma omp parallel for
+#pragma omp parallel for num_threads(n_threads)
 #endif
   for(unsigned int j=0; j<thresholds.n_elem; j++){
     arma::vec cja = coords.col(j);
@@ -171,13 +173,20 @@ arma::mat part_axis_parallel_fixed(const arma::mat& coords, const arma::field<ar
 Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr, 
                           const arma::uvec& Mv, 
                           bool verbose=true,
-                          bool both_spatial_axes=true){
+                          bool both_spatial_axes=true,
+                          int n_threads=1){
   // coords_layering is a matrix
   // Var1 Var2 [Var3] L1 L2 [L3] layer na_which
   // layers_descr = coords_layering %>% select(-contains("Var")) 
   //                                %>% group_by(L1, L2, L3, layer) 
   //                                %>% summarize(na_which = sum(na_which))
   //                                %>% unique()
+  
+  
+#ifdef _OPENMP
+  omp_set_num_threads(n_threads);
+#endif
+  
   
   std::chrono::steady_clock::time_point start, start_all;
   std::chrono::steady_clock::time_point end, end_all;
