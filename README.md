@@ -27,7 +27,7 @@ Alternatively, `devtools::install_github("mkln/meshed")` installs from GitHub.
 
 ### Vignettes
 
-Some super toy examples just to get a feel of how `meshed::spmeshed` works are available [at the CRAN page for `meshed`](https://CRAN.R-project.org/package=meshed ).
+Some super toy examples just to get a feel of how `meshed::spmeshed` works are available [at the CRAN page for `meshed`](https://CRAN.R-project.org/package=meshed).
 
 ### Poster
 ![](img/poster.jpg?raw=true)
