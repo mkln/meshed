@@ -1,12 +1,10 @@
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
-#include <RcppArmadillo.h>
 #include "covariance_lmc.h"
 #include "utils_field_v_concatm.h"
 #include "utils_parametrize.h"
+
+//#undef _OPENMP 
 
 using namespace std;
 
@@ -33,11 +31,11 @@ Rcpp::List spmeshed_predict(
   omp_set_num_threads(num_threads);
 #endif
   
-  int q = lambda_sampled.n_rows;
-  int k = v_sampled(0).n_cols;
+  unsigned int q = lambda_sampled.n_rows;
+  unsigned int k = v_sampled(0).n_cols;
   arma::uvec oneuv = arma::ones<arma::uvec>(1);
   
-  int nsamples = v_sampled.n_elem;
+  unsigned int nsamples = v_sampled.n_elem;
   
   MaternParams matern;
   matern.using_ps = use_ps,
@@ -46,7 +44,7 @@ Rcpp::List spmeshed_predict(
   int bessel_ws_inc = 5;
   matern.bessel_ws = (double *) R_alloc(num_threads*bessel_ws_inc, sizeof(double));
   
-  int d = coords.n_cols;
+  unsigned int d = coords.n_cols;
   
   arma::uvec ublock = arma::unique(predblock);
   arma::field<arma::mat> coords_out_list(ublock.n_elem);
@@ -57,7 +55,7 @@ Rcpp::List spmeshed_predict(
       Rcpp::Rcout << "Block " << i+1 << " of " << ublock.n_elem << endl;
     }
     
-    int iblock = ublock(i);
+    unsigned int iblock = ublock(i);
     arma::uvec block_ix = arma::find(predblock == iblock);
     arma::mat block_coords = predcoords.rows(block_ix);
     arma::mat block_x = predx.rows(block_ix);
@@ -65,12 +63,17 @@ Rcpp::List spmeshed_predict(
     coords_out_list(i) = block_coords;
     preds_out_list(i) = arma::zeros(block_coords.n_rows, q, nsamples);
     
-    int u = iblock-1;
+    unsigned int u = iblock-1;
     arma::uvec block_parents = parents(u);
 
     if(block_parents.n_elem <= d){
-      // reference block so add itself to parents for predictions
-      block_parents = arma::join_vert(block_parents, u * arma::ones<arma::uvec>(1) );
+      unsigned int n_parents_upd = 1+parents(u).n_elem;
+      arma::uvec block_parents_upd = arma::zeros<arma::uvec>(n_parents_upd);
+      block_parents_upd(0) = u;
+      for(unsigned int k=1; k<n_parents_upd; k++){
+        block_parents_upd(k) = parents(u)(k-1);
+      }
+      block_parents = block_parents_upd;
     }
     
     arma::field<arma::uvec> pixs(block_parents.n_elem);
@@ -84,29 +87,42 @@ Rcpp::List spmeshed_predict(
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-    for(int m=0; m<nsamples; m++){
+    for(unsigned int m=0; m<nsamples; m++){
       arma::mat theta = theta_sampled.slice(m);
+      
       arma::cube Hpred = arma::zeros(k, parents_coords.n_rows, block_coords.n_rows);
       arma::mat Rcholpred = arma::zeros(k, block_coords.n_rows);
       
-      for(int j=0; j<k; j++){
-        arma::mat Cyy = Correlationc(parents_coords, parents_coords, theta.col(j), matern, true);
-        arma::mat Cyyi = arma::inv_sympd(Cyy);
-        
-        for(unsigned int ix=0; ix<block_coords.n_rows; ix++){
-          arma::mat Cxx = Correlationc(block_coords.rows(oneuv*ix), block_coords.rows(oneuv*ix), 
-                                       theta.col(j), matern, true);
-          arma::mat Cxy = Correlationc(block_coords.rows(oneuv*ix), parents_coords,  
-                                       theta.col(j), matern, false);
-          arma::mat Hloc = Cxy * Cyyi;
+      try {
+        for(unsigned int j=0; j<k; j++){
+          arma::mat Cyy = Correlationc(parents_coords, parents_coords, theta.col(j), matern, true);
+          arma::mat Cyyc = arma::chol(Cyy, "lower");
           
-          Hpred.slice(ix).row(j) = Hloc;
-          double Rcholtemp = arma::conv_to<double>::from(
-            Cxx - Hloc * Cxy.t() );
-          Rcholtemp = Rcholtemp < 0 ? 0.0 : Rcholtemp;
-          Rcholpred(j,ix) = pow(Rcholtemp, .5); 
+          arma::mat Cyy_ichol = arma::inv(arma::trimatl(Cyyc));
+          arma::mat Cyyi = Cyy_ichol.t() * Cyy_ichol;
+          
+          for(unsigned int ix=0; ix<block_coords.n_rows; ix++){
+            arma::mat block_coords_ix = block_coords.rows(oneuv*ix);
+            arma::vec thetaj = theta.col(j);
+            arma::mat Cxx = Correlationc(block_coords_ix, block_coords_ix, 
+                                         thetaj, matern, true);
+            arma::mat Cxy = Correlationc(block_coords_ix, parents_coords,  
+                                         thetaj, matern, false);
+            arma::mat Hloc = Cxy * Cyyi;
+            
+            Hpred.slice(ix).row(j) = Hloc;
+            double Rcholtemp = arma::conv_to<double>::from(
+              Cxx - Hloc * Cxy.t() );
+            Rcholtemp = Rcholtemp < 0 ? 0.0 : Rcholtemp;
+            Rcholpred(j,ix) = pow(Rcholtemp, .5); 
+          }
         }
+      } catch(...) {
+        // thank you solaris
+        
+        
       }
+      
       
       
       arma::mat wpars = v_sampled(m).rows(parents_indexing);
@@ -119,7 +135,7 @@ Rcpp::List spmeshed_predict(
         wtemp += arma::trans(Rcholpred.col(ix) % normrnd);
         arma::mat LW = wtemp * Lambda.t();
         
-        for(int j=0; j<q; j++){
+        for(unsigned int j=0; j<q; j++){
           double yerr = arma::conv_to<double>::from(arma::randn(1)) * pow(tausq_sampled(j,m), .5);
           
           preds_out_list(i)(ix, j, m) = 

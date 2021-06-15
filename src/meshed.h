@@ -24,9 +24,9 @@ public:
   arma::uvec familyid;
   
   // meta
-  int n; // number of locations, total
-  int p; // number of covariates
-  int q; // number of outcomes
+  unsigned int n; // number of locations, total
+  unsigned int p; // number of covariates
+  unsigned int q; // number of outcomes
   int k; // number of factors
   int dd; // dimension
   int n_blocks; // number of blocks
@@ -153,7 +153,7 @@ public:
   arma::uvec findkr;
   arma::uvec findcc;
   
-  int starting_kr;
+  unsigned int starting_kr;
   
 
   double logpost;

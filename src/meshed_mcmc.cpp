@@ -365,6 +365,7 @@ Rcpp::List meshed_mcmc(
       } else {
         tick_mcmc = std::chrono::steady_clock::now();
       }
+      
     }
     
     end_all = std::chrono::steady_clock::now();
@@ -385,7 +386,8 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("paramsd") = msp.theta_adapt.paramsd,
       Rcpp::Named("mcmc") = mcmc,
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
-      Rcpp::Named("proposal_failures") = num_chol_fails
+      Rcpp::Named("proposal_failures") = num_chol_fails,
+      Rcpp::Named("success") = true
     );
   
   } catch (...) {
@@ -406,7 +408,8 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("paramsd") = msp.theta_adapt.paramsd,
       Rcpp::Named("mcmc") = mcmc,
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
-      Rcpp::Named("proposal_failures") = num_chol_fails
+      Rcpp::Named("proposal_failures") = num_chol_fails,
+      Rcpp::Named("success") = false
     );
   }
 }

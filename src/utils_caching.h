@@ -36,7 +36,7 @@ inline arma::vec caching_pairwise_compare_u(const arma::field<arma::mat>& blocks
     if(block_ct_obs(u_target) > 0){
       bool foundsame = false;
       //Rcpp::Rcout << "u_target: " << u_target << endl;
-      for(int k=0; k<j; k++){ //blocks.n_elem; k++){
+      for(unsigned int k=0; k<j; k++){ //blocks.n_elem; k++){
         int u_prop = names(k)-1;
         if(sorted(u_target).n_rows == sorted(u_prop).n_rows){
           // these are knots so designed, no risk of making mistakes based on tolerance here

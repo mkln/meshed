@@ -20,7 +20,7 @@ inline arma::mat mrstdnorm(int r, int c){
 
 inline arma::vec vrpois(const arma::vec& lambdas){
   arma::vec y = arma::zeros(lambdas.n_elem);
-  for(int i=0; i<lambdas.n_elem; i++){
+  for(unsigned int i=0; i<lambdas.n_elem; i++){
     y(i) = R::rpois(lambdas(i));
   }
   return y;
@@ -28,7 +28,7 @@ inline arma::vec vrpois(const arma::vec& lambdas){
 
 inline arma::vec vrunif(int n){
   arma::vec result = arma::zeros(n);
-  for(unsigned int i=0; i<n; i++){
+  for(int i=0; i<n; i++){
     result(i) = R::runif(0, 1);
   }
   return result;

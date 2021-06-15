@@ -11,6 +11,9 @@ predict.spmeshed <- function(object,
     stop("Currently not implemented. Insert prediction locations into main spmeshed functions.")
   }
   
+  if(object$success == FALSE){
+    warning("MCMC was unsuccessful, predictions likely invalid.")
+  }
   
   dd <- ncol(newcoords)
   colnames(newcoords) <- cname <- paste0("Var", 1:dd)
