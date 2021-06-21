@@ -91,9 +91,9 @@ Rcpp::List meshed_mcmc(
   
   double tempr = 1;
   
-  int n = coords.n_rows;
-  int d = coords.n_cols;
-  int q  = y.n_cols;
+  //unsigned int n = coords.n_rows;
+  unsigned int d = coords.n_cols;
+  unsigned int q  = y.n_cols;
   
   //arma::mat set_unif_bounds = set_unif_bounds_in;
   
@@ -184,7 +184,9 @@ Rcpp::List meshed_mcmc(
   start_all = std::chrono::steady_clock::now();
   int m=0; int mx=0; int num_chol_fails=0;
   int mcmc_saved = 0; int w_saved = 0;
+  
   try {
+    
     for(m=0; (m<mcmc) & (!interrupted); m++){
       
       msp.predicting = false;
@@ -309,7 +311,7 @@ Rcpp::List meshed_mcmc(
         
         bool print_condition = (print_every>0);
         if(print_condition){
-          print_condition *= (!(m % print_every));
+          print_condition = print_condition & (!(m % print_every));
         };
         
         if(print_condition){
@@ -333,7 +335,7 @@ Rcpp::List meshed_mcmc(
           
           if(arma::any(msp.familyid == 0)){
             Rprintf("\n  tsq = ");
-            for(int pp=0; pp<q; pp++){
+            for(unsigned int pp=0; pp<q; pp++){
               if(msp.familyid(pp) == 0){
                 Rprintf("(%d) %.6f ", pp+1, 1.0/msp.tausq_inv(pp));
               }
@@ -341,7 +343,7 @@ Rcpp::List meshed_mcmc(
           }
           if(arma::any(msp.familyid == 3)){
             Rprintf("\n  tsq (beta_b) = ");
-            for(int pp=0; pp<q; pp++){
+            for(unsigned int pp=0; pp<q; pp++){
               if(msp.familyid(pp) == 3){
                 Rprintf("(%d) %.6f ", pp+1, msp.tausq_inv(pp));
               }

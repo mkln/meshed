@@ -27,7 +27,7 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
   arma::mat LHW = wU * Lambda.t();
   
   logpost = 0;
-  for(int j=0; j<q; j++){
+  for(unsigned int j=0; j<q; j++){
     if(familyid(j) == 0){
       // gibbs update
       arma::mat yrr = 

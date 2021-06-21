@@ -204,6 +204,7 @@ inline RAMAdapt::RAMAdapt(int npars, const arma::mat& metropolis_sd, double targ
   
   prodparam = paramsd / (g0 + 1.0);
   started = false;
+  flag_accepted = false;
   
   propos_count = 0;
   accept_count = 0;

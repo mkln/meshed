@@ -25,10 +25,10 @@ arma::field<arma::uvec> blanket(const arma::field<arma::uvec>& parents,
                                 const arma::uvec& names,
                                 const arma::uvec& block_ct_obs){
   arma::uvec oneuv = arma::ones<arma::uvec>(1);
-  int n_blocks = names.n_elem;
+  unsigned int n_blocks = names.n_elem;
   arma::field<arma::uvec> mb(n_blocks);
   
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     int u = names(i) - 1;
     if(block_ct_obs(u) > 0){
       // block cannot be the same color as other nodes in blanket
@@ -121,7 +121,7 @@ arma::vec turbocolthreshold(const arma::vec& col1, const arma::vec& thresholds){
 
 //[[Rcpp::export]]
 arma::vec kthresholdscp(arma::vec x,
-                      int k){
+                      unsigned int k){
   arma::vec res(k-1);
   
   for(unsigned int i=1; i<k; i++){

@@ -162,7 +162,7 @@ void Meshed::sample_nc_Lambda_std(){
   //arma::mat wmean = LambdaHw * Lambdati;
   
   // new with botev's 2017 method to sample from truncated normal
-  for(int j=0; j<q; j++){
+  for(unsigned int j=0; j<q; j++){
     arma::vec sampled = sample_Lambda_row(j);
     
     arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
@@ -192,7 +192,7 @@ void Meshed::sample_hmc_Lambda(){
 
   arma::vec lambda_runif = vrunif(q);
   
-  for(int j=0; j<q; j++){
+  for(unsigned int j=0; j<q; j++){
     arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
     if(familyid(j) == 0){
       arma::vec sampled = sample_Lambda_row(j);

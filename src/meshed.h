@@ -27,9 +27,9 @@ public:
   unsigned int n; // number of locations, total
   unsigned int p; // number of covariates
   unsigned int q; // number of outcomes
-  int k; // number of factors
-  int dd; // dimension
-  int n_blocks; // number of blocks
+  unsigned int k; // number of factors
+  unsigned int dd; // dimension
+  unsigned int n_blocks; // number of blocks
   
   // data
   arma::mat y;

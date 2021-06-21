@@ -84,7 +84,7 @@ Meshed::Meshed(
   
   // NAs at blocks of outcome variables 
   ix_by_q_a = arma::field<arma::uvec>(q);
-  for(int j=0; j<q; j++){
+  for(unsigned int j=0; j<q; j++){
     ix_by_q_a(j) = arma::find_finite(y.col(j));
     if(verbose){
       Rcpp::Rcout << "Y(" << j+1 << ") : " << ix_by_q_a(j).n_elem << " observed locations.\n";
@@ -118,7 +118,7 @@ Meshed::Meshed(
   linear_predictor = arma::zeros(coords.n_rows, q);
   
   Bcoeff = beta_in; 
-  for(int j=0; j<q; j++){
+  for(unsigned int j=0; j<q; j++){
     XB.col(j) = X * Bcoeff.col(j);
   }
   
@@ -199,7 +199,7 @@ void Meshed::make_gibbs_groups(){
   
   // checks -- errors not allowed. use check_groups.cpp to fix errors.
   for(int g=0; g<n_gibbs_groups; g++){
-    for(int i=0; i<n_blocks; i++){
+    for(unsigned int i=0; i<n_blocks; i++){
       int u = block_names(i) - 1;
       if(block_groups(u) == block_groups_labels(g)){
         if(indexing(u).n_elem > 0){ //**
@@ -233,7 +233,7 @@ void Meshed::make_gibbs_groups(){
   for(int g=0; g<n_gibbs_groups; g++){
     u_by_block_groups_temp(g) = arma::zeros(0);
     
-    for(int i=0; i<n_blocks; i++){
+    for(unsigned int i=0; i<n_blocks; i++){
       int u = block_names(i) - 1;
       
       if(block_groups(u) == block_groups_labels(g)){
@@ -250,7 +250,7 @@ void Meshed::make_gibbs_groups(){
   }
   
   int pblocks = 0;
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     int u = block_names(i) - 1;
     if(forced_grid){
       // forced grid, then predict blocks are all those that have some missing
@@ -274,7 +274,7 @@ void Meshed::make_gibbs_groups(){
   
   if(predict_group_exists == 1){
     int p=0; 
-    for(int i=0; i<n_blocks; i++){
+    for(unsigned int i=0; i<n_blocks; i++){
       int u = block_names(i) - 1;
       if(forced_grid){
         // forced grid, then predict blocks are all those that have some missing
@@ -336,9 +336,9 @@ void Meshed::na_study(){
   }
   
 #ifdef _OPENMP
-  #pragma omp parallel for 
+#pragma omp parallel for 
 #endif
-  for(int i=0; i<n_blocks;i++){
+  for(unsigned int i=0; i<n_blocks;i++){
     arma::mat yvec = y.rows(indexing_obs(i));
     na_1_blocks(i) = arma::zeros<arma::uvec>(yvec.n_rows);
     na_0_blocks(i) = arma::zeros<arma::uvec>(yvec.n_rows);
@@ -363,7 +363,7 @@ void Meshed::na_study(){
   }
   
   n_ref_blocks = 0;
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     block_ct_obs(i) = arma::accu(na_1_blocks(i));
     if(block_ct_obs(i) > 0){
       n_loc_ne_blocks += indexing(i).n_elem;
@@ -378,7 +378,7 @@ void Meshed::na_study(){
   int j=0;
   reference_blocks = arma::zeros<arma::uvec>(n_ref_blocks);
   //ref_block_names = arma::zeros<arma::uvec>(n_ref_blocks);
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     int u = block_names(i) - 1;
     if(block_ct_obs(u) > 0){
       reference_blocks(j) = i;
@@ -410,9 +410,9 @@ void Meshed::init_cache(){
   
   arma::field<arma::mat> kr_pairing(n_blocks);
 #ifdef _OPENMP
-  #pragma omp parallel for 
+#pragma omp parallel for 
 #endif
-  for(int i = 0; i<n_blocks; i++){
+  for(unsigned int i = 0; i<n_blocks; i++){
     int u = block_names(i)-1;
     arma::mat cmat = coords.rows(indexing(u));
     if(parents_indexing(u).n_elem > 0){
@@ -443,7 +443,7 @@ void Meshed::init_cache(){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     int u = block_names(i) - 1;
     int kr_cached_ix = kr_caching_ix(u);
     arma::uvec cpx = arma::find(kr_caching == kr_cached_ix, 1, "first");
@@ -472,9 +472,9 @@ void Meshed::init_indexing(){
   }
   
 #ifdef _OPENMP
-  #pragma omp parallel for 
+#pragma omp parallel for 
 #endif
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     if(parents(u).n_elem > 0){
       arma::field<arma::uvec> pixs(parents(u).n_elem);
@@ -512,7 +512,7 @@ void Meshed::init_gibbs_index(){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-  for(int i=0; i<n_blocks; i++){ // all blocks
+  for(unsigned int i=0; i<n_blocks; i++){ // all blocks
     int u = block_names(i)-1; // block name
     
     if(indexing_obs(u).n_elem > 0){ 
@@ -530,7 +530,7 @@ void Meshed::init_gibbs_index(){
   }
   
 
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     int u = block_names(i)-1;
     if(indexing(u).n_elem > 0){
       // children-parent relationship variables
@@ -587,9 +587,9 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
   param_data.Ri_chol_logdet = arma::zeros(kr_caching.n_elem);
   
 #ifdef _OPENMP
-  #pragma omp parallel for 
+#pragma omp parallel for 
 #endif
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     //int u=block_names(i) - 1;
     //param_data.w_cond_mean_K(i) = arma::zeros(indexing(i).n_elem, parents_indexing(i).n_elem, k);
     //param_data.w_cond_prec(i) = arma::zeros(indexing(i).n_elem, indexing(i).n_elem, k);
@@ -613,7 +613,7 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
   param_data.w_cond_mean_K_ptr.reserve(n_blocks);
   param_data.w_cond_prec_parents_ptr.reserve(n_blocks);
   
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     arma::cube jibberish = arma::zeros(1,1,1);
     param_data.w_cond_prec_ptr.push_back(&jibberish);
     param_data.w_cond_mean_K_ptr.push_back(&jibberish);
@@ -685,7 +685,7 @@ bool Meshed::refresh_cache(MeshDataLMC& data){
   for(unsigned int i=0; i<coords_caching.n_elem; i++){
     int u = coords_caching(i); 
     if(block_ct_obs(u) > 0){
-      for(int j=0; j<k; j++){
+      for(unsigned int j=0; j<k; j++){
         data.CC_cache(i).slice(j) = Correlationf(coords, indexing(u), indexing(u), //coords.rows(indexing(u)), coords.rows(indexing(u)), 
                       data.theta.col(j), matern, true);
       }
@@ -784,7 +784,7 @@ void Meshed::update_block_wlogdens(int u, MeshDataLMC& data){
   arma::mat wcoresum = arma::zeros(1, k);
   if( parents(u).n_elem > 0 ){
     arma::mat wpar = w.rows(parents_indexing(u));
-    for(int j=0; j<k; j++){
+    for(unsigned int j=0; j<k; j++){
       wx.col(j) = wx.col(j) - 
         (*data.w_cond_mean_K_ptr.at(u)).slice(j) *
         //data.w_cond_mean_K(u).slice(j) * 
@@ -792,7 +792,7 @@ void Meshed::update_block_wlogdens(int u, MeshDataLMC& data){
     }
   }
   
-  for(int j=0; j<k; j++){
+  for(unsigned int j=0; j<k; j++){
     wcoresum(j) = 
       arma::conv_to<double>::from(arma::trans(wx.col(j)) * 
       //data.w_cond_prec(u).slice(j) * 
@@ -817,7 +817,7 @@ void Meshed::init_gaussian(){
   
   tausq_adapt = RAMAdapt(q, arma::eye(q,q)*.05, .25);
   tausq_unif_bounds = arma::join_horiz(1e-10 * arma::ones(q), arma::ones(q));
-  for(int i=0;i<q;i++){
+  for(unsigned int i=0;i<q;i++){
     arma::uvec yloc = arma::find_finite(y.col(i));
     arma::vec yvar = arma::var(y(yloc, oneuv * i));
     double tsq = 1.0/tausq_inv(i);
@@ -851,7 +851,7 @@ void Meshed::init_betareg(){
   betareg_tausq_adapt.reserve(q);
   brtausq_mcmc_counter = arma::zeros(q);
   
-  for(int i=0; i<q; i++){
+  for(unsigned int i=0; i<q; i++){
     //if(familyid(i) == 3){
       
       RAMAdapt brtsq(1, arma::eye(1,1)*.1, .4);
@@ -881,7 +881,7 @@ void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const
       if(na_1_blocks(u)(ix) == 1){
         arma::mat Dtau = Lam * data.Rproject(u).slice(ix) * Lam.t();
         arma::vec II = arma::ones(q);
-        for(int j=0; j<q; j++){
+        for(unsigned int j=0; j<q; j++){
           if(na_mat(indexing_obs(u)(ix), j) == 1){
             // this outcome margin observed at this location
             Dtau(j, j) += 1/tsqi(j);
@@ -922,7 +922,7 @@ bool Meshed::calc_ywlogdens(MeshDataLMC& data){
   // and Sigma for adjusting the error terms
 
 #ifdef _OPENMP
-  #pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
@@ -987,7 +987,7 @@ void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw, bool m
     for(int ix=0; ix<nr; ix++){
       int i = indexing_obs(u)(ix);
       double loglike = 0;
-      for(int j=0; j<q; j++){
+      for(unsigned int j=0; j<q; j++){
         if(na_mat(i, j) > 0){
           //double xz = x(i) * z(i);
           double sigmoid, poislambda;
@@ -1020,7 +1020,7 @@ void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data, bool sample){
   }
   
 #ifdef _OPENMP
-  #pragma omp parallel for 
+#pragma omp parallel for 
 #endif
   for(int i = 0; i<n_ref_blocks; i++){
     int r = reference_blocks(i);
@@ -1083,7 +1083,7 @@ void Meshed::init_for_mcmc(){
   
   arma::mat LHW = w * Lambda.t();
   
-  for(int j=0; j<q; j++){
+  for(unsigned int j=0; j<q; j++){
     arma::vec yj_obs = y( ix_by_q_a(j), oneuv * j );
     arma::mat X_obs = X.rows(ix_by_q_a(j));
     arma::mat offsets_obs = offsets(ix_by_q_a(j), oneuv * j);
@@ -1127,7 +1127,7 @@ void Meshed::init_for_mcmc(){
     hmc_eps_started_adapting = arma::zeros<arma::uvec>(n_blocks);
     
     //Rcpp::Rcout << " Initializing HMC for W -- 1" << endl;
-    for(int i=0; i<n_blocks; i++){
+    for(unsigned int i=0; i<n_blocks; i++){
       NodeDataW new_block;
       w_node.push_back(new_block);
       
@@ -1137,8 +1137,8 @@ void Meshed::init_for_mcmc(){
     
     //Rcpp::Rcout << " Initializing HMC for W -- 2" << endl;
     arma::mat offset_for_w = offsets + XB;
-    #pragma omp parallel for
-    for(int i=0; i<n_blocks; i++){
+    //#pragma omp parallel for
+    for(unsigned int i=0; i<n_blocks; i++){
       int u = block_names(i)-1;
       
       arma::uvec indexing_target;
@@ -1256,7 +1256,7 @@ Meshed::Meshed(
   param_data.logdetCi_comps = arma::zeros(n_blocks);
   param_data.w_cond_prec_parents_ptr.reserve(n_blocks);
   
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     arma::cube jibberish = arma::zeros(1,1,1);
     param_data.w_cond_prec_ptr.push_back(&jibberish);
     param_data.w_cond_mean_K_ptr.push_back(&jibberish);

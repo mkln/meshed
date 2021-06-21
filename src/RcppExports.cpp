@@ -112,13 +112,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // kthresholdscp
-arma::vec kthresholdscp(arma::vec x, int k);
+arma::vec kthresholdscp(arma::vec x, unsigned int k);
 RcppExport SEXP _meshed_kthresholdscp(SEXP xSEXP, SEXP kSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::vec >::type x(xSEXP);
-    Rcpp::traits::input_parameter< int >::type k(kSEXP);
+    Rcpp::traits::input_parameter< unsigned int >::type k(kSEXP);
     rcpp_result_gen = Rcpp::wrap(kthresholdscp(x, k));
     return rcpp_result_gen;
 END_RCPP

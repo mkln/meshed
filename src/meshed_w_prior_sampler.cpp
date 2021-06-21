@@ -20,13 +20,13 @@ void Meshed::w_prior_sample(MeshDataLMC& data){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
-  for(int i = 0; i<n_blocks; i++){
+  for(unsigned int i = 0; i<n_blocks; i++){
     int u = block_names(i)-1;
     update_block_covpars(u, data);
   }
   
   // assuming that the ordering in block_names is the ordering of the product of conditional densities
-  for(int i=0; i<n_blocks; i++){
+  for(unsigned int i=0; i<n_blocks; i++){
     
     int u = block_names(i) - 1;
     

@@ -19,7 +19,7 @@ void Meshed::hmc_sample_beta(bool sample){
   
   arma::mat LHW = wU * Lambda.t();
   
-  for(int j=0; j<q; j++){
+  for(unsigned int j=0; j<q; j++){
     //Rcpp::Rcout << "j: " << j << endl;
     arma::vec offsets_obs = offsets(ix_by_q_a(j), oneuv * j);
     arma::vec lw_obs = LHW(ix_by_q_a(j), oneuv * j);

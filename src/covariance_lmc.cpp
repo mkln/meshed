@@ -37,7 +37,7 @@ void matern_internal_inplace(arma::mat& res,
   
   double sigmasq_reparam = sigmasq / reparam;
   
-  int threadid;
+  int threadid = 0;
 #ifdef _OPENMP
   threadid = omp_get_thread_num();
 #endif

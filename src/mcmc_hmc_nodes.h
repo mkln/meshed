@@ -50,7 +50,7 @@ public:
   arma::mat Kcxpar;
   //arma::mat w_parents;
   
-  int num_children;
+  unsigned int num_children;
   double parents_dim;
   //arma::vec dim_of_pars_of_children;
   
