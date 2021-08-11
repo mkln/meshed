@@ -97,7 +97,7 @@ inline double normal_proposal_logitscale(const double& x, double l=0, double u=1
 }
 
 inline double lognormal_logdens(const double& x, const double& m, const double& ssq){
-  return -.5*(2*PI*ssq) - .5/ssq * pow(log(x) - m, 2) - log(x);
+  return -.5*(2*M_PI*ssq) - .5/ssq * pow(log(x) - m, 2) - log(x);
 }
 
 inline double gamma_logdens(const double& x, const double& a, const double& b){
