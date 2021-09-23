@@ -292,7 +292,7 @@ arma::vec NodeDataW::compute_dens_and_grad(double& xtarget, const arma::mat& x){
   
   double logprior_chi = 0;
   arma::vec grad_logprior_chi = arma::zeros(grad_logprior_par.n_elem);
-  for(int c=0; c<num_children; c++ ){
+  for(unsigned int c=0; c<num_children; c++ ){
     bwdconditional_mvn(logprior_chi, grad_logprior_chi, x, c);
   }
   
@@ -429,7 +429,7 @@ arma::vec NodeDataW::gradient_logfullcondit(const arma::mat& x){
   arma::vec grad_logprior_par = grad_fwdcond_dmvn(x);
   
   arma::vec grad_logprior_chi = arma::zeros(grad_logprior_par.n_elem);
-  for(int c=0; c<num_children; c++ ){
+  for(unsigned int c=0; c<num_children; c++ ){
     grad_logprior_chi += grad_bwdcond_dmvn(x, c);
   }
   
@@ -539,7 +539,7 @@ arma::mat NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad
   arma::vec grad_logprior_chi = arma::zeros(grad_logprior_par.n_elem);
   
   
-  for(int c=0; c<num_children; c++ ){
+  for(unsigned int c=0; c<num_children; c++ ){
     //bwdconditional_mvn(logprior_chi, grad_logprior_chi, x, w_child(c), Ri_of_child(c), 
     //                   Kcx_x(c), Kco_wo(c));
     //neghess_bwdcond_dmvn(neghess_logtarg, x, w_child(c), Ri_of_child(c), Kcx_x(c));
@@ -659,7 +659,7 @@ arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
   neghess_fwdcond_dmvn(neghess_logtarg, x);
   
   //arma::mat neghess_logprior_chi = arma::zeros(arma::size(neghess_logprior_par));
-  for(int c=0; c<num_children; c++ ){
+  for(unsigned int c=0; c<num_children; c++ ){
     // adds to neghess_logprior_par
     neghess_bwdcond_dmvn(neghess_logtarg, x, c);
   }

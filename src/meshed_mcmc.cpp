@@ -103,9 +103,7 @@ Rcpp::List meshed_mcmc(
   }
   // adaptive params
   int mcmc = mcmc_thin*mcmc_keep + mcmc_burn;
-  
-  //arma::mat metropolis_sd = mcmcsd;
-  
+
   arma::mat start_lambda = reparametrize_lambda_forward(lambda, theta, d, matern_twonu, use_ps);
   
   arma::mat start_theta = theta;
@@ -138,9 +136,6 @@ Rcpp::List meshed_mcmc(
   arma::mat tausq_mcmc = arma::zeros(q, mcmc_thin*mcmc_keep);
   arma::cube theta_mcmc = arma::zeros(param.n_elem/k, k, mcmc_thin*mcmc_keep);
   
-  //arma::field<arma::vec> eps_mcmc(mcmc_thin * mcmc_keep);
-  
-  //arma::cube lambdastar_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   arma::cube lambda_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   
   arma::vec logaccept_mcmc = arma::zeros(mcmc);
@@ -148,17 +143,17 @@ Rcpp::List meshed_mcmc(
   arma::vec llsave = arma::zeros(mcmc_thin*mcmc_keep);
   arma::vec wllsave = arma::zeros(mcmc_thin*mcmc_keep);
   
-  // field avoids limit in size of objects -- ideally this should be a cube
-  arma::field<arma::mat> v_mcmc(mcmc_keep);
-  arma::field<arma::mat> w_mcmc(mcmc_keep);
-  arma::field<arma::mat> lp_mcmc(mcmc_keep);
-  arma::field<arma::mat> yhat_mcmc(mcmc_keep);
+  Rcpp::List v_mcmc;
+  Rcpp::List w_mcmc;
+  Rcpp::List lp_mcmc;
+  Rcpp::List yhat_mcmc;
   
   for(int i=0; i<mcmc_keep; i++){
-    v_mcmc(i) = arma::zeros(msp.w.n_rows, k);
-    w_mcmc(i) = arma::zeros(msp.w.n_rows, q);
-    lp_mcmc(i) = arma::zeros(msp.y.n_rows, q);
-    yhat_mcmc(i) = arma::zeros(msp.y.n_rows, q);
+    std::string iname = std::to_string(i);
+    v_mcmc[iname] = Rcpp::wrap(arma::zeros(msp.w.n_rows, k));
+    w_mcmc[iname] = Rcpp::wrap(arma::zeros(msp.w.n_rows, q));
+    lp_mcmc[iname] = Rcpp::wrap(arma::zeros(msp.y.n_rows, q));
+    yhat_mcmc[iname] = Rcpp::wrap(arma::zeros(msp.y.n_rows, q));
   }
   
   bool acceptable = false;
@@ -280,10 +275,8 @@ Rcpp::List meshed_mcmc(
         b_mcmc.slice(w_saved) = msp.Bcoeff;
         
         theta_mcmc.slice(w_saved) = msp.param_data.theta;
-        //eps_mcmc(w_saved) = msp.hmc_eps;
-        
+
         // lambda here reconstructs based on 1/phi Matern reparametrization
-        //lambdastar_mcmc.slice(w_saved) = msp.Lambda;
         lambda_mcmc.slice(w_saved) = lambda_transf_back;
           
         llsave(w_saved) = msp.logpost;
@@ -291,13 +284,14 @@ Rcpp::List meshed_mcmc(
         w_saved++;
         
         if(mx % mcmc_thin == 0){
-          v_mcmc(mcmc_saved) = msp.w;
-          w_mcmc(mcmc_saved) = msp.LambdaHw;
-          lp_mcmc(mcmc_saved) = msp.linear_predictor;
+          std::string iname = std::to_string(mcmc_saved);
+          v_mcmc[iname] = Rcpp::wrap(msp.w);
+          w_mcmc[iname] = Rcpp::wrap(msp.LambdaHw);
+          lp_mcmc[iname] = Rcpp::wrap(msp.linear_predictor);
           Rcpp::RNGScope scope;
         
           msp.predicty();
-          yhat_mcmc(mcmc_saved) = msp.yhat;
+          yhat_mcmc[iname] = Rcpp::wrap(msp.yhat);
           mcmc_saved++;
         }
       }
