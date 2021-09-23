@@ -1,7 +1,7 @@
 # `meshed` version 0.1.3
 
  * better memory management when exiting MCMC
- * fixed `M_PI` for Rcpp
+ * fixed `M_PI` for upcoming Rcpp updates
 
 # 21 Jun 21 - `meshed` version 0.1.2
 
