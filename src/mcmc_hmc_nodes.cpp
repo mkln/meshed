@@ -15,6 +15,7 @@ arma::vec NodeData::gradient_logfullcondit(const arma::vec& x){
 
 NodeDataW::NodeDataW(){
   n=-1;
+  fgrid = false;
 }
 
 NodeDataW::NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
