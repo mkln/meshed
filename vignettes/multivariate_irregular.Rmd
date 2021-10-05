@@ -18,7 +18,8 @@ knitr::opts_chunk$set(
 )
 ```
 
-This is very similar to the univariate, irregularly spaced data case. The only difference is in formatting the data and in having to specify how many spatial factors should be used.
+This is very similar to the univariate, irregularly spaced data case. The only difference is in formatting the data and in having to specify how many spatial factors should be used. 
+**NOTE**: there are strict limits to how much time this vignette can take up on CRAN's servers as they are a shared resource. For a somewhat better example, consider setting `SS = 30` to generate the data, then run the MCMC chain for much longer, use `block_size=20` or larger, increase `n_threads` according to available resources. 
 
 ```{r}
 library(magrittr)
@@ -28,7 +29,7 @@ library(meshed)
 
 set.seed(2021)
 
-SS <- 30 # coord values for jth dimension 
+SS <- 25 # coord values for jth dimension 
 dd <- 2 # spatial dimension
 n <- SS^2 # number of locations
 q <- 3 # number of outcomes
@@ -99,18 +100,18 @@ The `spmeshed` function works the same way as before, but we need to specify $k$
 We store the outcomes in `YY`, one in each column. These can be `NA` when missing. `spmeshed` works as in the univariate case, but we can now choose how many factors to use (default is `k=ncol(y)`)
 
 ```{r}
-mcmc_keep <- 500
-mcmc_burn <- 500
+mcmc_keep <- 200 # too small! this is just a vignette.
+mcmc_burn <- 400
 mcmc_thin <- 2
 
 mesh_total_time <- system.time({
   meshout <- spmeshed(y=YY, x=XX, coords=coords, k = 2,
-                    grid_size = c(30, 30),
-                    block_size = 20,
+                    grid_size = c(20, 20), 
+                    block_size = 16, 
                     n_samples = mcmc_keep, 
                     n_burn = mcmc_burn, 
                     n_thin = mcmc_thin, 
-                    n_threads = 4,
+                    n_threads = 2,
                     prior = list(phi=c(2, 20)),
                     verbose=0
   )})
