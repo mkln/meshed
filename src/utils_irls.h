@@ -15,6 +15,14 @@ arma::vec binomial_mueta(const arma::vec& eta);
 
 arma::vec binomial_variance(const arma::vec& mu);
 
+
+arma::vec negbinomial_linkinv(const arma::vec& eta);
+
+arma::vec negbinomial_mueta(const arma::vec& eta);
+
+arma::vec negbinomial_variance(const arma::vec& mu, const double& tausq);
+
+
 arma::vec poisson_linkinv(const arma::vec& eta);
 
 arma::vec poisson_mueta(const arma::vec& eta);

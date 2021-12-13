@@ -182,6 +182,7 @@ public:
   void adapt(const arma::vec&, double, int);
   void print(int itertime, int mc);
   void print_summary(int time_tick, int time_mcmc, int m, int mcmc);
+  void print_acceptance();
   
   RAMAdapt(){};
   RAMAdapt(int npars, const arma::mat& metropolis_sd, double);
@@ -276,7 +277,7 @@ inline void RAMAdapt::adapt(const arma::vec& U, double alpha, int mc){
 }
 
 inline void RAMAdapt::print(int itertime, int mc){
-  Rprintf("%5d-th iteration [ %dms ] ~ MCMC acceptance %.2f%%, average %.2f%% \n", 
+  Rprintf("%5d-th iteration [ %dms ] ~ (Metropolis acceptance for theta: %.2f%%, average %.2f%%) \n", 
          mc+1, itertime, arma::mean(acceptreject_history)*100, accept_ratio*100);
 }
 
@@ -289,10 +290,14 @@ inline void RAMAdapt::print_summary(int time_tick, int time_mcmc, int m, int mcm
   etr = etr > 60 ? etr/60 : etr;
   
   //Rcpp::Rcout << m+1 << " " << mcmc << " " << time_iter << " " << mcmc-m-1 << " " << (mcmc-m-1) * time_iter << "\n";
-  Rprintf("%.1f%% elapsed: %5dms (+%5dms). ETR: %.2f%s. MCMC acceptance %.2f%%, average %.2f%% \n",
+  Rprintf("%.1f%% elapsed: %5dms (+%5dms). ETR: %.2f%s. \n",
          100.0*(m+1.0)/mcmc,
          time_mcmc,
          time_tick,
-         etr, unit,
-         arma::mean(acceptreject_history)*100, accept_ratio*100);
+         etr, unit);
+}
+
+inline void RAMAdapt::print_acceptance(){
+  Rprintf("  theta: Metrop. acceptance %.2f%%, average %.2f%% \n",
+          arma::mean(acceptreject_history)*100, accept_ratio*100);
 }

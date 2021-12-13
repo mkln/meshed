@@ -93,6 +93,7 @@ public:
   
   arma::vec compute_dens_and_grad(double& xtarget, const arma::mat& x);
   arma::mat compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, const arma::mat& x);
+  arma::mat compute_dens_grad_neghess2(double& xtarget, arma::vec& xgrad, const arma::mat& x);
   
   NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
             const arma::umat& na_mat_all, const arma::mat& offset_all, 
@@ -135,6 +136,8 @@ public:
   void initialize();
   void update_mv(const arma::vec& new_offset, 
                  const double& tausq_in, const arma::vec& Smu_tot, const arma::mat& Sigi_tot);
+  void set_XtDX(const arma::vec& x);
+  
   NodeDataB(const arma::vec& y_in, const arma::vec& offset_in, 
             const arma::mat& X_in, int family_in);
   NodeDataB();

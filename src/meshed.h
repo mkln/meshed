@@ -87,7 +87,7 @@ public:
   arma::mat offsets;
   arma::mat rand_norm_mat;
   arma::vec rand_unif;
-  
+  arma::vec rand_unif2;
   // regression
   arma::mat Lambda;
   arma::umat Lambda_mask; // 1 where we want lambda to be nonzero
@@ -187,7 +187,7 @@ public:
   
   // tausq for Beta regression
   arma::vec brtausq_mcmc_counter;
-  std::vector<RAMAdapt> betareg_tausq_adapt;
+  std::vector<RAMAdapt> opt_tausq_adapt;
   
   int lambda_mcmc_counter;
   int n_lambda_pars;
@@ -203,9 +203,11 @@ public:
   void refresh_w_cache(MeshDataLMC& data);
   
   // W
+  int which_hmc;
   bool w_do_hmc;
   bool w_hmc_nuts;
   bool w_hmc_rm;
+  bool w_hmc_srm;
   void deal_with_w(MeshDataLMC& data, bool sample=true);
   void gaussian_w(MeshDataLMC& data, bool sample);
   void gaussian_nonreference_w(int, MeshDataLMC& data, const arma::mat&, bool sample);
@@ -223,10 +225,16 @@ public:
   // Beta
   void deal_with_beta(bool sample=true);
   void hmc_sample_beta(bool sample=true);
-  void tester_beta(bool sample=true);
+  //void tester_beta(bool sample=true);
   std::vector<NodeDataB> beta_node; // std::vector
   std::vector<AdaptE> beta_hmc_adapt; // std::vector
   arma::uvec beta_hmc_started;
+  
+  void deal_with_BetaLambdaTau(MeshDataLMC& data, bool sample, 
+                               bool sample_beta, bool sample_lambda, bool sample_tau);
+  arma::vec sample_BetaLambda_row(bool sample, int j, const arma::mat& rnorm_precalc);
+  void sample_hmc_BetaLambdaTau(bool sample, 
+                                bool sample_beta, bool sample_lambda, bool sample_tau);
   
   // Lambda
   void deal_with_Lambda(MeshDataLMC& data);
@@ -238,12 +246,13 @@ public:
   std::vector<AdaptE> lambda_hmc_adapt; // std::vector
   arma::uvec lambda_hmc_started;
   
+  
   // Tausq
   void deal_with_tausq(MeshDataLMC& data, bool ref_pardata=false);
   void gibbs_sample_tausq_std(bool ref_pardata);
   void gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata);
   
-  void logpost_refresh_after_gibbs(MeshDataLMC& data, bool sample=true); //***
+  void logpost_refresh_after_gibbs(MeshDataLMC& data, bool sample=true); 
   
   // Predictions for W and Y
   void predict(bool sample=true);
@@ -254,12 +263,6 @@ public:
   // need to adjust these
   int npars;
   //int nugget_in;
-  
-  
-  
-  
-  
-  
   
   // --------------------------------------------------------------- timers
   std::chrono::steady_clock::time_point start_overall;
@@ -302,6 +305,7 @@ public:
     const arma::mat& beta_Vi_in,
     const arma::vec& tausq_ab_in,
     
+    int which_hmc_in,
     bool adapting_theta,
     const arma::mat& metrop_theta_sd,
     const arma::mat& metrop_theta_bounds,

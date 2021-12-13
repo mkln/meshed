@@ -11,16 +11,16 @@ spmeshed <- function(y, x, coords, k=NULL,
              verbose = 0,
              predict_everywhere = FALSE,
              settings = list(adapting=TRUE, forced_grid=NULL, cache=NULL, 
-                                ps=TRUE, saving=TRUE),
+                                ps=TRUE, saving=TRUE, low_mem=FALSE, hmc=4),
              prior = list(beta=NULL, tausq=NULL, sigmasq = NULL,
-                          phi=NULL, nu = NULL,
+                          phi=NULL, a=NULL, nu = NULL,
                           toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
              starting = list(beta=NULL, tausq=NULL, theta=NULL, 
-                             lambda=NULL, w=NULL, nu = NULL,
+                             lambda=NULL, v=NULL,  a=NULL, nu = NULL,
                              mcmcsd=.05, mcmc_startfrom=0),
              debug = list(sample_beta=TRUE, sample_tausq=TRUE, 
                           sample_theta=TRUE, sample_w=TRUE, sample_lambda=TRUE,
-                          verbose=FALSE, debug=FALSE),
+                          verbose=FALSE, debug=FALSE, dag=1),
              indpart=FALSE
 ){
 
@@ -49,11 +49,19 @@ spmeshed <- function(y, x, coords, k=NULL,
     mcmc_burn <- n_burnin
     mcmc_thin <- n_thin
     
+    which_hmc    <- settings$hmc %>% set_default(4)
+    if(which_hmc > 4){
+      warning("Invalid HMC algorithm choice. Choose settings$hmc in {1,2,3,4}")
+      which_hmc <- 4
+    }
+
     mcmc_adaptive    <- settings$adapting %>% set_default(TRUE)
     mcmc_verbose     <- debug$verbose %>% set_default(FALSE)
     mcmc_debug       <- debug$debug %>% set_default(FALSE)
     saving <- settings$saving %>% set_default(TRUE)
-    use_ps <- settings$ps %>% set_default(TRUE)
+    low_mem <- settings$low_mem %>% set_default(FALSE)
+    
+    debugdag <- debug$dag %>% set_default(1)
     
     coords %<>% as.matrix()
     
@@ -108,8 +116,15 @@ spmeshed <- function(y, x, coords, k=NULL,
     
     # family id 
     family <- if(length(family)==1){rep(family, q)} else {family}
+    
+    if(all(family == "gaussian")){ 
+      use_ps <- settings$ps %>% set_default(TRUE)
+    } else {
+      use_ps <- settings$ps %>% set_default(FALSE)
+    }
+    
     family_in <- data.frame(family=family)
-    available_families <- data.frame(id=0:3, family=c("gaussian", "poisson", "binomial", "beta"))
+    available_families <- data.frame(id=0:4, family=c("gaussian", "poisson", "binomial", "beta", "negbinomial"))
     
     suppressMessages(family_id <- family_in %>% 
                        left_join(available_families, by=c("family"="family")) %>% pull(.data$id))
@@ -160,9 +175,9 @@ spmeshed <- function(y, x, coords, k=NULL,
       }
     } else {
       use_forced_grid <- settings$forced_grid %>% set_default(TRUE)
-      if(!use_forced_grid & !data_likely_gridded){
-        warning("Data look not gridded: force a grid with settings$forced_grid=T.")
-      }
+      #if(!use_forced_grid & !data_likely_gridded){
+      #  warning("Data look not gridded: force a grid with settings$forced_grid=T.")
+      #}
     }
     
     
@@ -287,10 +302,15 @@ spmeshed <- function(y, x, coords, k=NULL,
   
   # DAG
   if(dd < 4){
-    suppressMessages(parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), axis_partition, FALSE, n_threads))
+    graph_time <- system.time({
+      parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), axis_partition, FALSE, n_threads, debugdag)
+      })
   } else {
-    suppressMessages(parents_children <- mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-.data$ix)))
+    graph_time <- system.time({
+      parents_children <- mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-.data$ix))
+    })
   }
+  
   parents                      <- parents_children[["parents"]] 
   children                     <- parents_children[["children"]] 
   block_names                  <- parents_children[["names"]] 
@@ -388,6 +408,19 @@ spmeshed <- function(y, x, coords, k=NULL,
       start_phi <- starting$phi
     }
     
+    if(dd == 3){
+      if(is.null(prior$a)){
+        a_limits <- phi_limits
+      } else {
+        a_limits <- prior$a
+      }
+      if(is.null(starting$a)){
+        start_a <- mean(a_limits)
+      } else {
+        start_a <- starting$a
+      }
+    }
+    
     if(is.null(prior$beta)){
       beta_Vi <- diag(ncol(x)) * 1/100
     } else {
@@ -473,8 +506,8 @@ spmeshed <- function(y, x, coords, k=NULL,
         set_unif_bounds <- matrix(0, nrow=npar*k, ncol=2)
         
         # a
-        set_unif_bounds[seq(1, npar*k, npar),] <- matrix(phi_limits,nrow=1) %x% matrix(1, nrow=k)
-        start_theta[1,] <- start_phi
+        set_unif_bounds[seq(1, npar*k, npar),] <- matrix(a_limits,nrow=1) %x% matrix(1, nrow=k)
+        start_theta[1,] <- start_a
         
         # phi
         set_unif_bounds[seq(2, npar*k, npar),] <- matrix(phi_limits,nrow=1) %x% matrix(1, nrow=k)
@@ -546,13 +579,13 @@ spmeshed <- function(y, x, coords, k=NULL,
       mcmc_startfrom <- starting$mcmc_startfrom
     }
     
-    if(is.null(starting$w)){
-      start_w <- matrix(0, nrow = nrow(simdata_in), ncol = k)
+    if(is.null(starting$v)){
+      start_v <- matrix(0, nrow = nrow(simdata_in), ncol = k)
     } else {
       # this is used to restart MCMC
       # assumes the ordering and the sizing is correct, 
       # so no change is necessary and will be input directly to mcmc
-      start_w <- starting$w #%>% matrix(ncol=q)
+      start_v <- starting$v #%>% matrix(ncol=q)
     }
   }
   
@@ -617,7 +650,7 @@ spmeshed <- function(y, x, coords, k=NULL,
                           
                               matern_fix_twonu,
                               
-                              start_w, 
+                              start_v, 
                           
                               start_lambda,
                               lambda_mask,
@@ -634,6 +667,7 @@ spmeshed <- function(y, x, coords, k=NULL,
                               
                               n_threads,
                               
+                              which_hmc,
                               mcmc_adaptive, # adapting
                               
                               use_cache,
@@ -642,6 +676,7 @@ spmeshed <- function(y, x, coords, k=NULL,
                               
                               mcmc_verbose, mcmc_debug, # verbose, debug
                               mcmc_print_every, # print all iter
+                              low_mem,
                               # sampling of:
                               # beta tausq sigmasq theta w
                               sample_beta, sample_tausq, 
@@ -657,7 +692,7 @@ spmeshed <- function(y, x, coords, k=NULL,
       anonList
     }
     
-    saved <- listN(y, x, coords, k,
+    saved <- listN(y, x, coords_blocking, k,
       
                    family,
       parents, children, 
@@ -670,7 +705,7 @@ spmeshed <- function(y, x, coords, k=NULL,
       
       tausq_ab,
       
-      start_w, 
+      start_v, 
       
       start_lambda,
       lambda_mask,

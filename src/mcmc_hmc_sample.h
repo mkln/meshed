@@ -8,6 +8,198 @@
 #include "mcmc_hmc_nodes.h"
 #include "mcmc_hmc_adapt.h"
 
+// mala and rm-mala
+template <class T>
+inline arma::mat mala_cpp(arma::mat current_q, 
+                                   T& postparams,
+                                   AdaptE& adaptparams, 
+                                   const arma::mat& rnorm_mat,
+                                   const double& runifvar,
+                                   bool adapt=true,
+                                   bool debug=false){
+  
+  int k = current_q.n_cols;
+  // currents
+  arma::vec xgrad;
+  double joint0, eps1, eps2;
+  
+  xgrad = postparams.compute_dens_and_grad(joint0, current_q);
+  
+  if(adapt){
+    eps2 = pow(adaptparams.eps, 2.0);
+    eps1 = adaptparams.eps;
+  } 
+  
+  if(xgrad.has_nan() || xgrad.has_inf() || std::isnan(joint0) || std::isinf(joint0)){
+    adaptparams.alpha = 0.0;
+    adaptparams.n_alpha = 1.0;
+    adaptparams.adapt_step();
+    return current_q;
+  }
+  
+  arma::vec veccurq = arma::vectorise(current_q);
+  arma::vec proposal_mean = veccurq + eps2 * 0.5 * xgrad;// / max(eps2, arma::norm(xgrad));
+  
+  // proposal value
+  arma::vec p = arma::vectorise(rnorm_mat); 
+  arma::vec q = proposal_mean + eps1 * p;
+  arma::mat qmat = arma::mat(q.memptr(), q.n_elem/k, k);
+  
+  // proposal
+  double joint1; // = postparams.logfullcondit(qmat);
+  arma::vec revgrad;
+  
+  revgrad = postparams.compute_dens_and_grad(joint1, qmat);
+  
+  if(revgrad.has_inf() || std::isnan(joint1) || std::isinf(joint1)){
+    adaptparams.alpha = 0.0;
+    adaptparams.n_alpha = 1.0;
+    adaptparams.adapt_step();
+    return current_q;
+  }
+  
+  arma::vec reverse_mean = q + eps2 * 0.5 * revgrad; 
+  double prop0to1 = -.5/(eps1*eps1) * arma::conv_to<double>::from(
+    (q - proposal_mean).t() * (q - proposal_mean) );
+  double prop1to0 = -.5/(eps1*eps1) * arma::conv_to<double>::from(
+    (veccurq - reverse_mean).t() * (veccurq - reverse_mean) );
+  
+  adaptparams.alpha = std::min(1.0, exp(joint1 + prop1to0 - joint0 - prop0to1));
+  adaptparams.n_alpha = 1.0;
+  
+  if(runifvar < adaptparams.alpha){ 
+    current_q = qmat;
+  } 
+  
+  adaptparams.adapt_step();
+  return current_q;
+}
+
+template <class T>
+inline arma::mat manifmala_cpp(arma::mat current_q, 
+                                      T& postparams,
+                                      AdaptE& adaptparams, 
+                                      const arma::mat& rnorm_mat,
+                                      const double& runifvar, const double& runifadapt, 
+                                      bool adapt=true,
+                                      bool debug=false){
+  
+  // with infinite adaptation
+  
+  int k = current_q.n_cols;
+  // currents
+  arma::vec xgrad;
+  double joint0, eps1, eps2;
+  arma::mat H_forward;
+  arma::mat MM, Minvchol;//, Minv;
+  
+  bool chol_error = false;
+  bool rev_chol_error = false;
+  
+  bool fixed_C_this_step = adaptparams.use_C_const(runifadapt);
+  
+  if(fixed_C_this_step) {
+    // not adapting at this time
+    xgrad = postparams.compute_dens_and_grad(joint0, current_q);
+    MM = adaptparams.C_const;
+    Minvchol = adaptparams.Ccholinv_const;
+  } else {
+    // adapting at this time; 
+    MM = postparams.compute_dens_grad_neghess(joint0, xgrad, current_q);
+
+    adaptparams.weight_average_C_temp(MM);
+    try {
+      Minvchol = arma::inv(arma::trimatl(arma::chol(arma::symmatu(MM), "lower")));
+    } catch (...) {
+      Minvchol = arma::eye(current_q.n_elem, current_q.n_elem);
+      chol_error = true;
+    }
+  }
+  
+  if(adapt){
+    eps2 = pow(adaptparams.eps, 2.0);
+    eps1 = adaptparams.eps;
+  } 
+  
+  if(MM.has_nan() || xgrad.has_nan() || xgrad.has_inf() || std::isnan(joint0) || std::isinf(joint0)){
+    adaptparams.alpha = 0.0;
+    adaptparams.n_alpha = 1.0;
+    adaptparams.adapt_step();
+    return current_q;
+  }
+  
+  arma::vec veccurq = arma::vectorise(current_q);
+  arma::vec proposal_mean = veccurq + eps2 * 0.5 * Minvchol.t() * Minvchol * xgrad;// / max(eps2, arma::norm(xgrad));
+  
+  // proposal value
+  arma::vec p = arma::vectorise(rnorm_mat); 
+  arma::vec q = proposal_mean + eps1 * Minvchol.t() * p;
+  arma::mat qmat = arma::mat(q.memptr(), q.n_elem/k, k);
+  
+  // proposal
+  double joint1; // = postparams.logfullcondit(qmat);
+  arma::vec revgrad;
+  arma::mat H_reverse;
+  arma::mat RR, Rinvchol, Rinv;
+  
+  if(fixed_C_this_step) {
+    // after burn period keep constant variance
+    revgrad = postparams.compute_dens_and_grad(joint1, qmat);
+    RR = adaptparams.C_const;
+    Rinvchol = adaptparams.Ccholinv_const;
+    //Rinv = Rinvchol.t() * Rinvchol;
+  } else {
+    // initial burn period use full riemann manifold
+    RR = postparams.compute_dens_grad_neghess(joint1, revgrad, qmat);
+    adaptparams.weight_average_C_temp(RR);
+    if(!chol_error){
+      try {
+        Rinvchol = arma::inv(arma::trimatl(arma::chol(arma::symmatu(RR), "lower")));
+      } catch (...) {
+        rev_chol_error = true;
+      }
+      
+    } else {
+      Rinvchol = arma::eye(current_q.n_elem, current_q.n_elem);
+    }
+  }
+  
+  if(rev_chol_error || revgrad.has_inf() || std::isnan(joint1) || std::isinf(joint1)){
+    adaptparams.alpha = 0.0;
+    adaptparams.n_alpha = 1.0;
+    adaptparams.adapt_step();
+    return current_q;
+  }
+  
+  double Richoldet = arma::accu(log(Rinvchol.diag()));
+  double Micholdet = arma::accu(log(Minvchol.diag()));
+  arma::vec reverse_mean = q + eps2 * 0.5 * Rinvchol.t() * Rinvchol * revgrad; 
+  double prop0to1 = Micholdet -.5/(eps1*eps1) * arma::conv_to<double>::from(
+    (q - proposal_mean).t() * MM * (q - proposal_mean) );
+  double prop1to0 = Richoldet -.5/(eps1*eps1) * arma::conv_to<double>::from(
+    (veccurq - reverse_mean).t() * RR * (veccurq - reverse_mean) );
+  
+  adaptparams.alpha = std::min(1.0, exp(joint1 + prop1to0 - joint0 - prop0to1));
+  adaptparams.n_alpha = 1.0;
+  
+  if(runifvar < adaptparams.alpha){ 
+    current_q = qmat;
+    if(!fixed_C_this_step){
+      // accepted: send accepted covariance to adaptation
+      adaptparams.update_C_const(RR, Rinvchol); 
+    }
+  } else {
+    if(!fixed_C_this_step){
+      // rejected: send original covariance to adaptation
+      adaptparams.update_C_const(MM, Minvchol);
+    }
+  }
+  
+  adaptparams.adapt_step();
+  return current_q;
+}
+
+
 inline arma::mat unvec(arma::vec q, int k){
   arma::mat result = arma::mat(q.memptr(), q.n_elem/k, k);
   return result;
@@ -36,22 +228,26 @@ struct pq_point {
 };
 
 template <class T>
-inline void leapfrog(pq_point &z, float epsilon, T& postparams, int k=1){
+inline void leapfrog(pq_point &z, float epsilon, T& postparams,  int k=1){
   arma::mat qmat = unvec(z.q, k);
-  z.p += epsilon * 0.5 * postparams.gradient_logfullcondit(qmat);
+  //arma::mat ehalfMi = epsilon * 0.5 * Minv;
+  z.p += epsilon * 0.5  * postparams.gradient_logfullcondit(qmat);
   //arma::vec qvecplus = arma::vectorise(z.q) + epsilon * z.p;
   z.q += epsilon * z.p;
   qmat = unvec(z.q, k);
-  z.p += epsilon * 0.5 * postparams.gradient_logfullcondit(qmat);
+  z.p += epsilon * 0.5  * postparams.gradient_logfullcondit(qmat);
 }
-
 
 template <class T>
 inline double find_reasonable_stepsize(const arma::mat& current_q, T& postparams, const arma::mat& rnorm_mat){
   int K = current_q.n_elem;
   
+  //arma::mat MM = arma::eye(current_q.n_elem, current_q.n_elem);
+  //arma::mat Minvchol = MM;
+  //arma::mat Minv = MM;
+    
   pq_point z(K);
-  arma::vec p0 = //postparams.Michol * 
+  arma::vec p0 = //Minvchol.t() *
     arma::vectorise(rnorm_mat); //arma::randn(K);
   
   double epsilon = 1;
@@ -61,14 +257,14 @@ inline double find_reasonable_stepsize(const arma::mat& current_q, T& postparams
   z.q = veccurq;
   z.p = p0;
   
-  double p_orig = postparams.logfullcondit(current_q) - 0.5* arma::conv_to<double>::from(z.p.t() * //postparams.M * 
-                                                                                    z.p);//sum(z.p % z.p); 
+  double p_orig = postparams.logfullcondit(current_q) - 0.5* arma::conv_to<double>::from(z.p.t() * //MM *
+                                           z.p);//sum(z.p % z.p); 
   //Rcpp::Rcout << "before:  " << p_orig << "\n";
   leapfrog(z, epsilon, postparams, current_q.n_cols);
   //Rcpp::Rcout << "done leapfrog " << endl;
   arma::mat newq = unvec(z.q, current_q.n_cols);
-  double p_prop = postparams.logfullcondit(newq) - 0.5* arma::conv_to<double>::from(z.p.t() * //postparams.M * 
-                                                                                    z.p);//sum(z.p % z.p); 
+  double p_prop = postparams.logfullcondit(newq) - 0.5* arma::conv_to<double>::from(z.p.t() * //MM *
+                                           z.p);//sum(z.p % z.p); 
   //Rcpp::Rcout << "after:  " << p_prop << "\n";
   double p_ratio = exp(p_prop - p_orig);
   double a = 2 * (p_ratio > .5) - 1;
@@ -82,8 +278,8 @@ inline double find_reasonable_stepsize(const arma::mat& current_q, T& postparams
     
     leapfrog(z, epsilon, postparams, current_q.n_cols);
     newq = unvec(z.q, current_q.n_cols);
-    p_prop = postparams.logfullcondit(newq) - 0.5* arma::conv_to<double>::from(z.p.t() * //postparams.M * 
-                                                                               z.p);//sum(z.p % z.p); 
+    p_prop = postparams.logfullcondit(newq) - 0.5* arma::conv_to<double>::from(z.p.t() * //MM * 
+      z.p);//sum(z.p % z.p); 
     p_ratio = exp(p_prop - p_orig);
     
     condition = (pow(p_ratio, a)*twopowera > 1.0) || std::isnan(p_ratio);
@@ -99,91 +295,7 @@ inline double find_reasonable_stepsize(const arma::mat& current_q, T& postparams
   return epsilon/2.0;
 } 
 
-// mala and rm-mala
-
-template <class T>
-inline arma::mat sample_one_mala_cpp(arma::mat current_q, 
-                                     T& postparams,
-                                     AdaptE& adaptparams, 
-                                     const arma::mat& rnorm_mat,
-                                     const double& runifvar,
-                                     bool rm=true, bool adapt=true,
-                                     bool gibbs = false, bool debug=false){
-  
-  
-  
-  int k = current_q.n_cols;
-  // currents
-  arma::vec xgrad;
-  double joint0, eps1, eps2;
-  arma::mat MM, Minvchol, Minv;
-  
-  if(!rm){
-    MM = arma::eye(current_q.n_elem, current_q.n_elem);
-    xgrad = postparams.compute_dens_and_grad(joint0, current_q);
-  } else {
-    MM = postparams.compute_dens_grad_neghess(joint0, xgrad, current_q);
-  }
-  
-  if(adapt & (!gibbs)){
-    eps2 = pow(adaptparams.eps, 2.0);
-    eps1 = adaptparams.eps;
-  } else {
-    eps2 = 2;// * adaptparams.eps;
-    eps1 = 1;// * adaptparams.eps;
-  }
-  
-  try {
-    Minvchol = arma::inv(arma::trimatl(arma::chol(arma::symmatu(MM), "lower")));
-  } catch(...) {
-    MM = arma::eye(current_q.n_elem, current_q.n_elem);
-    Minvchol = MM;
-  }
-  Minv = eps2 * 0.5 * Minvchol.t() * Minvchol;
-  
-  if(xgrad.has_inf() || std::isnan(joint0)){
-    adaptparams.alpha = 0.0;
-    adaptparams.n_alpha = 1.0;
-    adaptparams.adapt_step();
-    return current_q;
-  }
-  
-  arma::vec veccurq = arma::vectorise(current_q);
-  arma::vec proposal_mean = veccurq + Minv * xgrad;// / max(eps2, arma::norm(xgrad));
-  
-  // proposal value
-  arma::vec p = arma::vectorise(rnorm_mat); //arma::randn(current_q.n_elem);  
-  arma::vec q = proposal_mean + eps1 * Minvchol.t() * p;
-  arma::mat qmat = arma::mat(q.memptr(), q.n_elem/k, k);
-
-  // proposal
-  double joint1; // = postparams.logfullcondit(qmat);
-  arma::vec revgrad = postparams.compute_dens_and_grad(joint1, qmat);
-  
-  if(revgrad.has_inf() || std::isnan(joint1) || std::isinf(joint1)){
-    adaptparams.alpha = 0.0;
-    adaptparams.n_alpha = 1.0;
-    adaptparams.adapt_step();
-    return current_q;
-  }
-  
-  arma::vec reverse_mean = q + Minv * revgrad;// / max(eps2, arma::norm(revgrad));;
-  double prop0to1 = -.5/(eps1*eps1) * arma::conv_to<double>::from(
-    (q - proposal_mean).t() * MM * (q - proposal_mean) );
-  double prop1to0 = -.5/(eps1*eps1) * arma::conv_to<double>::from(
-    (veccurq - reverse_mean).t() * MM * (veccurq - reverse_mean) );
-  adaptparams.alpha = std::min(1.0, exp(joint1 + prop1to0 - joint0 - prop0to1));
-  adaptparams.n_alpha = 1.0;
-  if(runifvar < adaptparams.alpha){ 
-    current_q = qmat;
-  }
-  adaptparams.adapt_step();
-  return current_q;
-}
-
-
 // nuts
-
 struct nuts_util {
   // Constants through each recursion
   double log_u; // uniform sample
@@ -231,11 +343,11 @@ inline int BuildTree(pq_point& z, pq_point& z_propose,
   
   // Base case - take a single leapfrog step in the direction v
   if(depth == 0){
-    leapfrog(z, epsilon, postparams, k);
+    leapfrog(z, util.sign * epsilon, postparams, k);
     //leapfrog(z, util.sign * epsilon, postparams);
     
     arma::mat newq = unvec(z.q, k);
-    float joint = postparams.logfullcondit(newq) - 0.5* arma::conv_to<double>::from(z.p.t() * //postparams.M * 
+    float joint = postparams.logfullcondit(newq) - 0.5* arma::conv_to<double>::from(z.p.t() * //MM *
                                                                               z.p);//sum(z.p % z.p); 
     
     int valid_subtree = (util.log_u <= joint);    // Is the new point in the slice?
@@ -274,7 +386,7 @@ inline int BuildTree(pq_point& z, pq_point& z_propose,
   double n_alpha_prime2=0;
   int n2 = BuildTree(z, z_propose_right, p_sharp_dummy, p_sharp_right, 
                      rho_right, util, depth-1, epsilon, postparams, 
-                     alpha_prime2, n_alpha_prime2, joint_zero, k);
+                     alpha_prime2, n_alpha_prime2, joint_zero,  k);
   
   // Choose which subtree to propagate a sample up from.
   double accept_prob = static_cast<double>(n2) / std::max((n1 + n2), 1); // avoids 0/0;
@@ -298,18 +410,18 @@ inline int BuildTree(pq_point& z, pq_point& z_propose,
 }
 
 template <class T>
-inline arma::mat sample_one_nuts_cpp(arma::mat current_q, 
+inline arma::mat nuts_cpp(arma::mat current_q, 
                                      T& postparams,
                                      AdaptE& adaptparams){
-  
+
   
   int ksize = current_q.n_cols;
   int K = current_q.n_elem;
   //int F = W.n_rows;
-  int MAXDEPTH = 7;
+  int MAXDEPTH = 6;
   
   //arma::mat h_n_samples(K, iter);   // traces of p
-  arma::vec p0 = //postparams.Michol * 
+  arma::vec p0 = //Minvchol.t() *
     arma::randn(K);                  // initial momentum
   //current_q = log(current_q); 		// Transform to unrestricted space
   //h_n_samples.col(1) = current_q;
@@ -344,7 +456,7 @@ inline arma::mat sample_one_nuts_cpp(arma::mat current_q,
   //Rcpp::Rcout << "sample_one_nuts_cpp: \n";
   double current_logpost = postparams.logfullcondit(current_q);
   ///Rcpp::Rcout << "starting from: " << current_logpost << "\n";
-  double joint = current_logpost - 0.5* arma::conv_to<double>::from(z.p.t() * //postparams.M * 
+  double joint = current_logpost - 0.5* arma::conv_to<double>::from(z.p.t() * //MM *
                                                                     z.p);//sum(z.p % z.p); 
   
   // Slice variable
@@ -382,13 +494,13 @@ inline arma::mat sample_one_nuts_cpp(arma::mat current_q,
       z.pq_point::operator=(z_minus);
       n_valid_subtree = BuildTree(z, z_propose, p_sharp_dummy, p_sharp_plus, rho_subtree, 
                                   util, depth_, adaptparams.eps, postparams, 
-                                  adaptparams.alpha, adaptparams.n_alpha, joint, ksize);
+                                  adaptparams.alpha, adaptparams.n_alpha, joint,  ksize);
       z_plus.pq_point::operator=(z);
     } else {  
       z.pq_point::operator=(z_plus);
       n_valid_subtree = BuildTree(z, z_propose, p_sharp_dummy, p_sharp_minus, rho_subtree, 
                                   util, depth_, adaptparams.eps, postparams, 
-                                  adaptparams.alpha, adaptparams.n_alpha, joint, ksize);
+                                  adaptparams.alpha, adaptparams.n_alpha, joint,  ksize);
       z_minus.pq_point::operator=(z);
     }
     ++depth_;  // Increment depth.
@@ -399,11 +511,9 @@ inline arma::mat sample_one_nuts_cpp(arma::mat current_q,
       double subtree_prob = std::min(1.0, static_cast<double>(n_valid_subtree)/n_valid);
       //Rcpp::RNGScope scope;
       if(R::runif(0, 1) < subtree_prob){ 
-        
         arma::mat newq = unvec(z_propose.q, ksize);
-        
         current_q = newq; // Accept proposal
-      }
+      } 
     }
     
     // Update number of valid points we've seen.
@@ -419,9 +529,6 @@ inline arma::mat sample_one_nuts_cpp(arma::mat current_q,
   
   // adapting
   adaptparams.adapt_step();
-  
-  //current_logpost = loglike_cpp(current_q, postparams);
-  //Rcpp::Rcout << "ending with: " << current_logpost << "\n";
   
   return current_q;
 }
@@ -462,8 +569,12 @@ inline arma::mat newton_step(arma::mat current_q,
   
   arma::vec veccurq = arma::vectorise(current_q);
 
-  arma::vec q = veccurq + eps * Minv * xgrad;
+  arma::vec q = veccurq + 0.2 * Minv * xgrad;
   arma::mat qmat = arma::mat(q.memptr(), q.n_elem/k, k);
+  
+  
+  
+  
   
   return qmat;
 }

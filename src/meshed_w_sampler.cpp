@@ -5,8 +5,10 @@ using namespace std;
 void Meshed::deal_with_w(MeshDataLMC& data, bool sample){
   if(sample){
     // ensure this is independent on the number of threads being used
+    Rcpp::RNGScope scope;
     rand_norm_mat = mrstdnorm(coords.n_rows, k);
     rand_unif = vrunif(n_blocks);
+    rand_unif2 = vrunif(n_blocks);
   }
 
   if(w_do_hmc){
@@ -14,7 +16,6 @@ void Meshed::deal_with_w(MeshDataLMC& data, bool sample){
   } else {
     gaussian_w(data, sample);
   }
-  
 }
   
 void Meshed::update_block_w_cache(int u, MeshDataLMC& data){
@@ -116,8 +117,7 @@ void Meshed::gaussian_w(MeshDataLMC& data, bool sample=true){
   if(verbose & debug){
     Rcpp::Rcout << "[gibbs_sample_w] " << "\n";
   }
-  //Rcpp::Rcout << "Lambda from:  " << Lambda_orig(0, 0) << " to  " << Lambda(0, 0) << endl;
-  
+
   start_overall = std::chrono::steady_clock::now();
   
   for(int g=0; g<n_gibbs_groups; g++){
@@ -192,7 +192,6 @@ void Meshed::gaussian_w(MeshDataLMC& data, bool sample=true){
       } 
     }
   }
-  
   
   LambdaHw = w * Lambda.t();
   
@@ -293,12 +292,14 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
         
         // adapting eps
         hmc_eps_adapt.at(u).step();
+        
         if((hmc_eps_started_adapting(u) == 0) & (hmc_eps_adapt.at(u).i==10) & sample){
           // wait a few iterations before starting adaptation
           //message("find reasonable");
           hmc_eps(u) = find_reasonable_stepsize(w_current, w_node.at(u), rand_norm_mat.rows(indexing(u)));
           //message("found reasonable");
-          AdaptE new_adapting_scheme(hmc_eps(u), 1e6);
+          int blocksize = indexing(u).n_elem * k;
+          AdaptE new_adapting_scheme(hmc_eps(u), blocksize, w_hmc_srm, w_hmc_nuts, 1e4);
           hmc_eps_adapt.at(u) = new_adapting_scheme;
           hmc_eps_started_adapting(u) = 1;
         }
@@ -307,21 +308,29 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
         bool do_gibbs = arma::all(familyid == 0);
         arma::mat w_temp = w_current;
          
+         
         if(sample){
-          if(!w_hmc_nuts){
-            w_temp = sample_one_mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u), 
+          if(which_hmc == 1){
+            // mala
+            w_temp = mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
                                          rand_norm_mat.rows(indexing(u)),
-                                         rand_unif(u),
-                                         w_hmc_rm, true, 
-                                         do_gibbs, // gibbs
-                                         false);
-            
-          } else {
-            w_temp = sample_one_nuts_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u)); 
+                                         rand_unif(u), true, debug);
+          }
+          if((which_hmc == 3) || (which_hmc == 4)){
+            // some form of manifold mala
+            w_temp = manifmala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
+                                         rand_norm_mat.rows(indexing(u)),
+                                         rand_unif(u), rand_unif2(u),
+                                         true, debug);
+          }
+          if(which_hmc == 2){
+            // nuts
+            w_temp = nuts_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u)); 
           }
         } else {
           w_temp = newton_step(w_current, w_node.at(u), hmc_eps_adapt.at(u), 1, false);
         }
+        
         
         end = std::chrono::steady_clock::now();
         
@@ -336,6 +345,8 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
               arma::mat wtemp = arma::sum(arma::trans(data.Hproject(u).slice(ix) % arma::trans(w.rows(indexing(u)))), 0);
               
               w.row(indexing_obs(u)(ix)) = wtemp;
+              // unlike the gaussian case, here we dont sample wU because we dont do MPP
+              // so wU is Hw
               wU.row(indexing_obs(u)(ix)) = wtemp;
               //LambdaHw.row(indexing_obs(u)(ix)) = w.row(indexing_obs(u)(ix)) * Lambda.t();
             }
@@ -505,6 +516,10 @@ void Meshed::predicty(bool sample){
       arma::vec aa = tausq_inv(j) * mu;
       arma::vec bb = tausq_inv(j) * (1.0-mu);
       yhat.col(j) = vrbeta(aa, bb);
+    } else if(familyid(j) == 4){
+      arma::vec muvec = exp(linear_predictor.col(j));
+      double alpha = 1.0/tausq_inv(j); 
+      yhat.col(j) = vrnb(muvec, alpha);
     }
   }
 }

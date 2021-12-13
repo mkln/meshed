@@ -1,7 +1,7 @@
 Package: meshed
 Type: Package
 Title: Bayesian Regression with Meshed Gaussian Processes
-Version: 0.1.4
+Version: 0.2
 Date: 2021-10-06
 Author: Michele Peruzzi
 Maintainer: Michele Peruzzi <michele.peruzzi@duke.edu>

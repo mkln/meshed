@@ -45,10 +45,7 @@ void Meshed::metrop_theta(){
   
   if(acceptable){
     new_loglik = alter_data.loglik_w;
-    
-    //double before_loglik = param_data.loglik_w;
-    
-    acceptable = get_loglik_comps_w( param_data );
+    //acceptable = get_loglik_comps_w( param_data );
     
     current_loglik = param_data.loglik_w;
     
@@ -78,8 +75,8 @@ void Meshed::metrop_theta(){
     param_data.theta = theta_proposal;
     
     if(debug & verbose){
-      Rcpp::Rcout << "log accept. " << logaccept << " : " << new_loglik << " " << current_loglik << 
-        " " << prior_logratio << " " << jacobian << "s\n";
+      Rcpp::Rcout << "[theta] accepted (log accept. " << logaccept << " : " << new_loglik << " " << current_loglik << 
+        " " << prior_logratio << " " << jacobian << ")\n";
     }
   } else {
     if(debug & verbose){

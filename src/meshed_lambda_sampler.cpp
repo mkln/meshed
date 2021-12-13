@@ -188,10 +188,8 @@ void Meshed::sample_hmc_Lambda(){
   
   start = std::chrono::steady_clock::now();
   
-  // new with botev's 2017 method to sample from truncated normal
-
   arma::vec lambda_runif = vrunif(q);
-  
+  arma::vec lambda_runif2 = vrunif(q);
   for(unsigned int j=0; j<q; j++){
     arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
     if(familyid(j) == 0){
@@ -231,14 +229,15 @@ void Meshed::sample_hmc_Lambda(){
         
         double lambda_eps = find_reasonable_stepsize(curLrow, lambda_node.at(j), rnorm_row);
         //Rcpp::Rcout << "adapting scheme starting " << endl;
-        AdaptE new_adapting_scheme(lambda_eps, 1e6);
+        AdaptE new_adapting_scheme(lambda_eps, k, w_hmc_srm, w_hmc_nuts, 1e4);
         lambda_hmc_adapt.at(j) = new_adapting_scheme;
         lambda_hmc_started(j) = 1;
         //Rcpp::Rcout << "done initiating adapting scheme" << endl;
       }
       
       
-      arma::vec sampled = sample_one_mala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), rnorm_row, lambda_runif(j), true, true, debug); 
+      arma::vec sampled = manifmala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                         rnorm_row, lambda_runif(j), lambda_runif2(j), true, debug); 
       
       Lambda.submat(oneuv*j, subcols) = sampled.t();
       

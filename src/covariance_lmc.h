@@ -23,7 +23,7 @@ struct MaternParams {
 arma::mat matern(const arma::mat& x, const arma::mat& y, const double& phi, const double& nu, double * bessel_ws, bool same);
 
 void gneiting2002_inplace(arma::mat& res, const arma::mat& coords, const arma::uvec& ix, const arma::uvec& iy, 
-                       const double& a, const double& c, const double& beta, const double& sigmasq, bool same=false);
+                       const double& a, const double& c, const double& beta, const double& sigmasq, const double& nu, bool same=false);
 
 void kernelp_inplace(arma::mat& res,
                      const arma::mat& Xcoords, const arma::uvec& ind1, const arma::uvec& ind2, 

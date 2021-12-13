@@ -32,9 +32,9 @@ public:
   void step();
   bool adapting();
   void adapt_step();
-  bool use_C_const();
+  bool use_C_const(double);
   void weight_average_C_temp(arma::mat&);
-  void update_C_const(const arma::mat&);
+  void update_C_const(const arma::mat&, const arma::mat&);
   void get_C_const();
 };
 
@@ -61,18 +61,42 @@ inline AdaptE::AdaptE(double eps0, int size, bool rm_warmup=true, bool nuts=fals
   adapt_C = rm_warmup;
   i_C_adapt = 2000;
   n = size;
+
   if(adapt_C){
-    C_const = arma::zeros(n, n);
+    C_const = arma::eye(n, n);
     //Cinv_const = C_const;
     Ccholinv_const = C_const;
     sweight = arma::accu(pow(arma::regspace<arma::vec>(1, i_C_adapt), 2.0));
   }
 }
 
-inline bool AdaptE::use_C_const(){
-  return adapt_C & (i>i_C_adapt);
+inline bool AdaptE::use_C_const(double ru){
+  //return adapt_C & (i>i_C_adapt);
+  // outside of initial burn period AND not randomly adapting
+  if(adapt_C){
+    double T = 500.0;
+    double kappa = 0.33;
+    return (i > T) & (ru > pow(i-T, -kappa));  
+  } else {
+    return false;
+  }
+  
 }
 
+
+inline void AdaptE::update_C_const(const arma::mat& M, const arma::mat& Minvchol){
+  C_const = M;//C_const + gamma * (M - C_const);
+  Ccholinv_const = Minvchol;//arma::inv(arma::trimatl(arma::chol(arma::symmatu(C_const), "lower")));
+}
+
+inline void AdaptE::weight_average_C_temp(arma::mat& M){
+  if(adapt_C){
+    double gamma = 1.0/100.0;
+    M = C_const + gamma * (M - C_const);  
+  }
+}
+
+/*
 inline void AdaptE::update_C_const(const arma::mat& M){
   if(adapt_C){
     if(i <= i_C_adapt){
@@ -87,6 +111,7 @@ inline void AdaptE::update_C_const(const arma::mat& M){
     }
   }
 }
+
 inline void AdaptE::weight_average_C_temp(arma::mat& M){
   // returns a weighted average of the input matrix and the current C_const
   // based on the current weight schedule
@@ -100,7 +125,7 @@ inline void AdaptE::weight_average_C_temp(arma::mat& M){
     } 
   } 
 }
-
+*/
 
 inline void AdaptE::step(){
   i++;

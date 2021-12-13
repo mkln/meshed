@@ -106,7 +106,7 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
     # family id 
     family <- if(length(family)==1){rep(family, q)} else {family}
     family_in <- data.frame(family=family)
-    available_families <- data.frame(id=0:3, family=c("gaussian", "poisson", "binomial", "beta"))
+    available_families <- data.frame(id=0:4, family=c("gaussian", "poisson", "binomial", "beta", "negbinomial"))
     family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %>% pull(.data$id)
     
     latent <- "gaussian"

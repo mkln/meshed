@@ -16,6 +16,7 @@ void Meshed::hmc_sample_beta(bool sample){
   
   arma::mat bmat = mrstdnorm(p, q);
   arma::vec bunifv = vrunif(q);
+  arma::vec bunifv2 = vrunif(q);
   
   arma::mat LHW = wU * Lambda.t();
   
@@ -48,19 +49,19 @@ void Meshed::hmc_sample_beta(bool sample){
         //Rcpp::Rcout << "reasonable stepsize " << endl;
         double beta_eps = find_reasonable_stepsize(Bcoeff.col(j), beta_node.at(j), bmat.cols(oneuv * j));
         //Rcpp::Rcout << "adapting scheme starting " << endl;
-        AdaptE new_adapting_scheme(beta_eps, 1e6);
+        AdaptE new_adapting_scheme(beta_eps, p, w_hmc_srm, w_hmc_nuts, 1e4);
         beta_hmc_adapt.at(j) = new_adapting_scheme;
         beta_hmc_started(j) = 1;
         //Rcpp::Rcout << "done initiating adapting scheme" << endl;
       }
       
       if(sample){
-        Bcoeff.col(j) = sample_one_mala_cpp(Bcoeff.col(j), beta_node.at(j), beta_hmc_adapt.at(j), bmat.cols(oneuv * j), bunifv(j),
-                   true, true, false, false); 
+        Bcoeff.col(j) = manifmala_cpp(Bcoeff.col(j), beta_node.at(j), 
+                   beta_hmc_adapt.at(j), bmat.cols(oneuv * j), bunifv(j), bunifv2(j),
+                   true, false); 
       } else {
         //Bcoeff.col(j) = newton_step(Bcoeff.col(j), beta_node.at(j), beta_hmc_adapt.at(j), 1, true);
         Bcoeff.col(j) = irls_step(Bcoeff.col(j), beta_node.at(j).y, beta_node.at(j).X, beta_node.at(j).offset, Vi, familyid(j));
-      
       }
       
     }

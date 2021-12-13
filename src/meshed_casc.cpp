@@ -9,7 +9,7 @@
 Rcpp::List meshed_casc(
     const arma::mat& y, 
     const arma::uvec& family,
-    
+    const int k,
     const arma::mat& X, 
     
     const arma::mat& coords, 
@@ -19,7 +19,6 @@ Rcpp::List meshed_casc(
     
     const arma::vec& layer_names,
     const arma::vec& layer_gibbs_group,
-    
     
     const arma::field<arma::uvec>& indexing,
     const arma::field<arma::uvec>& indexing_obs,
@@ -31,9 +30,9 @@ Rcpp::List meshed_casc(
     const arma::mat& start_w,
     const arma::mat& lambda_values,
     const arma::umat& lambda_mask,
-    const arma::mat& theta_values,
+    const arma::field<arma::mat>& theta_values,
     const arma::mat& beta,
-    const arma::vec& tausq_values,
+    const arma::mat& tausq_values,
     
     int maxit = 1000,
     int num_threads = 1,
@@ -69,31 +68,34 @@ Rcpp::List meshed_casc(
   bool printall = print_every == 1;
   bool verbose_mcmc = printall;
   
-  //int n = coords.n_rows;
-  //int d = coords.n_cols;
-  //int q  = y.n_cols;
-  int k = 1; // univariate process only
-    
-  int n_alts = theta_values.n_cols;
+  int n = coords.n_rows;
+  int d = coords.n_cols;
+  int q  = y.n_cols;
+
+  int n_alts = theta_values.n_elem;
   
   arma::mat wllsave = arma::zeros(maxit, n_alts);
   
-  arma::mat beta_map = arma::zeros(X.n_cols, n_alts);
-  arma::mat w_map = arma::zeros(y.n_rows, n_alts);
-  arma::mat lp_map = arma::zeros(y.n_rows, n_alts);
-  arma::mat yhat_map = arma::zeros(y.n_rows, n_alts);
+  arma::cube beta_map = arma::zeros(X.n_cols, q, n_alts);
+  arma::cube v_map = arma::zeros(n, k, n_alts);
+  arma::cube w_map = arma::zeros(n, q, n_alts);
+  arma::cube lambda_map = arma::zeros(q, k, n_alts);
+  arma::cube lp_map = arma::zeros(n, q, n_alts);
+  arma::cube yhat_map = arma::zeros(n, q, n_alts);
   
   
   arma::vec unused_tausq_ab;
   arma::mat unused_mcmcsd, unused_unifbounds;
   bool unused_adapting=false;
+  int unused_hmc = 0;
   bool use_ps = false;
   bool acceptable=true;
   
-  arma::mat start_lambda = arma::ones(1,1);
-  arma::mat start_theta = theta_values.col(0);
-  arma::vec start_tausqi = 1.0/tausq_values.subvec(0, 0);
+  arma::mat start_lambda = lambda_values;
+  arma::mat start_theta = theta_values(0);
+  arma::vec start_tausqi = 1.0/tausq_values.col(0);
   
+  bool verbose_msp = verbose & debug;
   Meshed msp(y, family,
              X, coords, k,
              parents, children, layer_names, layer_gibbs_group,
@@ -105,11 +107,13 @@ Rcpp::List meshed_casc(
              
              beta_Vi, 
              
-             unused_tausq_ab, unused_adapting,
+             unused_tausq_ab, 
+             unused_hmc,
+             unused_adapting,
              unused_mcmcsd, unused_unifbounds,
              
              use_cache, forced_grid, use_ps,
-             verbose, debug, num_threads);
+             verbose_msp, debug, num_threads);
   
 
   //bool acceptable = false;
@@ -126,10 +130,10 @@ Rcpp::List meshed_casc(
     int m=0;
     
     // set theta and tausq
-    arma::mat theta_here = theta_values.col(i);
+    arma::mat theta_here = theta_values(i);
     msp.param_data.theta = theta_here;
     
-    msp.tausq_inv = 1.0/tausq_values.subvec(i, i);
+    msp.tausq_inv = 1.0/tausq_values.col(i);
     
     if(maxit > 0){
       acceptable = msp.get_loglik_comps_w( msp.param_data );
@@ -139,24 +143,20 @@ Rcpp::List meshed_casc(
     for(m=0; (m<maxit) & keep_running; m++){
       msp.predicting = false;
       
-      
-      //for(int s=0; s<500; s++){
-        if(casc_w){
-          start = std::chrono::steady_clock::now();
-          msp.deal_with_w(msp.param_data, false);
-          end = std::chrono::steady_clock::now();
-          if(verbose_mcmc & verbose){
-            Rcpp::Rcout << "[w] "
-                        << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
-          }
+      if(casc_w){
+        start = std::chrono::steady_clock::now();
+        msp.deal_with_w(msp.param_data, false);
+        end = std::chrono::steady_clock::now();
+        if(verbose_mcmc & verbose){
+          Rcpp::Rcout << "[w] "
+                      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
         }
-      //}
-      
-      
-      //for(int s=0; s<100; s++){
+      }
+        
       if(casc_beta){
         start = std::chrono::steady_clock::now();
-        msp.deal_with_beta(false);
+        //msp.deal_with_beta(false);
+        msp.deal_with_BetaLambdaTau(msp.param_data, false, false, false, false); // false = no sample
         //
         end = std::chrono::steady_clock::now();
         if(verbose_mcmc & verbose){
@@ -164,10 +164,10 @@ Rcpp::List meshed_casc(
                       << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n"; 
         }
       }
-      //}
+      
       if(true){
         start = std::chrono::steady_clock::now();
-        msp.logpost_refresh_after_gibbs(msp.param_data);
+        msp.logpost_refresh_after_gibbs(msp.param_data, false);
         end = std::chrono::steady_clock::now();
         if(verbose_mcmc & verbose){
           Rcpp::Rcout << "[logpost_refresh_after_gibbs] " 
@@ -188,7 +188,8 @@ Rcpp::List meshed_casc(
       
       
       wllsave(m, i) = msp.param_data.loglik_w;
-      if(abs(current_loglik - wllsave(m, i)) < 1e-6){
+      
+      if(abs((current_loglik - wllsave(m, i))/wllsave(m, i)) < 1e-5){
         keep_running = false;
       } else {
         current_loglik = wllsave(m, i);
@@ -207,14 +208,14 @@ Rcpp::List meshed_casc(
       }
     }
     
-    beta_map.col(i) = msp.Bcoeff;
-    
-    
-    w_map.col(i) = msp.LambdaHw;
-    lp_map.col(i) = msp.linear_predictor;
+    beta_map.slice(i) = msp.Bcoeff;
+    v_map.slice(i) = msp.w;
+    w_map.slice(i) = msp.LambdaHw;
+    lambda_map.slice(i) = msp.Lambda;
+    lp_map.slice(i) = msp.linear_predictor;
     Rcpp::RNGScope scope;
     msp.predicty(false);
-    yhat_map.col(i) = msp.yhat;
+    yhat_map.slice(i) = msp.yhat;
     
     end_all = std::chrono::steady_clock::now();
     double comp_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_all - start_all).count();
@@ -235,7 +236,9 @@ Rcpp::List meshed_casc(
   return Rcpp::List::create(
     Rcpp::Named("yhat_map") = yhat_map,
     Rcpp::Named("beta_map") = beta_map,
+    Rcpp::Named("lambda_map") = lambda_map,
     Rcpp::Named("w_map") = w_map,
+    Rcpp::Named("v_map") = v_map,
     Rcpp::Named("lp_map") = lp_map,
     Rcpp::Named("w_logdens") = wllsave
   );

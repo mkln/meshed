@@ -49,83 +49,11 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
                     << aparam << " : " << bparam << " " << bcore << " --> " << 1.0/tausq_inv(j)
                     << "\n";
       }
-    } else if(familyid(j) == 3){
-      
-      
-      betareg_tausq_adapt.at(j).count_proposal();
-      Rcpp::RNGScope scope;
-      
-      arma::vec one = arma::ones(1);
-      arma::vec U_update = one * R::rnorm(0, 1);
-      
-      arma::vec new_tsqiv = 
-        par_huvtransf_back(par_huvtransf_fwd(one*tausq_inv(j), tausq_unif_bounds.rows(oneuv * j)) + 
-        betareg_tausq_adapt.at(j).paramsd * U_update, tausq_unif_bounds.rows(oneuv * j));
-      
-      double new_tsqi = new_tsqiv(0);
-      //Rcpp::Rcout << arma::size(offsets) << " " << arma::size(XB) << " " << arma::size(LHW) << " " << arma::size(y) << endl;
-      
-      arma::vec start_logpost_vec = arma::zeros(ix_by_q_a(j).n_elem);
-      arma::vec new_logpost_vec = arma::zeros(ix_by_q_a(j).n_elem);
-      
-#ifdef _OPENMP
-#pragma omp parallel for 
-#endif
-      for(unsigned int ix=0; ix<ix_by_q_a(j).n_elem; ix++){
-        int i = ix_by_q_a(j)(ix);
-        
-        double sigmoid = 1.0/(1.0 + exp(-offsets(i, j) - XB(i, j) - LHW(i, j)));
-        
-        start_logpost_vec(ix) = betareg_logdens(y(i, j), sigmoid, tausq_inv(j));
-        new_logpost_vec(ix) = betareg_logdens(y(i, j), sigmoid, new_tsqi);
-      }
-      
-      double start_logpost = arma::accu(start_logpost_vec);
-      double new_logpost = arma::accu(new_logpost_vec);
-      
-      double prior_logratio = 0;
-      
-      if(aprior != 0){
-        // for(int i=0; i<q; i++){
-        //   prior_logratio += aprior * 
-        //     (- log(new_tausq(i)) - log(tausq_inv(i)));
-        // }
-        
-        prior_logratio = calc_prior_logratio(one * new_tsqi, one * tausq_inv(j), aprior, bprior);
-      }
-      
-      if(std::isnan(prior_logratio)){
-        Rcpp::Rcout << "NaN value from prior on tausq: a=" << aprior << " b=" << bprior << endl;
-        Rcpp::stop("Terminated.");
-      }
-      
-      double jacobian  = calc_jacobian(one * new_tsqi, one * tausq_inv(j), tausq_unif_bounds.rows(oneuv * j));
-      double logaccept = new_logpost - start_logpost + 
-        prior_logratio +
-        jacobian;
-      // 
-      // Rcpp::Rcout << "new: " << new_logpost << " old " << start_logpost << endl;
-      // 
-      // // 
-      // Rcpp::Rcout << "new " << new_tsqi << " vs " << tausq_inv(j) << endl
-      //             << tausq_unif_bounds << endl
-      //             << prior_logratio << endl
-      //             << jacobian << endl;
-      // 
-      bool accepted = do_I_accept(logaccept);
-      if(accepted){
-        betareg_tausq_adapt.at(j).count_accepted();
-        // make the move
-        tausq_inv(j) = new_tsqi;
-      } 
-      
-      betareg_tausq_adapt.at(j).update_ratios();
-      betareg_tausq_adapt.at(j).adapt(U_update, exp(logaccept), brtausq_mcmc_counter(j)); 
-      brtausq_mcmc_counter(j) ++;
     }
   }
   
-  if(arma::any(familyid == 3)){
+  /*
+  if(arma::any(familyid == 3) || arma::any(familyid == 4)){
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
@@ -141,8 +69,9 @@ void Meshed::gibbs_sample_tausq_std(bool ref_pardata){
       arma::accu(alter_data.loglik_w_comps) + arma::accu(alter_data.ll_y); //***
     param_data.loglik_w = arma::accu(param_data.logdetCi_comps) + 
       arma::accu(param_data.loglik_w_comps) + arma::accu(param_data.ll_y); //***
+    
   }
-  
+  */
   
   if(verbose & debug){
     end = std::chrono::steady_clock::now();

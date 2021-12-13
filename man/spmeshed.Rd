@@ -16,12 +16,12 @@ spmeshed(y, x, coords, k=NULL,
        verbose = 0,
        predict_everywhere = FALSE,
        settings = list(adapting=TRUE, forced_grid=NULL, 
-                          cache=NULL, ps=TRUE, saving=TRUE),
+                          cache=NULL, ps=TRUE, saving=TRUE, low_mem=FALSE),
        prior = list(beta=NULL, tausq=NULL, sigmasq = NULL,
-                          phi=NULL, nu = NULL,
+                          phi=NULL, a=NULL, nu = NULL,
                           toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
-       starting = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, w=NULL, 
-                       nu = NULL,
+       starting = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, v=NULL, 
+                       a=NULL, nu = NULL,
                        mcmcsd=.05, 
                        mcmc_startfrom=0),
        debug = list(sample_beta=TRUE, sample_tausq=TRUE, 
@@ -65,9 +65,9 @@ This parameter is ignored if \code{settings$forced_grid=FALSE} in which case the
 
 \item{predict_everywhere}{bool used if settings$forced_grid=T. Should predictions be made at the reference grid locations? If not, predictions will be made only at the supplied NA values of Y.}
 
-\item{settings}{list: \code{settings$adapting} turns the adaptation of MCMC on/off, \code{settings$forced_grid} determines whether or not to use the data grid or a forced grid; if unspecified, the function will try to see what the data look like. Note: if \code{forced_grid=FALSE} and \eqn{n} is very large and \eqn{coords} are irregularly spaced, then expect slowdowns in preprocessing and consider using \code{forced_grid=TRUE} instead. \code{settings$saving} will save model data if set to \code{TRUE} and MCMC can be automatically restarted using \code{spmeshed_restart}. \code{settings$ps} (default \code{TRUE}) determines whether to use the PS parametrization (Peruzzi et al 2021).}
+\item{settings}{list: \code{settings$adapting} turns the adaptation of MCMC on/off, \code{settings$forced_grid} determines whether or not to use the data grid or a forced grid; if unspecified, the function will try to see what the data look like. Note: if \code{forced_grid=FALSE} and \eqn{n} is very large and \eqn{coords} are irregularly spaced, then expect slowdowns in preprocessing and consider using \code{forced_grid=TRUE} instead. \code{settings$saving} will save model data if set to \code{TRUE}. \code{settings$low_mem} will only save \code{beta_mcmc}, \code{lambda_mcmc}, \code{v_mcmc}, \code{tausq_mcmc} (and not \code{w_mcmc} and \code{lp_mcmc}, which can be recovered from the others), thereby using less memory. All fitted predictions remain available in \code{yhat_mcmc} for convenience. \code{settings$ps} (default \code{TRUE}) determines whether to use the PS parametrization (Peruzzi et al 2021). \code{settings$hmc}, used if any outcome is not Gaussian, (1: MALA, 2: NUTS, 3: RM-MALA, 4: (default) Simplified RM-MALA)}
 
-\item{prior}{list: setup for priors of unknown parameters. There is currently limited functionality here and some inputs are currently ignored. Defaults are: a vague Gaussian for \eqn{\beta}, \eqn{\tau^2_i \sim IG(2,1)}, \eqn{\theta_j \sim IG(2,2)}, all subject to change.}
+\item{prior}{list: setup for priors of unknown parameters. \code{prior$phi} needs to be specified as the support of the Uniform prior for \eqn{\phi}. There is currently limited functionality here and some inputs are currently ignored. Defaults are: a vague Gaussian for \eqn{\beta}, \eqn{\tau^2_i \sim IG(2,1)}, \eqn{\theta_j \sim IG(2,2)}, all subject to change.}
 
 \item{starting}{list: setup for starting values of unknown parameters. \code{starting$mcmcsd} is the initial standard deviation of proposals. \code{starting$mcmc_startfrom} is input to the adaptive MCMC and can be used to manually restart MCMC without \code{spmeshed_restart}. There is currently limited functionality here and some parameters may be ignored.}
 
@@ -90,7 +90,7 @@ where \eqn{y(s)} is a \eqn{q}-dimensional vector of outcomes at spatial location
 \item{lp_mcmc}{list of length \code{n_samples} whose elements are matrices with \eqn{n + n_g} rows and \eqn{q} columns. Each matrix in the list is a posterior sample of the linear predictor \eqn{X\beta + \Lambda v}. \eqn{n_g = 0} if the data grid is being used. Given the possibly large \eqn{n}, only the thinned chain is output for \eqn{w}.}
 \item{beta_mcmc}{array of size \code{(p, q, n_thin*n_samples)} with the posterior sample for the static regression coefficients \eqn{\beta}. The \eqn{j}th column of each matrix (\eqn{p} rows and \eqn{q} columns) corresponds to the \eqn{p} linear effects on the \eqn{j}th outcome. The full chain minus burn-in is returned NOT thinned since \code{p} and \code{q} are relatively small.}
 \item{tausq_mcmc}{matrix of size \code{(q, n_thin*n_samples)}. Each row corresponds to the full MCMC chain for the nugget \eqn{\tau^2_j} of the \eqn{j}th outcome in the coregionalization/factor model. The full chain minus burn-in is returned NOT thinned since \code{q} is relatively small.}
-\item{theta_mcmc}{array of size \code{(h, k, n_thin*n_samples)} with the posterior sample for the correlation function parameters \eqn{\theta}. \code{h} is 2 for spatial data (corresponding to the spatial decay of the exponential covariance (\eqn{\phi_i, i=1, \dots, k}), and the variance \eqn{\sigma^2_i, i=1, \dots, k}), 4 for spacetime data (corresponding to temporal decay, spatial decay, and separability -- these are referred to as \eqn{a_i}, \eqn{c_i}, and \eqn{\beta_i, i=1, \dots, k}, in Gneiting (2002), see \doi{10.1198/016214502760047113}, plus the variance \eqn{\sigma^2, i=1, \dots, k}). The full chain minus burn-in is returned NOT thinned since \code{h} and \code{k} are relatively small. If \code{settings$ps=TRUE}, the MCMC output for \eqn{\sigma^2_i} (last row of \code{theta_mcmc}) should be discarded and \eqn{\Lambda} used instead.}
+\item{theta_mcmc}{array of size \code{(h, k, n_thin*n_samples)} with the posterior sample for the correlation function parameters \eqn{\theta}. \code{h} is 2 for spatial data (corresponding to the spatial decay of the exponential covariance (\eqn{\phi_i, i=1, \dots, k}), and the variance \eqn{\sigma^2_i, i=1, \dots, k}), 4 for spacetime data (corresponding to temporal decay, spatial decay, and separability -- these are referred to as \eqn{a_i}, \eqn{\phi_i}, and \eqn{\beta_i, i=1, \dots, k}, in Gneiting (2002), see \doi{10.1198/016214502760047113}, plus the variance \eqn{\sigma^2, i=1, \dots, k}). The full chain minus burn-in is returned NOT thinned since \code{h} and \code{k} are relatively small. If \code{settings$ps=TRUE}, the MCMC output for \eqn{\sigma^2_i} (last row of \code{theta_mcmc}) should be discarded and \eqn{\Lambda} used instead.}
 \item{lambda_mcmc}{array of size \code{(q, k, n_thin*n_samples)}. Each matrix (of size \eqn{(q,k)}) is a posterior sample for \eqn{\Lambda} in the coregionalization/factor model. In univariate models, this is usually called \eqn{\sigma}. The full chain minus burn-in is returned NOT thinned since \code{q} and \code{k} are relatively small.}
 \item{paramsd}{Cholesky factorization of the proposal covariance for adaptive MCMC, after adaptation.}
 \item{mcmc}{Total number of MCMC iterations performed.}

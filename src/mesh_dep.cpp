@@ -90,6 +90,7 @@ arma::ivec coloring(const arma::field<arma::uvec>& blanket, const arma::uvec& bl
       arma::ivec neighbor_colors_used = neighbor_colors(arma::find(neighbor_colors > -1));
       arma::ivec colors_available = std_setdiff(color_picker, neighbor_colors_used);
       
+      
       int choice_color = -1;
       if(colors_available.n_elem > 0){
         choice_color = arma::min(colors_available);
@@ -549,26 +550,26 @@ Rcpp::List mesh_graph_cpp(const arma::mat& layers_descr,
   );
 }
 
-
-arma::umat filter_col_smaller(const arma::umat& base_mat, int r_col_ix, int value){
-  return base_mat.rows(arma::find(base_mat.col(r_col_ix-1) < value));
-}
-
-arma::umat filter_col_greater(const arma::umat& base_mat, int r_col_ix, int value){
-  return base_mat.rows(arma::find(base_mat.col(r_col_ix-1) > value));
-}
-
-arma::umat filter_col_equal(const arma::umat& base_mat, int r_col_ix, int value){
-  return base_mat.rows(arma::find(base_mat.col(r_col_ix-1) == value));
-}
-
-arma::umat filter_cols_equal(const arma::umat& base_mat, const arma::uvec& r_col_ix, const arma::uvec& values){
-  arma::uvec all_conditions = arma::ones<arma::uvec>(base_mat.n_rows);
-  for(unsigned int j=0; j<r_col_ix.n_elem; j++){
-    all_conditions %= base_mat.col(r_col_ix(j)-1) == values(j);
+//[[Rcpp::export]]
+arma::cube cube_from_df(const arma::mat& indices, const arma::vec& values){
+  // indices: n rows, 2 or 3 columns
+  int d = indices.n_cols;
+  
+  int dimx = indices.col(0).max();
+  int dimy = indices.col(1).max();
+  int dimz = d==2? 1 : indices.col(2).max();
+  
+  arma::cube result = arma::zeros(dimx, dimy, dimz) - 1; // set to -1 values;
+  for(unsigned int i=0; i<indices.n_rows; i++){
+    int x = indices(i, 0)-1;
+    int y = indices(i, 1)-1;
+    int z = d==2 ? 0 : indices(i, 2)-1;
+    
+    result(x, y, z) = values(i);
   }
-  return base_mat.rows(arma::find(all_conditions));
+  return result;
 }
+
 
 arma::mat edist(const arma::mat& x, const arma::mat& y, const arma::vec& w, bool same){
   // 0 based indexing
@@ -608,6 +609,169 @@ arma::umat knn_naive(const arma::mat& x, const arma::mat& search_here, const arm
   return Dfound;
 }
 
+
+//[[Rcpp::export]]
+Rcpp::List mesh_graph_cpp3(const arma::mat& blocks_descr){
+  
+  int d = blocks_descr.n_cols - 2;
+  
+  arma::cube blocknames = cube_from_df(blocks_descr.cols(0, d-1), blocks_descr.col(d)-1);
+  arma::cube nonmissing_perc = cube_from_df(blocks_descr.cols(0, d-1), blocks_descr.col(d+1));
+  
+  arma::field<arma::uvec> parents(blocknames.max()+1);
+  arma::field<arma::uvec> children(blocknames.max()+1);
+  
+  for(unsigned int i=0; i<parents.n_elem; i++){
+    parents(i) = arma::zeros<arma::uvec>(4) - 1;
+    children(i) = arma::zeros<arma::uvec>(4) - 1;
+  }
+  
+  int nx = blocknames.n_rows;
+  int ny = blocknames.n_cols;
+  int nz = blocknames.n_slices;
+  
+  for( int i=0; i<nx; i++){
+    for( int j=0; j<ny; j++){
+      for( int z=0; z<nz; z++){
+        int name = blocknames(i, j, z);
+        bool not_reference = nonmissing_perc(i, j, z) == 0;
+        
+          if(i > 0){
+            bool found = false;
+            unsigned int t = 1;
+            while((!found) & (t <= i)){
+              if(nonmissing_perc(i-t, j, z) > 0){
+                int parent_name = blocknames(i-t, j, z);
+                parents(name)(0) = parent_name;
+                children(parent_name)(0) = not_reference ? -1 : name;
+                found = true;
+              } else {
+                t ++;
+              }
+            }
+            
+          }
+          if(j > 0){
+            bool found = false;
+            unsigned int t = 1;
+            while((!found) & (t <= j)){
+              if(nonmissing_perc(i, j-t, z) > 0){
+                int parent_name = blocknames(i, j-t, z);
+                parents(name)(1) = parent_name;
+                children(parent_name)(1) = not_reference ? -1 : name;
+                found = true;
+              } else {
+                t ++;
+              }
+            }
+          }
+          if((i > 0) & (j > 0)){
+            if(nonmissing_perc(i-1, j-1, z) > 0){
+              int parent_name = blocknames(i-1, j-1, z);
+              parents(name)(2) = parent_name;
+              children(parent_name)(2) = not_reference ? -1 : name;
+            } 
+          }
+          if(z > 0){
+            bool found = false;
+            unsigned int t = 1;
+            while((!found) & (t <= z)){
+              if(nonmissing_perc(i, j, z-t) > 0){
+                int parent_name = blocknames(i, j, z-t);
+                parents(name)(3) = parent_name;
+                children(parent_name)(3) = not_reference ? -1 : name;
+                found = true;
+              } else {
+                t ++;
+              }
+            }
+          }
+          
+          if(not_reference & (parents(name)(0) == -1)){
+            // search other spatial direction along x axis
+            bool found = false;
+            unsigned int t = 1;
+            while((!found) & (i+t < nx)){
+              if(nonmissing_perc(i+t, j, z) > 0){
+                int parent_name = blocknames(i+t, j, z);
+                parents(name)(0) = parent_name;
+                children(parent_name)(0) = not_reference ? -1 : name;
+                found = true;
+              } else {
+                t ++;
+              }
+            }
+          }
+          if(not_reference & (parents(name)(1) == -1)){
+            // search other spatial direction along y axis
+            bool found = false;
+            unsigned int t = 1;
+            while((!found) & (j+t < ny)){
+              if(nonmissing_perc(i, j+t, z) > 0){
+                int parent_name = blocknames(i, j+t, z);
+                parents(name)(1) = parent_name;
+                children(parent_name)(1) = not_reference ? -1 : name;
+                found = true;
+              } else {
+                t ++;
+              }
+            }
+          }
+          if(not_reference & (parents(name)(3) == -1) & (d==3)){
+            // search other spatial direction along z axis
+            bool found = false;
+            unsigned int t = 1;
+            while((!found) & (z+t < nz)){
+              if(nonmissing_perc(i, j, z+t) > 0){
+                int parent_name = blocknames(i, j, z+t);
+                parents(name)(3) = parent_name;
+                children(parent_name)(3) = not_reference ? -1 : name;
+                found = true;
+              } else {
+                t ++;
+              }
+            }
+          }
+        
+      }
+    }
+  }
+  
+  arma::vec lnames = blocks_descr.col(d);
+  
+  for(unsigned int i=0; i<parents.n_elem; i++){
+    parents(i) = parents(i).elem(arma::find(parents(i) != -1));
+    children(i) = children(i).elem(arma::find(children(i) != -1));
+  }
+  
+  Rcpp::List result;
+  result["parents"] = parents;
+  result["children"] = children;
+  result["names"] = lnames;
+  return result;
+}
+
+
+arma::umat filter_col_smaller(const arma::umat& base_mat, int r_col_ix, int value){
+  return base_mat.rows(arma::find(base_mat.col(r_col_ix-1) < value));
+}
+
+arma::umat filter_col_greater(const arma::umat& base_mat, int r_col_ix, int value){
+  return base_mat.rows(arma::find(base_mat.col(r_col_ix-1) > value));
+}
+
+arma::umat filter_col_equal(const arma::umat& base_mat, int r_col_ix, int value){
+  return base_mat.rows(arma::find(base_mat.col(r_col_ix-1) == value));
+}
+
+arma::umat filter_cols_equal(const arma::umat& base_mat, const arma::uvec& r_col_ix, const arma::uvec& values){
+  arma::uvec all_conditions = arma::ones<arma::uvec>(base_mat.n_rows);
+  for(unsigned int j=0; j<r_col_ix.n_elem; j++){
+    all_conditions %= base_mat.col(r_col_ix(j)-1) == values(j);
+  }
+  return base_mat.rows(arma::find(all_conditions));
+}
+
 //[[Rcpp::export]]
 Rcpp::List mesh_graph_hyper(const arma::umat& bucbl, const arma::umat& bavail,
                             const arma::vec& na_which, 
@@ -624,9 +788,9 @@ Rcpp::List mesh_graph_hyper(const arma::umat& bucbl, const arma::umat& bavail,
     parents(i) = arma::zeros<arma::ivec>(dimen * 2) - 1;
     children(i) = arma::zeros<arma::ivec>(dimen) - 1;
   }
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif
+//#ifdef _OPENMP
+//#pragma omp parallel for
+//#endif
   for(int i=0; i<nblocks; i++){
     int u = block_names(i) - 1;
     arma::uvec block_info = arma::trans(bucbl.row(i));

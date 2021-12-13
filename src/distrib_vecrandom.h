@@ -8,7 +8,6 @@ using namespace std;
 
 
 inline arma::mat mrstdnorm(int r, int c){
-  Rcpp::RNGScope scope;
   arma::mat result = arma::zeros(r, c);
   for(int i=0; i<r; i++){
     for(int j=0; j<c; j++){
@@ -50,5 +49,26 @@ inline arma::vec vrbeta(const arma::vec& a, const arma::vec& b){
   }
   return result;
 }
+
+inline arma::vec vrnb(const arma::vec& mu, double alpha){
+  arma::vec result = arma::zeros(mu.n_elem);
+  for(unsigned int i=0; i<mu.n_elem; i++){
+    // alpha = 1/scale
+    // rgamma defaults to using scale
+    // mean = alpha * 1/alpha = 1
+    // variance = alpha * 1/alpha^2 = 1/alpha = tausq
+    double mixed = mu(i) * R::rgamma(alpha, 1.0/alpha);
+    result(i) = R::rpois(mixed);
+  }
+  return result;
+}
+
+
+inline arma::mat mvn(int n, const arma::vec& mu, const arma::mat sigma){
+  int ncols = sigma.n_cols;
+  arma::mat Y = arma::randn(n, ncols);
+  return arma::repmat(mu, 1, n).t() + Y * arma::chol(sigma);
+}
+
 
 #endif

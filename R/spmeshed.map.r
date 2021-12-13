@@ -1,11 +1,13 @@
 
-spmeshed.map <- function(y, x, coords, 
+spmeshed.map <- function(y, x, coords, k=NULL,
                          family = "gaussian",
                          axis_partition = NULL, 
                          block_size = 30,
                          grid_size=NULL,
                          grid_custom = NULL,
-                         pars = list(sigmasq=NULL, phi=NULL, tausq=NULL),
+                         pars = list(phi=NULL, tausq=NULL),
+                         theta = NULL,
+                         tausq = NULL,
                          maxit = 1000,
                          n_threads = 4,
                          verbose = FALSE,
@@ -43,13 +45,13 @@ spmeshed.map <- function(y, x, coords,
     
     coords %<>% as.matrix()
     
-    k <- 1
+    
     q              <- ncol(y)
-    if(q > 1){
-      stop("Not implemented for multivariate data.")
-    }
+    k <- ifelse(is.null(k), q, k)
+    
     
     dd             <- ncol(coords)
+    
     if(dd > 2){
       stop("Not implemented for spacetime data.")
     }
@@ -69,7 +71,7 @@ spmeshed.map <- function(y, x, coords,
       }
     }
     
-    print_every <- 1
+    print_every <- 0
   
     if(is.null(colnames(x))){
       orig_X_colnames <- colnames(x) <- paste0('X_', 1:ncol(x))
@@ -84,14 +86,11 @@ spmeshed.map <- function(y, x, coords,
       orig_coords_colnames <- colnames(coords)
       colnames(coords)     <- paste0('Var', 1:dd)
     }
-    
-    
-    k              <- ifelse(is.null(k), q, k)
-    
+
     # family id 
     family <- if(length(family)==1){rep(family, q)} else {family}
     family_in <- data.frame(family=family)
-    available_families <- data.frame(id=0:3, family=c("gaussian", "poisson", "binomial", "beta"))
+    available_families <- data.frame(id=0:4, family=c("gaussian", "poisson", "binomial", "beta", "negbinomial"))
     family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %>% pull(.data$id)
     
     nr <- nrow(x)
@@ -298,35 +297,43 @@ spmeshed.map <- function(y, x, coords,
     start_nu <- 0.5
     matern_fix_twonu <- 1
     
-    if(family %in% c("gaussian", "beta")){
-      if(is.null(pars$tausq)){
-        stop("Must specify pars$tausq for this family.")
+    if(!is.null(pars$phi)){
+      if(family %in% c("gaussian", "beta", "negbinomial")){
+        if(is.null(pars$tausq)){
+          stop("Must specify pars$tausq for this family.")
+        }
+      } else {
+        pars$tausq <- 1
       }
+      
+      all_values <- expand.grid(as.list(pars[c("phi", "tausq")]))
+      colnames(all_values)[1:2] <- c("phi", "tausq")
+      
+      theta_values <- cbind(all_values[,1,drop=F],1) %>% 
+        t() %>% as.data.frame() %>% as.list() %>% 
+        lapply(function(x) matrix(x, ncol=1))
+      tausq_values <- all_values[,2] %>% matrix(nrow=q)   
     } else {
-      pars$tausq <- 1
+      theta_values <- theta %>% lapply(function(x) rbind(x, 1))
+      tausq_values <- tausq
+      all_values <- list(theta = theta_values, tausq = tausq_values)
     }
-    
-    all_values <- expand.grid(as.list(pars[c("phi", "sigmasq", "tausq")]))
-    colnames(all_values)[1:3] <- c("phi", "sigmasq", "tausq")
-    all_values %<>% arrange(.data$sigmasq)
-    
-    theta_values <- all_values[,1:2] %>% t()
-    tausq_values <- all_values[,3]
-    
+  
     beta_Vi <- diag(ncol(x)) * 1/100
     
     start_beta   <- matrix(0, nrow=p, ncol=q)
     
     #if(is.null(starting$lambda)){
-    lambda_values <- matrix(1, nrow=q, ncol=k)
-    #diag(lambda_values) <- 1 #*** 10
-    #} else {
-    #  lambda_values <- starting$lambda
-    #}
+    lambda_values <- matrix(0, nrow=q, ncol=k)
+    diag(lambda_values) <- 1 #*** 10
     
-    lambda_mask <- matrix(1, nrow=1, ncol=1)
+    lambda_mask <- matrix(0, nrow=q, ncol=k)
+    lambda_mask[lower.tri(lambda_mask)] <- 1
+    diag(lambda_mask) <- 1 #*** 
     
-    start_w <- matrix(0, nrow = nrow(simdata_in), ncol = k)
+    lambda_values <- lambda_mask
+    
+    start_w <- matrix(rnorm(nrow(simdata_in)*k), nrow = nrow(simdata_in), ncol = k)
   }
   
   # finally prepare data
@@ -366,8 +373,9 @@ spmeshed.map <- function(y, x, coords,
     }
   }
   adaptive <- FALSE
+  
   comp_time <- system.time({
-    results <- meshed_casc(y, family_id, x, coords, 
+    results <- meshed_casc(y, family_id, k, x, coords, 
                            
                            parents, children, 
                            block_names, block_groups,

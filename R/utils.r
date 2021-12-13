@@ -54,7 +54,7 @@ tessellation_axis_parallel_fix <- function(coordsmat, thresholds, n_threads){
 }
 
 
-mesh_graph_build <- function(coords_blocking, Mv, verbose=TRUE, n_threads=1){
+mesh_graph_build <- function(coords_blocking, Mv, verbose=TRUE, n_threads=1, debugdag=1){
   cbl <- coords_blocking %>% dplyr::select(-dplyr::contains("Var"))
   if("L3" %in% colnames(coords_blocking)){
     cbl %<>% 
@@ -68,7 +68,13 @@ mesh_graph_build <- function(coords_blocking, Mv, verbose=TRUE, n_threads=1){
   blocks_descr <- unique(cbl) %>% as.matrix()
   
   dag_both_axes <- TRUE
-  graphed <- mesh_graph_cpp(blocks_descr, Mv, verbose, dag_both_axes, n_threads)
+  if(debugdag==1){
+    graphed <- mesh_graph_cpp(blocks_descr, Mv, verbose, dag_both_axes, n_threads)
+  } else {
+    graphed <- mesh_graph_cpp3(blocks_descr)
+  }
+  #
+  
   
   block_ct_obs <- coords_blocking %>% 
     dplyr::group_by(.data$block) %>% 

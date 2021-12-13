@@ -33,6 +33,7 @@ Meshed::Meshed(
   const arma::mat& beta_Vi_in,
   const arma::vec& tausq_ab_in,
   
+  int which_hmc_in,
   bool adapting_theta,
   const arma::mat& metrop_theta_sd,
   const arma::mat& metrop_theta_bounds,
@@ -56,7 +57,6 @@ Meshed::Meshed(
   if(verbose & debug){
     Rcpp::Rcout << "Meshed::Meshed initialization.\n";
   }
-  
   
   // data
   y                   = y_in;
@@ -110,9 +110,6 @@ Meshed::Meshed(
   if(verbose & debug){
     Rcpp::Rcout << "Lambda size: " << arma::size(Lambda) << "\n";
   }
-  
-  
-  
   tausq_inv = tausq_inv_in;
   XB = arma::zeros(coords.n_rows, q);
   linear_predictor = arma::zeros(coords.n_rows, q);
@@ -126,13 +123,7 @@ Meshed::Meshed(
     Rcpp::Rcout << "Beta size: " << arma::size(Bcoeff) << "\n"; 
   }
   
-  
   // prior params
-  // XtX = arma::field<arma::mat>(q);
-  // for(int j=0; j<q; j++){
-  //   XtX(j) = X.rows(ix_by_q_a(j)).t() * X.rows(ix_by_q_a(j));
-  // }
-  // 
    Vi    = beta_Vi_in;
    bprim = arma::zeros(p);
    Vim   = Vi * bprim;
@@ -149,7 +140,6 @@ Meshed::Meshed(
   na_study();
   // now we know where NAs are, we can erase them
   y.elem(arma::find_nonfinite(y)).fill(0);
-  
   n = y.n_rows;
   yhat = arma::zeros(n, q);
   
@@ -177,10 +167,10 @@ Meshed::Meshed(
   if(arma::all(familyid == 0) & forced_grid){
     init_gaussian();
   } 
-  if(arma::any(familyid == 3)){
+  if(arma::any(familyid == 3) || arma::any(familyid == 4)){
     init_betareg();
   }
-  
+  which_hmc = which_hmc_in;
   init_for_mcmc();
   
   if(verbose & debug){
@@ -842,25 +832,23 @@ void Meshed::init_gaussian(){
   }
 }
 
-
 void Meshed::init_betareg(){
   if(verbose & debug){
     Rcpp::Rcout << "init_betareg \n";
   }
-  tausq_unif_bounds = arma::join_horiz(1e-10 * arma::ones(q), 1e10 * arma::ones(q));
-  betareg_tausq_adapt.reserve(q);
+  tausq_unif_bounds = arma::join_horiz(1e-4 * arma::ones(q), 1e4 * arma::ones(q));
+  opt_tausq_adapt.reserve(q);
   brtausq_mcmc_counter = arma::zeros(q);
   
   for(unsigned int i=0; i<q; i++){
     //if(familyid(i) == 3){
       
       RAMAdapt brtsq(1, arma::eye(1,1)*.1, .4);
-      betareg_tausq_adapt.push_back(brtsq);
+      opt_tausq_adapt.push_back(brtsq);
       
     //}
   }
 }
-
 
 void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const arma::vec& tsqi){
   //message("[calc_DplusSi] start.");
@@ -914,7 +902,6 @@ void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const
   
 }
 
-
 bool Meshed::calc_ywlogdens(MeshDataLMC& data){
   start_overall = std::chrono::steady_clock::now();
   // called for a proposal of theta
@@ -942,6 +929,13 @@ bool Meshed::calc_ywlogdens(MeshDataLMC& data){
     arma::accu(data.logdetCi_comps) + 
     arma::accu(data.loglik_w_comps) + 
     arma::accu(data.ll_y); //****
+  
+  if(std::isnan(data.loglik_w)){
+    Rcpp::Rcout << "Logdens components: \n" <<
+      arma::accu(data.logdetCi_comps) << " " << 
+      arma::accu(data.loglik_w_comps) << " " <<
+      arma::accu(data.ll_y) << "\n" << endl;
+  }
   
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
@@ -990,20 +984,35 @@ void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw, bool m
       for(unsigned int j=0; j<q; j++){
         if(na_mat(i, j) > 0){
           //double xz = x(i) * z(i);
+          double xb = XB(i, j) + LamHw(i, j);
+          double ystar=0;
+          double tausq = 1.0/tausq_inv(j);
+          arma::vec nograd = 
+            get_likdens_likgrad(loglike, y(i,j), ystar, tausq, offsets(i, j), 
+                                xb, familyid(j), false);
+          /*
           double sigmoid, poislambda;
           if(familyid(j) == 0){ //if(family == "gaussian"){
             double y_minus_mean = y(i, j) - offsets(i, j) - XB(i, j) - LamHw(i, j);
             loglike += gaussian_logdensity(y_minus_mean, 1.0/tausq_inv(j));
           } else if(familyid(j) == 1){ //if(family=="poisson"){
             poislambda = exp(offsets(i, j) + XB(i, j) + LamHw(i, j));//xz);//x(i));
-            loglike += poisson_logpmf(y(i, j), poislambda);
+            double logdens = poisson_logpmf(y(i, j), poislambda);
+            
+            loglike += logdens;
           } else if(familyid(j) == 2){ //if(family=="binomial"){
             sigmoid = 1.0/(1.0 + exp(-offsets(i, j) - XB(i, j) - LamHw(i, j)));//xz ));
-            loglike += bernoulli_logpmf(y(i, j), sigmoid);
+            double logdens = bernoulli_logpmf(y(i, j), sigmoid);
+            loglike += logdens;
           } else if(familyid(j) == 3){
             sigmoid = 1.0/(1.0 + exp(-offsets(i, j) - XB(i, j) - LamHw(i, j)));//xz ));
             loglike += betareg_logdens(y(i, j), sigmoid, tausq_inv(j));
-          }
+          } else if(familyid(j) == 4){
+            double logmu = offsets(i, j) + XB(i, j) + LamHw(i, j);
+            double mu = exp(logmu);
+            double alpha = 1.0/tausq_inv(j);
+            loglike += negbin_logdens(y(i, j), mu, logmu, alpha);
+          }*/
         }
       }
       data.ll_y.row(i) += loglike;
@@ -1041,7 +1050,8 @@ void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data, bool sample){
   }
   
   data.loglik_w = arma::accu(data.logdetCi_comps) + 
-    arma::accu(data.loglik_w_comps) + arma::accu(data.ll_y); //***
+      arma::accu(data.loglik_w_comps) + arma::accu(data.ll_y); //***
+    
   
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
@@ -1072,6 +1082,48 @@ void Meshed::init_for_mcmc(){
     Rcpp::Rcout << "[init_for_mcmc]\n";
   }
   
+  w_do_hmc = arma::any(familyid > 0);
+  
+  if(w_do_hmc){
+    // let user choose what to use
+    if(which_hmc == 1){
+      // mala
+      if(verbose){
+        Rcpp::Rcout << "Using MALA" << endl;
+      }
+      w_hmc_nuts = false;
+      w_hmc_rm = false;
+      w_hmc_srm = false;
+    }
+    if(which_hmc == 2){
+      // nuts
+      if(verbose){
+        Rcpp::Rcout << "Using NUTS" << endl;
+      }
+      w_hmc_nuts = true;
+      w_hmc_rm = false;
+      w_hmc_srm = false;
+    }
+    if(which_hmc == 3){
+      // rm-mala
+      if(verbose){
+        Rcpp::Rcout << "Using simplified manifold MALA" << endl;
+      }
+      w_hmc_nuts = false;
+      w_hmc_rm = true;
+      w_hmc_srm = false;
+    }
+    if(which_hmc == 4){
+      // rm-mala then s-mmala
+      if(verbose){
+        Rcpp::Rcout << "Using simplified-preconditioned MALA" << endl;
+      }
+      w_hmc_nuts = false;
+      w_hmc_rm = true;
+      w_hmc_srm = true;
+    }
+  }
+  
   beta_node.reserve(q); // for beta
   lambda_node.reserve(q); // for lambda
   
@@ -1098,7 +1150,7 @@ void Meshed::init_for_mcmc(){
     
     beta_node.push_back(new_beta_block);
     
-    AdaptE new_beta_hmc_adapt(.05, 0);
+    AdaptE new_beta_hmc_adapt(.05, p, w_hmc_srm, w_hmc_nuts);
     beta_hmc_adapt.push_back(new_beta_hmc_adapt);
     
     beta_hmc_started(j) = 0;
@@ -1107,16 +1159,17 @@ void Meshed::init_for_mcmc(){
     NodeDataB new_lambda_block(yj_obs, offsets_for_beta, X_obs, family);
     lambda_node.push_back(new_lambda_block);
     
-    AdaptE new_lambda_adapt(.05, 0);
+    // *** sampling beta and lambda together so we use p+k here
+    arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
+    int n_lambdas = subcols.n_elem;
+    AdaptE new_lambda_adapt(.05, p+n_lambdas, w_hmc_srm, w_hmc_nuts);
     lambda_hmc_adapt.push_back(new_lambda_adapt);
   }
   
   
   
-  w_do_hmc = arma::any(familyid > 0);
+
   
-  w_hmc_nuts = false;
-  w_hmc_rm = true;
   if(w_do_hmc){
     if(verbose & debug){
       Rcpp::Rcout << "[init nongaussian outcome]\n";
@@ -1131,7 +1184,8 @@ void Meshed::init_for_mcmc(){
       NodeDataW new_block;
       w_node.push_back(new_block);
       
-      AdaptE new_eps_adapt(hmc_eps(i), 0);
+      int blocksize = indexing(i).n_elem * k;
+      AdaptE new_eps_adapt(hmc_eps(i), blocksize, w_hmc_srm, w_hmc_nuts);
       hmc_eps_adapt.push_back(new_eps_adapt);
     }
     
@@ -1172,7 +1226,6 @@ void Meshed::init_for_mcmc(){
       w_node.at(u) = new_block;
     }
   }
-  
 }
 
 Meshed::Meshed(

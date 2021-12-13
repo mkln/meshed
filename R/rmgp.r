@@ -96,6 +96,13 @@ rmeshedgp <- function(coords, theta, axis_partition=NULL, block_size=100,
   matern_fix_twonu <- 1
   
   # override defaults if starting values are provided
+  if((dd==3) & (length(theta)==5)){
+    matern_fix_twonu <- 2 * theta[5]
+    if(!(matern_fix_twonu %in% c(1, 3, 5))){
+      stop("Value of nu (input at theta[5]) must be 0.5, 1.5, or 2.5.")
+    }
+    theta <- theta[1:4]
+  } 
   theta %<>% matrix(ncol=1)
   
   # finally prepare data

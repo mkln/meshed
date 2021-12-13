@@ -29,6 +29,19 @@ arma::vec binomial_variance(const arma::vec& mu){
   return mu%(1.0-mu);
 }
 
+arma::vec negbinomial_linkinv(const arma::vec& eta){
+  return exp(eta);
+}
+
+arma::vec negbinomial_mueta(const arma::vec& eta){
+  return exp(eta);
+}
+
+arma::vec negbinomial_variance(const arma::vec& mu, const double& tausq){
+  return mu + pow(mu, 2) * tausq;
+}
+
+
 arma::vec poisson_linkinv(const arma::vec& eta){
   return exp(eta);
 }
@@ -135,6 +148,8 @@ arma::vec irls_step(const arma::vec& start_x,
       return binomial_linkinv(arg);
     case 1:
       return poisson_linkinv(arg);
+    case 4:
+      return negbinomial_linkinv(arg);
     }
     return arg;
   };
@@ -148,6 +163,8 @@ arma::vec irls_step(const arma::vec& start_x,
       return binomial_mueta(arg);
     case 1:
       return poisson_mueta(arg);
+    case 4:
+      return negbinomial_mueta(arg);
     }
     return arg;
   };
@@ -161,6 +178,8 @@ arma::vec irls_step(const arma::vec& start_x,
       return binomial_variance(arg);
     case 1:
       return poisson_variance(arg);
+    case 4:
+      return negbinomial_variance(arg, scaling);
     }
     return arg;
   };
