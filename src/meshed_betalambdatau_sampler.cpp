@@ -88,8 +88,12 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample
     if(familyid(j) == 0){
       arma::vec sampled = sample_BetaLambda_row(sample, j, rnorm_precalc);
       
-      Bcoeff.col(j) = sampled.head(p);
-      Lambda.submat(oneuv*j, subcols) = arma::trans(sampled.tail(subcols.n_elem));
+      if(sample_beta){
+        Bcoeff.col(j) = sampled.head(p);
+      }
+      if(sample_lambda){
+        Lambda.submat(oneuv*j, subcols) = arma::trans(sampled.tail(subcols.n_elem));
+      }
     } else {
       arma::vec offsets_obs = offsets(ix_by_q_a(j), oneuv * j);
       
