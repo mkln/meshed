@@ -20,7 +20,7 @@ spmeshed <- function(y, x, coords, k=NULL,
                              mcmcsd=.05, mcmc_startfrom=0),
              debug = list(sample_beta=TRUE, sample_tausq=TRUE, 
                           sample_theta=TRUE, sample_w=TRUE, sample_lambda=TRUE,
-                          verbose=FALSE, debug=FALSE, dag=1),
+                          verbose=FALSE, debug=FALSE),
              indpart=FALSE
 ){
 
@@ -61,7 +61,7 @@ spmeshed <- function(y, x, coords, k=NULL,
     saving <- settings$saving %>% set_default(TRUE)
     low_mem <- settings$low_mem %>% set_default(FALSE)
     
-    debugdag <- debug$dag %>% set_default(1)
+    debugdag <- 1#debug$dag %>% set_default(1)
     
     coords %<>% as.matrix()
     

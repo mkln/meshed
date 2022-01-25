@@ -333,7 +333,7 @@ spmeshed.map <- function(y, x, coords, k=NULL,
     
     lambda_values <- lambda_mask
     
-    start_w <- matrix(rnorm(nrow(simdata_in)*k), nrow = nrow(simdata_in), ncol = k)
+    start_w <- matrix(0, nrow = nrow(simdata_in), ncol = k)
   }
   
   # finally prepare data
