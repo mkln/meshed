@@ -459,7 +459,7 @@ Rcpp::List meshed_mcmc(
     );
   
   } catch(const std::exception& e) {
-    std::cout << "Caught exception \"" << e.what() << "\"\n";
+    Rcpp::Rcout << "Caught exception \"" << e.what() << "\"\n";
 
     end_all = std::chrono::steady_clock::now();
     

@@ -9,7 +9,7 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
                    settings    = list(adapting=TRUE, ps=TRUE, saving=FALSE),
                    prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                                       toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
-                   starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, w=NULL, 
+                   starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, v=NULL, 
                                       mcmcsd=.05, mcmc_startfrom=0),
                    debug       = list(sample_beta=TRUE, sample_tausq=TRUE, 
                                       sample_theta=TRUE, sample_w=TRUE, sample_lambda=TRUE,
@@ -46,7 +46,8 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
     mcmc_debug       <- debug$debug %>% set_default(FALSE)
     saving <- settings$saving %>% set_default(FALSE)
     use_ps <- settings$ps %>% set_default(TRUE)
-    
+    which_hmc <- 4
+    low_mem <- FALSE
     
     # data management part 0 - reshape/rename
     if(is.null(dim(y))){
@@ -309,12 +310,12 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
     }
     
     if(is.null(starting$w)){
-      start_w <- matrix(0, nrow = nrow(simdata_in), ncol = k)
+      start_v <- matrix(0, nrow = nrow(simdata_in), ncol = k)
     } else {
       # this is used to restart MCMC
       # assumes the ordering and the sizing is correct, 
       # so no change is necessary and will be input directly to mcmc
-      start_w <- starting$w #%>% matrix(ncol=q)
+      start_v <- starting$v #%>% matrix(ncol=q)
     }
   }
   
@@ -369,7 +370,7 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
                         
                         matern_fix_twonu,
                         
-                        start_w, 
+                        start_v, 
                         
                         start_lambda,
                         lambda_mask,
@@ -386,6 +387,7 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
                         
                         n_threads,
                         
+                        which_hmc,
                         mcmc_adaptive, # adapting
                         
                         use_cache,
@@ -394,6 +396,7 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
                         
                         mcmc_verbose, mcmc_debug, # verbose, debug
                         mcmc_print_every, # print all iter
+                        low_mem,
                         # sampling of:
                         # beta tausq sigmasq theta w
                         sample_beta, sample_tausq, 
@@ -421,7 +424,7 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
                    
                    tausq_ab,
                    
-                   start_w, 
+                   start_v, 
                    
                    start_lambda,
                    lambda_mask,

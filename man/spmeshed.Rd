@@ -69,7 +69,7 @@ This parameter is ignored if \code{settings$forced_grid=FALSE} in which case the
 
 \item{prior}{list: setup for priors of unknown parameters. \code{prior$phi} needs to be specified as the support of the Uniform prior for \eqn{\phi}. There is currently limited functionality here and some inputs are currently ignored. Defaults are: a vague Gaussian for \eqn{\beta}, \eqn{\tau^2_i \sim IG(2,1)}, \eqn{\theta_j \sim IG(2,2)}, all subject to change.}
 
-\item{starting}{list: setup for starting values of unknown parameters. \code{starting$mcmcsd} is the initial standard deviation of proposals. \code{starting$mcmc_startfrom} is input to the adaptive MCMC and can be used to manually restart MCMC without \code{spmeshed_restart}. There is currently limited functionality here and some parameters may be ignored.}
+\item{starting}{list: setup for starting values of unknown parameters. \code{starting$mcmcsd} is the initial standard deviation of proposals. \code{starting$mcmc_startfrom} is input to the adaptive MCMC and can be used to manually restart MCMC. There is currently limited functionality here and some parameters may be ignored.}
 
 \item{debug}{list: setup for debugging things. Some parts of MCMC can be turned off here.}
 \item{indpart}{bool defaults to \code{FALSE}. If \code{TRUE}, this computes an independent partition model.}
@@ -105,7 +105,7 @@ where \eqn{y(s)} is a \eqn{q}-dimensional vector of outcomes at spatial location
   Grid-Parametrize-Split (GriPS) for Improved Scalable Inference in Spatial Big Data Analysis. \url{https://arxiv.org/abs/2101.03579}
   
   Peruzzi, M. and Dunson, D.B. (2022)
-  Spatial meshing for general Bayesian multivariate models. \url{https://arxiv.org/abs/}
+  Spatial meshing for general Bayesian multivariate models. \url{https://arxiv.org/abs/2201.10080}
 }
 
 \author{

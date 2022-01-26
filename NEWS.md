@@ -1,11 +1,10 @@
 #  - `meshed` version 0.2.0
 
+ * Updated to reflect progress detailed in Peruzzi & Dunson (2022) <arXiv:2201.10080>
  * `spmeshed` can now use less memory by only storing essentials. 
  * Added Negative binomial as option for outcome family
  * Gneiting spacetime covariance now works with Matern smoothness 0.5, 1.5, or 2.5 
  * Prior for the temporal decay in the Gneiting spacetime covariance can be specified separately from phi
- * [to do] Added postprocessing for dealing with low-memory situations
- * [to do] Improved preprocessing for sampling from rmeshedgp
  * Beta and Lambda are updated as a block in most cases
  * Fixes in posterior sampling with non-Gaussian outcomes
  * Minor changes and cleanup
