@@ -59,14 +59,14 @@ Meshed::Meshed(
   }
   
   // data
-  y                   = y_in;
+  y = y_in;
   
   familyid = familyid_in;
   
   offsets = arma::zeros(arma::size(y));
   Z = arma::ones(y.n_rows);
   
-  X                   = X_in;
+  X = X_in;
   
   na_mat = arma::zeros<arma::umat>(arma::size(y));
   na_mat.elem(arma::find_finite(y)).fill(1);
@@ -74,7 +74,7 @@ Meshed::Meshed(
   p  = X.n_cols;
   
   // spatial coordinates and dimension
-  coords              = coords_in;
+  coords = coords_in;
   dd = coords.n_cols;
   q = y.n_cols;
   k = k_in;
@@ -1084,6 +1084,11 @@ void Meshed::init_for_mcmc(){
   
   w_do_hmc = arma::any(familyid > 0);
   
+  // defaults 
+  w_hmc_nuts = false;
+  w_hmc_rm = true;
+  w_hmc_srm = true;
+  
   if(w_do_hmc){
     // let user choose what to use
     if(which_hmc == 1){
@@ -1150,7 +1155,8 @@ void Meshed::init_for_mcmc(){
     
     beta_node.push_back(new_beta_block);
     
-    AdaptE new_beta_hmc_adapt(.05, p, w_hmc_srm, w_hmc_nuts);
+    AdaptE new_beta_hmc_adapt;
+    new_beta_hmc_adapt.init(.05, p, w_hmc_srm, w_hmc_nuts);
     beta_hmc_adapt.push_back(new_beta_hmc_adapt);
     
     beta_hmc_started(j) = 0;
@@ -1162,7 +1168,8 @@ void Meshed::init_for_mcmc(){
     // *** sampling beta and lambda together so we use p+k here
     arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
     int n_lambdas = subcols.n_elem;
-    AdaptE new_lambda_adapt(.05, p+n_lambdas, w_hmc_srm, w_hmc_nuts);
+    AdaptE new_lambda_adapt;
+    new_lambda_adapt.init(.05, p+n_lambdas, w_hmc_srm, w_hmc_nuts);
     lambda_hmc_adapt.push_back(new_lambda_adapt);
   }
   
@@ -1185,7 +1192,8 @@ void Meshed::init_for_mcmc(){
       w_node.push_back(new_block);
       
       int blocksize = indexing(i).n_elem * k;
-      AdaptE new_eps_adapt(hmc_eps(i), blocksize, w_hmc_srm, w_hmc_nuts);
+      AdaptE new_eps_adapt;
+      new_eps_adapt.init(hmc_eps(i), blocksize, w_hmc_srm, w_hmc_nuts);
       hmc_eps_adapt.push_back(new_eps_adapt);
     }
     

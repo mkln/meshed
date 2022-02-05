@@ -49,7 +49,8 @@ void Meshed::hmc_sample_beta(bool sample){
         //Rcpp::Rcout << "reasonable stepsize " << endl;
         double beta_eps = find_reasonable_stepsize(Bcoeff.col(j), beta_node.at(j), bmat.cols(oneuv * j));
         //Rcpp::Rcout << "adapting scheme starting " << endl;
-        AdaptE new_adapting_scheme(beta_eps, p, w_hmc_srm, w_hmc_nuts, 1e4);
+        AdaptE new_adapting_scheme;
+        new_adapting_scheme.init(beta_eps, p, w_hmc_srm, w_hmc_nuts, 1e4);
         beta_hmc_adapt.at(j) = new_adapting_scheme;
         beta_hmc_started(j) = 1;
         //Rcpp::Rcout << "done initiating adapting scheme" << endl;

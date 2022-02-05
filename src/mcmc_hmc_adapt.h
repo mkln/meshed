@@ -28,7 +28,8 @@ public:
   double sweight;
   
   AdaptE();
-  AdaptE(double, int, bool, bool, int);
+  
+  void init(double, int, bool, bool, int);
   void step();
   bool adapting();
   void adapt_step();
@@ -43,7 +44,7 @@ inline AdaptE::AdaptE(){
   
 }
 
-inline AdaptE::AdaptE(double eps0, int size, bool rm_warmup=true, bool nuts=false, int M_adapt_in=0){
+inline void AdaptE::init(double eps0, int size, bool rm_warmup=true, bool nuts=false, int M_adapt_in=0){
   i = 0;
   mu = log(10 * eps0);
   eps = eps0;

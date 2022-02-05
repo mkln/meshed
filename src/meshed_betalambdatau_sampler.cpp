@@ -130,7 +130,8 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample
           double lambda_eps = find_reasonable_stepsize(curLrow, lambda_node.at(j), rnorm_row);
           
           int n_params = curLrow.n_elem;
-          AdaptE new_adapting_scheme(lambda_eps, n_params, w_hmc_srm, w_hmc_nuts, 1e4);
+          AdaptE new_adapting_scheme;
+          new_adapting_scheme.init(lambda_eps, n_params, w_hmc_srm, w_hmc_nuts, 1e4);
           lambda_hmc_adapt.at(j) = new_adapting_scheme;
           lambda_hmc_started(j) = 1;
           //Rcpp::Rcout << "done initiating adapting scheme" << endl;

@@ -299,7 +299,9 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
           hmc_eps(u) = find_reasonable_stepsize(w_current, w_node.at(u), rand_norm_mat.rows(indexing(u)));
           //message("found reasonable");
           int blocksize = indexing(u).n_elem * k;
-          AdaptE new_adapting_scheme(hmc_eps(u), blocksize, w_hmc_srm, w_hmc_nuts, 1e4);
+          AdaptE new_adapting_scheme;
+          new_adapting_scheme.init(hmc_eps(u), blocksize, w_hmc_srm, w_hmc_nuts, 1e4);
+          
           hmc_eps_adapt.at(u) = new_adapting_scheme;
           hmc_eps_started_adapting(u) = 1;
         }

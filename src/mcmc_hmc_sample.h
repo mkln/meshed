@@ -25,10 +25,10 @@ inline arma::mat mala_cpp(arma::mat current_q,
   
   xgrad = postparams.compute_dens_and_grad(joint0, current_q);
   
-  if(adapt){
+  
     eps2 = pow(adaptparams.eps, 2.0);
     eps1 = adaptparams.eps;
-  } 
+  
   
   if(xgrad.has_nan() || xgrad.has_inf() || std::isnan(joint0) || std::isinf(joint0)){
     adaptparams.alpha = 0.0;
@@ -116,10 +116,10 @@ inline arma::mat manifmala_cpp(arma::mat current_q,
     }
   }
   
-  if(adapt){
+  //if(adapt){
     eps2 = pow(adaptparams.eps, 2.0);
     eps1 = adaptparams.eps;
-  } 
+  //} 
   
   if(MM.has_nan() || xgrad.has_nan() || xgrad.has_inf() || std::isnan(joint0) || std::isinf(joint0)){
     adaptparams.alpha = 0.0;

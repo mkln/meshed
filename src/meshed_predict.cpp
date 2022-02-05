@@ -93,7 +93,7 @@ Rcpp::List spmeshed_predict(
       arma::cube Hpred = arma::zeros(k, parents_coords.n_rows, block_coords.n_rows);
       arma::mat Rcholpred = arma::zeros(k, block_coords.n_rows);
       
-      try {
+      
         for(unsigned int j=0; j<k; j++){
           arma::mat Cyy = Correlationc(parents_coords, parents_coords, theta.col(j), matern, true);
           arma::mat Cyyc = arma::chol(Cyy, "lower");
@@ -117,14 +117,7 @@ Rcpp::List spmeshed_predict(
             Rcholpred(j,ix) = pow(Rcholtemp, .5); 
           }
         }
-      } catch(...) {
-        // thank you solaris
         
-        
-      }
-      
-      
-      
       arma::mat wpars = v_sampled(m).rows(parents_indexing);
       
       arma::mat Lambda = reparametrize_lambda_forward(lambda_sampled.slice(m), theta, d, matern.twonu, matern.using_ps);
