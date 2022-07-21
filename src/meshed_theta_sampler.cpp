@@ -52,6 +52,12 @@ void Meshed::metrop_theta(){
     prior_logratio = calc_prior_logratio(
         alter_data.theta.tail_rows(1).t(), param_data.theta.tail_rows(1).t(), 2, 1); // sigmasq
     
+    if(param_data.theta.n_rows > 5){
+      for(int i=0; i<param_data.theta.n_rows-2; i++){
+        prior_logratio += arma::accu( -alter_data.theta.row(i) +param_data.theta.row(i) ); // exp
+      }
+    }
+    
     jacobian  = calc_jacobian(new_param, param, theta_unif_bounds);
     logaccept = new_loglik - current_loglik + 
       prior_logratio +

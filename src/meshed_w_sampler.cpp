@@ -23,6 +23,7 @@ void Meshed::update_block_w_cache(int u, MeshDataLMC& data){
   arma::mat Sigi_tot = build_block_diagonal_ptr(data.w_cond_prec_ptr.at(u));
   
   arma::mat Smu_tot = arma::zeros(k*indexing(u).n_elem, 1); // replace with fill(0)
+  
   for(unsigned int c=0; c<children(u).n_elem; c++){
     int child = children(u)(c);
     arma::cube AK_u = cube_cols_ptr(data.w_cond_mean_K_ptr.at(child), u_is_which_col_f(u)(c)(0));
@@ -92,7 +93,6 @@ void Meshed::update_block_w_cache(int u, MeshDataLMC& data){
     // }
     
   }
-  
 }
 
 void Meshed::refresh_w_cache(MeshDataLMC& data){
@@ -328,6 +328,12 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
           if(which_hmc == 2){
             // nuts
             w_temp = nuts_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u)); 
+          }
+          if(which_hmc == 5){
+            w_temp = ellipt_slice_sampler(w_current, w_node.at(u), hmc_eps_adapt.at(u),
+                                          rand_norm_mat.rows(indexing(u)),
+                                          rand_unif(u), rand_unif2(u),
+                                          true, debug);
           }
         } else {
           w_temp = newton_step(w_current, w_node.at(u), hmc_eps_adapt.at(u), 1, false);

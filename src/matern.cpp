@@ -169,3 +169,43 @@ double gneiting2002_h(const double& h, const double& u,
   double umod = 1.0 / (a * u + 1.0);
   return umod * exp(-c * h * pow(umod, beta/2.0) );
 }
+
+
+//[[Rcpp::export]]
+arma::mat kernp_xx(const arma::mat& Xcoords, const arma::vec& kweights){
+  unsigned int n = Xcoords.n_rows;
+  arma::mat res = arma::zeros(n, n);
+  for(unsigned int i=0; i<n; i++){
+    arma::rowvec cri = Xcoords.row(i);
+    for(unsigned int j=i; j<n; j++){
+      //arma::rowvec deltasq = kweights.t() % (cri - Xcoords.row(ind2(j)));
+      //double weighted = sqrt(arma::accu(deltasq % deltasq));
+      arma::rowvec deltasq = cri - Xcoords.row(j);
+      double weighted = (arma::accu(kweights.t() % deltasq % deltasq));
+      res(i, j) = exp(-weighted);
+    }
+  }
+  res = arma::symmatu(res);
+  return res;
+}
+
+//[[Rcpp::export]]
+arma::mat kernp_xy(const arma::mat& Xcoords, const arma::mat& Ycoords, 
+                     const arma::vec& kweights){
+
+  unsigned int nx = Xcoords.n_rows;
+  unsigned int ny = Ycoords.n_rows;
+
+  arma::mat res = arma::zeros(nx, ny);
+  for(unsigned int i=0; i<nx; i++){
+    arma::rowvec cri = Xcoords.row(i);
+    for(unsigned int j=0; j<ny; j++){
+      //arma::rowvec deltasq = kweights.t() % (cri - Xcoords.row(ind2(j)));
+      //double weighted = sqrt(arma::accu(deltasq % deltasq));
+      arma::rowvec deltasq = cri - Ycoords.row(j);
+      double weighted = (arma::accu(kweights.t() % deltasq % deltasq));
+      res(i, j) = exp(-weighted);
+    }
+  }
+  return res;
+}

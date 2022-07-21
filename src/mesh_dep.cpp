@@ -29,6 +29,7 @@ arma::field<arma::uvec> blanket(const arma::field<arma::uvec>& parents,
   arma::field<arma::uvec> mb(n_blocks);
   
   for(unsigned int i=0; i<n_blocks; i++){
+    
     int u = names(i) - 1;
     if(block_ct_obs(u) > 0){
       // block cannot be the same color as other nodes in blanket
@@ -834,4 +835,18 @@ Rcpp::List mesh_graph_hyper(const arma::umat& bucbl, const arma::umat& bavail,
     Rcpp::Named("children") = children,
     Rcpp::Named("names") = block_names
   );
+}
+
+//[[Rcpp::export]]
+arma::mat repeat_centroid_perturb(const arma::mat& x, const arma::uvec& times){
+  unsigned int n = arma::accu(times);
+  arma::mat result = arma::zeros(n, x.n_cols);
+  int rix=0;
+  for(unsigned int i=0; i<x.n_rows; i++){
+    for(unsigned int j=0; j<times(i); j++){
+      result.row(rix) = x.row(i) + arma::trans(arma::randn(x.n_cols)*1e-5);
+      rix++;
+    }
+  }
+  return result;
 }

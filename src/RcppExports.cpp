@@ -89,6 +89,31 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// kernp_xx
+arma::mat kernp_xx(const arma::mat& Xcoords, const arma::vec& kweights);
+RcppExport SEXP _meshed_kernp_xx(SEXP XcoordsSEXP, SEXP kweightsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type Xcoords(XcoordsSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type kweights(kweightsSEXP);
+    rcpp_result_gen = Rcpp::wrap(kernp_xx(Xcoords, kweights));
+    return rcpp_result_gen;
+END_RCPP
+}
+// kernp_xy
+arma::mat kernp_xy(const arma::mat& Xcoords, const arma::mat& Ycoords, const arma::vec& kweights);
+RcppExport SEXP _meshed_kernp_xy(SEXP XcoordsSEXP, SEXP YcoordsSEXP, SEXP kweightsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type Xcoords(XcoordsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Ycoords(YcoordsSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type kweights(kweightsSEXP);
+    rcpp_result_gen = Rcpp::wrap(kernp_xy(Xcoords, Ycoords, kweights));
+    return rcpp_result_gen;
+END_RCPP
+}
 // blanket
 arma::field<arma::uvec> blanket(const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::uvec& names, const arma::uvec& block_ct_obs);
 RcppExport SEXP _meshed_blanket(SEXP parentsSEXP, SEXP childrenSEXP, SEXP namesSEXP, SEXP block_ct_obsSEXP) {
@@ -220,6 +245,18 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::uvec& >::type avblocks(avblocksSEXP);
     Rcpp::traits::input_parameter< int >::type k(kSEXP);
     rcpp_result_gen = Rcpp::wrap(mesh_graph_hyper(bucbl, bavail, na_which, centroids, avcentroids, avblocks, k));
+    return rcpp_result_gen;
+END_RCPP
+}
+// repeat_centroid_perturb
+arma::mat repeat_centroid_perturb(const arma::mat& x, const arma::uvec& times);
+RcppExport SEXP _meshed_repeat_centroid_perturb(SEXP xSEXP, SEXP timesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type times(timesSEXP);
+    rcpp_result_gen = Rcpp::wrap(repeat_centroid_perturb(x, times));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -406,6 +443,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_Cov_matern_h", (DL_FUNC) &_meshed_Cov_matern_h, 5},
     {"_meshed_Cov_powexp_h", (DL_FUNC) &_meshed_Cov_powexp_h, 5},
     {"_meshed_gneiting2002_h", (DL_FUNC) &_meshed_gneiting2002_h, 5},
+    {"_meshed_kernp_xx", (DL_FUNC) &_meshed_kernp_xx, 2},
+    {"_meshed_kernp_xy", (DL_FUNC) &_meshed_kernp_xy, 3},
     {"_meshed_blanket", (DL_FUNC) &_meshed_blanket, 4},
     {"_meshed_coloring", (DL_FUNC) &_meshed_coloring, 3},
     {"_meshed_kthresholdscp", (DL_FUNC) &_meshed_kthresholdscp, 2},
@@ -416,6 +455,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_knn_naive", (DL_FUNC) &_meshed_knn_naive, 3},
     {"_meshed_mesh_graph_cpp3", (DL_FUNC) &_meshed_mesh_graph_cpp3, 1},
     {"_meshed_mesh_graph_hyper", (DL_FUNC) &_meshed_mesh_graph_hyper, 7},
+    {"_meshed_repeat_centroid_perturb", (DL_FUNC) &_meshed_repeat_centroid_perturb, 2},
     {"_meshed_meshed_casc", (DL_FUNC) &_meshed_meshed_casc, 29},
     {"_meshed_meshed_mcmc", (DL_FUNC) &_meshed_meshed_mcmc, 42},
     {"_meshed_spmeshed_predict", (DL_FUNC) &_meshed_spmeshed_predict, 16},

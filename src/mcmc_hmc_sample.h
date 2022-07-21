@@ -199,6 +199,60 @@ inline arma::mat manifmala_cpp(arma::mat current_q,
   return current_q;
 }
 
+template <class T>
+inline arma::mat ellipt_slice_sampler(arma::mat current_q, 
+                               T& postparams,
+                               AdaptE& adaptparams, 
+                               const arma::mat& rnorm_mat,
+                               const double& runifvar, const double& runifadapt, 
+                               bool adapt=true,
+                               bool debug=false){
+  
+  // with infinite adaptation
+  
+  int k = current_q.n_cols;
+  // currents
+  arma::vec xgrad;
+  double joint0, eps1, eps2;
+  //arma::mat H_forward;
+  //arma::mat MM, Minvchol;//, Minv;
+  
+  arma::mat Sigma = postparams.neghess_prior(current_q);
+  arma::mat Sigma_invchol = arma::inv(arma::trimatl(arma::chol(arma::symmatu(Sigma), "lower")));
+  
+  arma::mat vellipt = Sigma_invchol.t() * arma::randn(Sigma_invchol.n_rows);
+  
+  double u = arma::randu();
+  double logy = postparams.loglike(current_q) + log(u);
+  double theta = arma::randu() * 2.0 * M_PI;
+
+  double theta_min = theta - 2.0 * M_PI;
+  double theta_max = theta;
+  
+  arma::vec veccurq = arma::vectorise(current_q);
+  
+  for(int i=0; i<10; i++){
+  
+    arma::vec q = veccurq * cos(theta) + vellipt * sin(theta);
+    arma::mat qmat = arma::mat(q.memptr(), q.n_elem/k, k);
+    
+    double logLfprime = postparams.loglike(qmat);
+      
+    if(logLfprime > logy){
+      return qmat;
+    } else {
+      if(theta < 0){
+        theta_min = theta;
+      } else {
+        theta_max = theta;
+      }
+      theta = arma::randu() * (theta_max-theta_min) + theta_min;
+    }
+  }
+  
+  return current_q;
+}
+
 
 inline arma::mat unvec(arma::vec q, int k){
   arma::mat result = arma::mat(q.memptr(), q.n_elem/k, k);

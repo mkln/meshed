@@ -589,7 +589,6 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
       param_data.Rproject(i) = arma::zeros(k, k, indexing_obs(i).n_elem);
       param_data.Riproject(i) = arma::zeros(k, k, indexing_obs(i).n_elem);
     }
-    
     param_data.Smu_start(i) = arma::zeros(k*indexing(i).n_elem, 1);
     param_data.Sigi_chol(i) = arma::zeros(k*indexing(i).n_elem, k*indexing(i).n_elem);
     param_data.AK_uP(i) = arma::field<arma::cube>(children(i).n_elem);
@@ -598,7 +597,6 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
       param_data.AK_uP(i)(c) = arma::zeros(indexing(i).n_elem, indexing(child).n_elem, k);
     }
   }
-  
   param_data.w_cond_prec_ptr.reserve(n_blocks);
   param_data.w_cond_mean_K_ptr.reserve(n_blocks);
   param_data.w_cond_prec_parents_ptr.reserve(n_blocks);

@@ -249,13 +249,15 @@ void kernelp_inplace(arma::mat& res,
              const arma::mat& Xcoords, const arma::uvec& ind1, const arma::uvec& ind2, 
              const arma::vec& theta, bool same){
   
-  double sigmasq = theta(0);
-  arma::vec kweights = theta.subvec(1, theta.n_elem-1);
+  double sigmasq = theta(theta.n_elem-1);
+  arma::vec kweights = theta.subvec(0, theta.n_elem-2);
   
   if(same){
     for(unsigned int i=0; i<ind1.n_elem; i++){
       arma::rowvec cri = Xcoords.row(ind1(i));
       for(unsigned int j=i; j<ind2.n_elem; j++){
+        //arma::rowvec deltasq = kweights.t() % (cri - Xcoords.row(ind2(j)));
+        //double weighted = sqrt(arma::accu(deltasq % deltasq));
         arma::rowvec deltasq = cri - Xcoords.row(ind2(j));
         double weighted = (arma::accu(kweights.t() % deltasq % deltasq));
         res(i, j) = sigmasq * exp(-weighted) + (weighted == 0? 1e-6 : 0);
@@ -267,6 +269,8 @@ void kernelp_inplace(arma::mat& res,
     for(unsigned int i=0; i<ind1.n_elem; i++){
       arma::rowvec cri = Xcoords.row(ind1(i));
       for(unsigned int j=0; j<ind2.n_elem; j++){
+        //arma::rowvec deltasq = kweights.t() % (cri - Xcoords.row(ind2(j)));
+        //double weighted = sqrt(arma::accu(deltasq % deltasq));
         arma::rowvec deltasq = cri - Xcoords.row(ind2(j));
         double weighted = (arma::accu(kweights.t() % deltasq % deltasq));
         res(i, j) = sigmasq * exp(-weighted) + (weighted == 0? 1e-6 : 0);

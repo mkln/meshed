@@ -163,3 +163,38 @@ mesh_graph_build_hypercube <- function(coords_blocking){
               names = graphed$names,
               groups = groups))
 }
+
+mesh_graph_build_nn <- function(coords_blocking, centroid_locs, m=2){
+  
+  all_neighbors <- get.knn(centroid_locs, k=nrow(centroid_locs)-1)
+  
+  networkmat <- matrix(0, ncol=nrow(centroid_locs), nrow=nrow(centroid_locs))
+  parents <- list()
+  children <- list()
+  for(i in 1:nrow(centroid_locs)){
+    previous_nn <- all_neighbors$nn.index[i,][
+      all_neighbors$nn.index[i,] < i
+    ] %>% head(m)
+    networkmat[i, previous_nn ] <- 1
+    parents[[i]] <- previous_nn-1
+  }
+  for(i in 1:nrow(networkmat)){
+    children[[i]] <- which(networkmat[,i] == 1)-1
+  }
+  bnames <- 1:nrow(centroid_locs)
+  
+  block_ct_obs <- coords_blocking %>% 
+    dplyr::group_by(.data$block) %>% 
+    dplyr::summarise(block_ct_obs = sum(.data$na_which, na.rm=TRUE)) %>% 
+    dplyr::arrange(.data$block) %$% 
+    block_ct_obs
+  
+  graph_blanketed <- blanket(parents, children, bnames, block_ct_obs)
+  groups <- coloring(graph_blanketed, bnames, block_ct_obs)
+  groups[groups == -1] <- max(groups)+1
+  
+  return(list(parents = parents,
+              children = children,
+              names = bnames,
+              groups = groups))
+}

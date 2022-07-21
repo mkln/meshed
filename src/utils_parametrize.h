@@ -30,7 +30,7 @@ inline arma::mat ps_back(const arma::mat& theta, int d, int nutimes2, bool use_p
     }
   } else {
     // p-kernel
-    reparametrizer = arma::diagmat(pow(theta.row(0), .5));
+    reparametrizer = arma::diagmat(pow(theta.tail_rows(1), .5));
   }
   return reparametrizer;
 }
@@ -64,7 +64,7 @@ inline arma::mat ps_forward(const arma::mat& theta, int d, int nutimes2, bool us
     }
   } else {
     // p-kernel
-    reparametrizer = arma::diagmat(pow(theta.row(0), -.5));
+    reparametrizer = arma::diagmat(pow(theta.tail_rows(1), -.5));
   }
   return reparametrizer;
 }

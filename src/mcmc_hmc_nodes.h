@@ -88,8 +88,11 @@ public:
   
   // **
   double logfullcondit(const arma::mat& x);
+  double loglike(const arma::mat& x);
+  
   arma::vec gradient_logfullcondit(const arma::mat& x);
   arma::mat neghess_logfullcondit(const arma::mat& x);
+  arma::mat neghess_prior(const arma::mat& x);
   
   arma::vec compute_dens_and_grad(double& xtarget, const arma::mat& x);
   arma::mat compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad, const arma::mat& x);
@@ -143,6 +146,7 @@ public:
   NodeDataB();
   
   double logfullcondit(const arma::vec& x);
+  
   arma::vec gradient_logfullcondit(const arma::vec& x);
   arma::mat neghess_logfullcondit(const arma::vec& x);
   arma::vec compute_dens_and_grad(double& xtarget, const arma::mat& x);

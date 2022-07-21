@@ -1,26 +1,31 @@
-pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
-                     family = "gaussian",
-                   block_size = 30,
-                   n_samples = 1000,
-                   n_burnin = 100,
-                   n_thin = 1,
-                   n_threads = 4,
-                   verbose = 0,
-                   settings    = list(adapting=TRUE, ps=TRUE, saving=FALSE),
-                   prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
-                                      toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
-                   starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, v=NULL, 
-                                      mcmcsd=.05, mcmc_startfrom=0),
-                   debug       = list(sample_beta=TRUE, sample_tausq=TRUE, 
-                                      sample_theta=TRUE, sample_w=TRUE, sample_lambda=TRUE,
-                                      verbose=FALSE, debug=FALSE)
+gramar <- function(y, x, z, k=NULL, 
+                       family = "gaussian",
+                       block_size = 30,
+                        proj_method = "lapeig",
+                       n_samples = 1000,
+                       n_burnin = 100,
+                       n_thin = 1,
+                       n_threads = 4,
+                       verbose = 0,
+                       settings    = list(adapting=TRUE, ps=TRUE, 
+                                          scale_coords=TRUE,
+                                          cache=FALSE, saving=FALSE),
+                       prior       = list(beta=NULL, tausq=NULL, sigmasq = NULL,
+                                          toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
+                       starting    = list(beta=NULL, tausq=NULL, theta=NULL, lambda=NULL, v=NULL, 
+                                          mcmcsd=.05, mcmc_startfrom=0),
+                       debug       = list(sample_beta=TRUE, sample_tausq=TRUE, 
+                                          sample_theta=TRUE, sample_w=TRUE, sample_lambda=TRUE,
+                                          verbose=FALSE, debug=FALSE),
+                       indpart = FALSE
 ){
   
+  
   if(verbose > 0){
-    cat("Bayesian pi-Meshed GP regression model fit via Markov chain Monte Carlo\n")
+    cat("Bayesian Graph Machine regression model fit via Markov chain Monte Carlo\n")
   }
   # init
-  model_tag <- "Bayesian pi-Meshed GP regression\n
+  model_tag <- "Bayesian Graph Machine regression\n
     o --> o --> o
     ^     ^     ^
     |     |     | 
@@ -48,6 +53,8 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
     use_ps <- settings$ps %>% set_default(TRUE)
     which_hmc <- 4
     low_mem <- FALSE
+    proj_dim <- 2
+    #proj_method <- "lapeig"
     
     # data management part 0 - reshape/rename
     if(is.null(dim(y))){
@@ -77,14 +84,26 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
       }
     }
     
+    if(proj_method == "pca"){
+      X_pca <- prcomp(x)
+      coords <- X_pca$x[,1:proj_dim] %>% as.matrix()
+    } else if(proj_method == "lapeig"){
+      X_lapeig <- Rdimtools::do.lapeig(x)
+      coords <- X_lapeig$Y
+    } else if(proj_method == "mds"){
+      X_mds <- Rdimtools::do.mds(x)
+      coords <- X_mds$Y
+    } else { 
+      coords <- x[,1:proj_dim]
+    }
     
-    X_pca <- prcomp(x)
-    coords <- X_pca$x[,1:proj_dim] %>% as.matrix()
+    
+    
     colnames(coords) <- paste0("Var", 1:ncol(coords))
     dd <- ncol(coords)
     
     # covariates/confounders
-  
+    
     if(is.null(colnames(x))){
       orig_X_colnames <- colnames(x) <- paste0('X_', 1:ncol(x))
     } else {
@@ -118,11 +137,11 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
     # for spatial data: matern or expon, for spacetime: gneiting 2002 
     #n_par_each_process <- ifelse(dd==2, 1, 3) 
     
-    
     axis_partition <- rep(round((nr/block_size)^(1/dd)), dd)
-
+    
     use_forced_grid <- FALSE
-    use_cache <- FALSE
+    use_cache <- settings$cache %>% set_default(FALSE)
+    scale_coords <- settings$scale_coords %>% set_default(TRUE)
     
     # what are we sampling
     sample_w       <- debug$sample_w %>% set_default(TRUE)
@@ -145,62 +164,76 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
     #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     #cat("{q} outcome variables" %>% glue::glue())
     #cat("\n")
-  
+    
     simdata %<>% 
       dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
     
-    coords <- simdata %>% 
-      dplyr::select(dplyr::contains("Var")) %>% 
-      as.matrix()
     sort_ix     <- simdata$ix
     
-    # Domain partitioning and gibbs groups
-    fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], axis_partition[i])) 
     
-    # guaranteed to produce blocks using Mv
-    system.time(fake_coords_blocking <- coords %>% 
-                  as.matrix() %>% 
-                  gen_fake_coords(fixed_thresholds, 1) )
+    # take the coordinates and scale them
+    coords <- simdata %>% 
+      dplyr::select(dplyr::contains("Var")) %>% 
+      as.matrix() 
     
-    # Domain partitioning and gibbs groups
-    system.time(coords_blocking <- coords %>% 
-                  as.matrix() %>%
-                  tessellation_axis_parallel_fix(fixed_thresholds, 1) %>% 
-                  dplyr::mutate(na_which = simdata$na_which, sort_ix=sort_ix) )
+    nclust <- ceiling(nrow(coords)/block_size)
+    kmclust <- kmeans(coords, nclust)
     
-    coords_blocking %<>% dplyr::rename(ix=sort_ix)
     
-    # check if some blocks come up totally empty
-    blocks_prop <- coords_blocking[,paste0("L", 1:dd)] %>% unique()
-    blocks_fake <- fake_coords_blocking[,paste0("L", 1:dd)] %>% unique()
-    if(nrow(blocks_fake) != nrow(blocks_prop)){
-      #cat("Adding fake coords to avoid empty blocks ~ don't like? Use lower [axis_partition]\n")
-      # with current Mv, some blocks are completely empty
-      # this messes with indexing. so we add completely unobserved coords
-      suppressMessages(adding_blocks <- blocks_fake %>% dplyr::setdiff(blocks_prop) %>%
-                         dplyr::left_join(fake_coords_blocking))
-      coords_blocking <- dplyr::bind_rows(coords_blocking, adding_blocks)
-      
-      coords_blocking %<>% dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
+    # make this into a while loop
+    sizes <- coords %>% cbind(data.frame(gg=kmclust$cluster)) %>%
+      group_by(gg) %>% 
+      summarise(size=n()) %>% 
+      mutate(ctr1=kmclust$centers[,1],
+             ctr2=kmclust$centers[,2],
+             reduction_factor=ifelse(ceiling(size/block_size)>2, 2, ceiling(size/block_size)))
+    
+    centroid_locs <- repeat_centroid_perturb(
+      sizes %>% dplyr::select(ctr1, ctr2) %>% as.matrix(),
+      sizes$reduction_factor)
+    
+    voronoided <- FNN::get.knnx(centroid_locs, 
+                                coords[,1:proj_dim], k=1)
+    
+    coords_blocking <- coords %>%
+      as.data.frame() %>%
+      mutate(block = voronoided$nn.index[,1]) %>% 
+      dplyr::mutate(na_which = simdata$na_which, sort_ix=sort_ix)
+    #############################3
+    
+    
+    
+    if(F) {
+      coords_blocking %>% mutate(gg=kmclust$cluster) %>%
+        ggplot(aes(Var1, Var2, color=factor(block))) + 
+        #geom_point() + 
+        theme_minimal() +
+        geom_text(aes(label=gg))
     }
+    
+    coords_blocking %<>% 
+      rename(ix=sort_ix)
     
   }
   nr_full <- nrow(coords_blocking)
   
-  # DAG
-  if(dd < 4){
-    suppressMessages(parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), axis_partition, FALSE))
-  } else {
-    suppressMessages(parents_children <- mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-.data$ix)))
-  }
+  parents_children <- mesh_graph_build_nn(coords_blocking, centroid_locs)
+  
   parents                      <- parents_children[["parents"]] 
   children                     <- parents_children[["children"]] 
   block_names                  <- parents_children[["names"]] 
   block_groups                 <- parents_children[["groups"]]#[order(block_names)]
   
+  
+  if(indpart){
+    parents %<>% lapply(function(x) numeric(0))
+    children %<>% lapply(function(x) numeric(0))
+    block_groups %<>% rep(0, length(block_groups))
+  }
+  
   suppressMessages(simdata_in <- coords_blocking %>% #cbind(data.frame(ix=cbix)) %>% 
                      dplyr::select(-na_which) %>% dplyr::left_join(simdata))
-
+  
   simdata_in %<>% 
     dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
   blocking <- simdata_in$block %>% 
@@ -338,6 +371,8 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
     as.matrix()
   colnames(z) <- orig_Z_colnames
   if(any(is.na(z))){
+    print(head(z))
+    return(z)
     stop("Cannot have NA in Z matrix")
   }
   
@@ -349,7 +384,7 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
   
   coordsdata <- simdata_in %>% 
     dplyr::select(1:dd) 
-  #cat("Sending to MCMC > ")
+  cat("Sending to MCMC >\n ")
   
   mcmc_run <- meshed_mcmc
   
@@ -464,6 +499,6 @@ pimeshed <- function(y, x, z, k=NULL, proj_dim=2,
                     children = children,
                     coordsblocking = coords_blocking) %>% 
     c(results)
-  return(returning) 
+  return(returning)
   
 }

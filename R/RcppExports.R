@@ -21,6 +21,14 @@ gneiting2002_h <- function(h, u, a, c, beta) {
     .Call(`_meshed_gneiting2002_h`, h, u, a, c, beta)
 }
 
+kernp_xx <- function(Xcoords, kweights) {
+    .Call(`_meshed_kernp_xx`, Xcoords, kweights)
+}
+
+kernp_xy <- function(Xcoords, Ycoords, kweights) {
+    .Call(`_meshed_kernp_xy`, Xcoords, Ycoords, kweights)
+}
+
 blanket <- function(parents, children, names, block_ct_obs) {
     .Call(`_meshed_blanket`, parents, children, names, block_ct_obs)
 }
@@ -59,6 +67,10 @@ mesh_graph_cpp3 <- function(blocks_descr) {
 
 mesh_graph_hyper <- function(bucbl, bavail, na_which, centroids, avcentroids, avblocks, k = 1L) {
     .Call(`_meshed_mesh_graph_hyper`, bucbl, bavail, na_which, centroids, avcentroids, avblocks, k)
+}
+
+repeat_centroid_perturb <- function(x, times) {
+    .Call(`_meshed_repeat_centroid_perturb`, x, times)
 }
 
 meshed_casc <- function(y, family, k, X, coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, beta_Vi, matern_twonu, start_w, lambda_values, lambda_mask, theta_values, beta, tausq_values, maxit = 1000L, num_threads = 1L, adapting = FALSE, use_cache = TRUE, forced_grid = TRUE, verbose = FALSE, debug = FALSE, print_every = FALSE, casc_beta = TRUE, casc_w = TRUE) {
