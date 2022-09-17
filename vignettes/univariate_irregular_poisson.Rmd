@@ -93,8 +93,8 @@ mesh_total_time <- system.time({
                       grid_size=c(20, 20),
                       block_size = 20,
                       n_samples = mcmc_keep, n_burn = mcmc_burn, n_thin = mcmc_thin, 
-                      n_threads = 2,
-                      verbose = 0,
+                      n_threads = 16,
+                      verbose = 5,
                       prior=list(phi=c(1,30))
   )})
 ```

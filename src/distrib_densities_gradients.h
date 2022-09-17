@@ -90,8 +90,13 @@ inline double betareg_loggradient(const double& ystar, const double& mu, const d
 
 inline double betareg_neghess_mult_sqrt(const double& sigmoid, const double& tausq){
   double tausq2 = tausq * tausq;
-  return pow(- 1.0/tausq2 * (R::trigamma( sigmoid / tausq ) + 
-    R::trigamma( (1.0-sigmoid) / tausq ) ) * pow(sigmoid * (1.0 - sigmoid), 2.0), .5);  // notation of 
+  double multout = pow(
+    //- 
+      1.0/tausq2 * (R::trigamma( sigmoid / tausq ) + 
+      R::trigamma( (1.0-sigmoid) / tausq ) ) * pow(sigmoid * (1.0 - sigmoid), 2.0), 
+                     .5);  // notation of 
+      //Rcpp::Rcout << sigmoid << " " << multout << " " << tausq << endl;
+  return multout;
 }
 
 inline double negbin_logdens(const double& y, double mu, double logmu, double alpha){

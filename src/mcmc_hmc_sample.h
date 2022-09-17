@@ -85,7 +85,6 @@ inline arma::mat manifmala_cpp(arma::mat current_q,
                                       bool debug=false){
   
   // with infinite adaptation
-  
   int k = current_q.n_cols;
   // currents
   arma::vec xgrad;
@@ -158,7 +157,6 @@ inline arma::mat manifmala_cpp(arma::mat current_q,
       } catch (...) {
         rev_chol_error = true;
       }
-      
     } else {
       Rinvchol = arma::eye(current_q.n_elem, current_q.n_elem);
     }
@@ -194,7 +192,6 @@ inline arma::mat manifmala_cpp(arma::mat current_q,
       adaptparams.update_C_const(MM, Minvchol);
     }
   }
-  
   adaptparams.adapt_step();
   return current_q;
 }
