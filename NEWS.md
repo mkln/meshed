@@ -1,4 +1,9 @@
-#  - `meshed` version 0.2.1
+# 19 Sep 22 - `meshed` version 0.2.3
+
+ * Fixed a bug in beta regression models for some gradient-based sampling methods
+ * misc cleanup
+
+# 28 Jan 22 - `meshed` version 0.2.1
 
  * Updated to reflect progress detailed in Peruzzi & Dunson (2022) <arXiv:2201.10080>
  * `spmeshed` can now use less memory by only storing essentials. 

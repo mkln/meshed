@@ -1,6 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^examples$
+^gramar_code$
 ^img$
 ^man/spmeshed\.map\.Rd
 ^cran-comments\.md
