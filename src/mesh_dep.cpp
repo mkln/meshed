@@ -619,21 +619,21 @@ Rcpp::List mesh_graph_cpp3(const arma::mat& blocks_descr){
   arma::cube blocknames = cube_from_df(blocks_descr.cols(0, d-1), blocks_descr.col(d)-1);
   arma::cube nonmissing_perc = cube_from_df(blocks_descr.cols(0, d-1), blocks_descr.col(d+1));
   
-  arma::field<arma::uvec> parents(blocknames.max()+1);
-  arma::field<arma::uvec> children(blocknames.max()+1);
+  arma::field<arma::ivec> parents(blocknames.max()+1);
+  arma::field<arma::ivec> children(blocknames.max()+1);
   
   for(unsigned int i=0; i<parents.n_elem; i++){
-    parents(i) = arma::zeros<arma::uvec>(4) - 1;
-    children(i) = arma::zeros<arma::uvec>(4) - 1;
+    parents(i) = arma::zeros<arma::ivec>(4) - 1;
+    children(i) = arma::zeros<arma::ivec>(4) - 1;
   }
   
-  int nx = blocknames.n_rows;
-  int ny = blocknames.n_cols;
-  int nz = blocknames.n_slices;
+  unsigned int nx = blocknames.n_rows;
+  unsigned int ny = blocknames.n_cols;
+  unsigned int nz = blocknames.n_slices;
   
-  for( int i=0; i<nx; i++){
-    for( int j=0; j<ny; j++){
-      for( int z=0; z<nz; z++){
+  for(unsigned int i=0; i<nx; i++){
+    for(unsigned int j=0; j<ny; j++){
+      for(unsigned int z=0; z<nz; z++){
         int name = blocknames(i, j, z);
         bool not_reference = nonmissing_perc(i, j, z) == 0;
         

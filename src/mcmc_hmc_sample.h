@@ -210,7 +210,7 @@ inline arma::mat ellipt_slice_sampler(arma::mat current_q,
   int k = current_q.n_cols;
   // currents
   arma::vec xgrad;
-  double joint0, eps1, eps2;
+  //double joint0, eps1, eps2;
   //arma::mat H_forward;
   //arma::mat MM, Minvchol;//, Minv;
   

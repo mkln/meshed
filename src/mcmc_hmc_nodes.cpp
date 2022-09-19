@@ -218,9 +218,9 @@ void NodeDataW::mvn_dens_grad_neghess(double& xtarget, arma::vec& gradient, arma
 
 
 arma::vec NodeDataW::compute_dens_and_grad(double& xtarget, const arma::mat& x){
-  int nr = y.n_rows;
-  int q = y.n_cols;
-  int k = x.n_cols;
+  unsigned int nr = y.n_rows;
+  unsigned int q = y.n_cols;
+  unsigned int k = x.n_cols;
   
   arma::vec grad_loglike = arma::zeros(x.n_rows * x.n_cols);
   
@@ -239,7 +239,7 @@ arma::vec NodeDataW::compute_dens_and_grad(double& xtarget, const arma::mat& x){
     if(fgrid){
       LambdaH = arma::zeros(q, k*indxsize);
     }
-    for(int j=0; j<q; j++){
+    for(unsigned int j=0; j<q; j++){
       if(na_mat(i, j) > 0){
         
         double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
@@ -259,7 +259,7 @@ arma::vec NodeDataW::compute_dens_and_grad(double& xtarget, const arma::mat& x){
         } else {
           arma::mat LambdaHt = Lambda_lmc.row(j).t();
           arma::vec Lgrad = LambdaHt * gradloc;
-          for(int s1=0; s1<k; s1++){
+          for(unsigned int s1=0; s1<k; s1++){
             grad_loglike(s1 * indxsize + i) += Lgrad(s1);   
           }  
           
@@ -615,14 +615,9 @@ arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
 
 // Neghess of the log cond prior
 arma::mat NodeDataW::neghess_prior(const arma::mat& x){
-  int q = y.n_cols;
-  int k = x.n_cols;
   
   arma::mat neghess_logtarg = arma::zeros(x.n_rows * x.n_cols,
                                           x.n_rows * x.n_cols);
-  
-  int nr = y.n_rows;
-  int indxsize = x.n_rows;
   
   neghess_fwdcond_dmvn(neghess_logtarg, x);
   

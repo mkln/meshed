@@ -1,4 +1,4 @@
-#define ARMA_DONT_PRINT_ERRORS
+
 
 #include "utils_lmc.h"
 #include "utils_interrupt_handler.h"

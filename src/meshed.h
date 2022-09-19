@@ -1,4 +1,4 @@
-#define ARMA_DONT_PRINT_ERRORS
+
 
 #ifndef MESHEDSP 
 #define MESHEDSP
