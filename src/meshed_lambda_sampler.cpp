@@ -222,7 +222,7 @@ void Meshed::sample_hmc_Lambda(){
       // nongaussian
       //Rcpp::Rcout << "step " << endl;
       lambda_hmc_adapt.at(j).step();
-      if((lambda_hmc_started(j) == 0) & (lambda_hmc_adapt.at(j).i == 10)){
+      if((lambda_hmc_started(j) == 0) && (lambda_hmc_adapt.at(j).i == 10)){
         // wait a few iterations before starting adaptation
         //Rcpp::Rcout << "reasonable stepsize " << endl;
         

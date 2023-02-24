@@ -293,7 +293,7 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
         // adapting eps
         hmc_eps_adapt.at(u).step();
         
-        if((hmc_eps_started_adapting(u) == 0) & (hmc_eps_adapt.at(u).i==10) & sample){
+        if((hmc_eps_started_adapting(u) == 0) && (hmc_eps_adapt.at(u).i==10) & sample){
           // wait a few iterations before starting adaptation
           //message("find reasonable");
           hmc_eps(u) = find_reasonable_stepsize(w_current, w_node.at(u), rand_norm_mat.rows(indexing(u)));
@@ -312,11 +312,21 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
          
          
         if(sample){
+          if(which_hmc == 0){
+            w_temp = simpa_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
+                                   rand_norm_mat.rows(indexing(u)),
+                                   rand_unif(u), rand_unif2(u),
+                                   true, debug);
+          }
           if(which_hmc == 1){
             // mala
             w_temp = mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
                                          rand_norm_mat.rows(indexing(u)),
                                          rand_unif(u), true, debug);
+          }
+          if(which_hmc == 2){
+            // nuts
+            w_temp = nuts_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u)); 
           }
           if((which_hmc == 3) || (which_hmc == 4)){
             // some form of manifold mala
@@ -325,15 +335,16 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
                                          rand_unif(u), rand_unif2(u),
                                          true, debug);
           }
-          if(which_hmc == 2){
-            // nuts
-            w_temp = nuts_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u)); 
-          }
           if(which_hmc == 5){
             w_temp = ellipt_slice_sampler(w_current, w_node.at(u), hmc_eps_adapt.at(u),
                                           rand_norm_mat.rows(indexing(u)),
                                           rand_unif(u), rand_unif2(u),
                                           true, debug);
+          }
+          if(which_hmc == 6){
+            w_temp = hmc_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
+                             rand_norm_mat.rows(indexing(u)),
+                             rand_unif(u), 0.1, true, debug);
           }
         } else {
           w_temp = newton_step(w_current, w_node.at(u), hmc_eps_adapt.at(u), 1, false);

@@ -11,7 +11,7 @@ spmeshed <- function(y, x, coords, k=NULL,
              verbose = 0,
              predict_everywhere = FALSE,
              settings = list(adapting=TRUE, forced_grid=NULL, cache=NULL, 
-                                ps=TRUE, saving=TRUE, low_mem=FALSE, hmc=4),
+                                ps=TRUE, saving=TRUE, low_mem=FALSE, hmc=0),
              prior = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                           phi=NULL, a=NULL, nu = NULL,
                           toplim = NULL, btmlim = NULL, set_unif_bounds=NULL),
@@ -49,12 +49,12 @@ spmeshed <- function(y, x, coords, k=NULL,
     mcmc_burn <- n_burnin
     mcmc_thin <- n_thin
     
-    which_hmc    <- settings$hmc %>% set_default(4)
-    if(which_hmc > 4){
-      warning("Invalid HMC algorithm choice. Choose settings$hmc in {1,2,3,4}")
-      which_hmc <- 4
-    }
-
+    which_hmc    <- settings$hmc %>% set_default(0)
+    if(!(which_hmc %in% c(0,1,2,3,4,6))){
+      warning("Invalid sampling algorithm choice. Choose settings$hmc in {0,1,2,3,4,6}")
+      which_hmc <- 0
+    } 
+    
     mcmc_adaptive    <- settings$adapting %>% set_default(TRUE)
     mcmc_verbose     <- debug$verbose %>% set_default(FALSE)
     mcmc_debug       <- debug$debug %>% set_default(FALSE)

@@ -1,4 +1,4 @@
-#define ARMA_DONT_PRINT_ERRORS
+
 
 #include "utils_lmc.h"
 #include "utils_interrupt_handler.h"
@@ -51,7 +51,7 @@ Rcpp::List meshed_mcmc(
     
     int num_threads = 1,
     
-    int which_hmc=4,
+    int which_hmc=0,
     bool adapting=false,
     
     bool use_cache=true,

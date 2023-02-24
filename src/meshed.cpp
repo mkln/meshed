@@ -1089,6 +1089,15 @@ void Meshed::init_for_mcmc(){
   
   if(w_do_hmc){
     // let user choose what to use
+    if(which_hmc == 0){
+      // rm-mala then s-mmala
+      if(verbose){
+        Rcpp::Rcout << "Using SiMPA" << endl;
+      }
+      w_hmc_nuts = false;
+      w_hmc_rm = true;
+      w_hmc_srm = true;
+    }
     if(which_hmc == 1){
       // mala
       if(verbose){
@@ -1119,11 +1128,29 @@ void Meshed::init_for_mcmc(){
     if(which_hmc == 4){
       // rm-mala then s-mmala
       if(verbose){
-        Rcpp::Rcout << "Using simplified-preconditioned MALA" << endl;
+        Rcpp::Rcout << "Using SiMPA (previous version)" << endl;
       }
       w_hmc_nuts = false;
       w_hmc_rm = true;
       w_hmc_srm = true;
+    }
+    if(which_hmc == 5){
+      // nuts
+      if(verbose){
+        Rcpp::Rcout << "Using Elliptical slice sampler" << endl;
+      }
+      w_hmc_nuts = true;
+      w_hmc_rm = false;
+      w_hmc_srm = false;
+    }
+    if(which_hmc == 6){
+      // nuts
+      if(verbose){
+        Rcpp::Rcout << "Using HMC" << endl;
+      }
+      w_hmc_nuts = true; // target an acceptance rate similar to nuts
+      w_hmc_rm = false;
+      w_hmc_srm = false;
     }
   }
   

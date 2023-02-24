@@ -196,6 +196,104 @@ inline arma::mat manifmala_cpp(arma::mat current_q,
   return current_q;
 }
 
+
+template <class T>
+inline arma::mat simpa_cpp(arma::mat current_q, 
+                               T& postparams,
+                               AdaptE& adaptparams, 
+                               const arma::mat& rnorm_mat,
+                               const double& runifvar, const double& runifadapt, 
+                               bool adapt=true,
+                               bool debug=false){
+  
+  // with infinite adaptation
+  int k = current_q.n_cols;
+  // currents
+  arma::vec xgrad;
+  double joint0, eps1, eps2;
+  arma::mat H_forward;
+  arma::mat MM, Minvchol;//, Minv;
+  
+  bool chol_error = false;
+  bool rev_chol_error = false;
+  
+  bool fixed_C_this_step = adaptparams.use_C_const(runifadapt);
+  
+  xgrad = postparams.compute_dens_and_grad(joint0, current_q);
+  MM = adaptparams.C_const;
+  Minvchol = adaptparams.Ccholinv_const;
+  
+  //if(adapt){
+  eps2 = pow(adaptparams.eps, 2.0);
+  eps1 = adaptparams.eps;
+  //} 
+  
+  if(MM.has_nan() || xgrad.has_nan() || xgrad.has_inf() || std::isnan(joint0) || std::isinf(joint0)){
+    adaptparams.alpha = 0.0;
+    adaptparams.n_alpha = 1.0;
+    adaptparams.adapt_step();
+    return current_q;
+  }
+  
+  arma::vec veccurq = arma::vectorise(current_q);
+  arma::vec proposal_mean = veccurq + eps2 * 0.5 * Minvchol.t() * Minvchol * xgrad;// / max(eps2, arma::norm(xgrad));
+  
+  // proposal value
+  arma::vec p = arma::vectorise(rnorm_mat); 
+  arma::vec q = proposal_mean + eps1 * Minvchol.t() * p;
+  arma::mat qmat = arma::mat(q.memptr(), q.n_elem/k, k);
+  
+  // proposal
+  double joint1; // = postparams.logfullcondit(qmat);
+  arma::vec revgrad;
+  arma::mat H_reverse;
+  arma::mat RR, Rinvchol, Rinv;
+  
+  revgrad = postparams.compute_dens_and_grad(joint1, qmat);
+  RR = adaptparams.C_const;
+  Rinvchol = adaptparams.Ccholinv_const;
+
+  if(rev_chol_error || revgrad.has_inf() || std::isnan(joint1) || std::isinf(joint1)){
+    adaptparams.alpha = 0.0;
+    adaptparams.n_alpha = 1.0;
+    adaptparams.adapt_step();
+    return current_q;
+  }
+  
+  double Richoldet = arma::accu(log(Rinvchol.diag()));
+  double Micholdet = arma::accu(log(Minvchol.diag()));
+  arma::vec reverse_mean = q + eps2 * 0.5 * Rinvchol.t() * Rinvchol * revgrad; 
+  double prop0to1 = Micholdet -.5/(eps1*eps1) * arma::conv_to<double>::from(
+    (q - proposal_mean).t() * MM * (q - proposal_mean) );
+  double prop1to0 = Richoldet -.5/(eps1*eps1) * arma::conv_to<double>::from(
+    (veccurq - reverse_mean).t() * RR * (veccurq - reverse_mean) );
+  
+  adaptparams.alpha = std::min(1.0, exp(joint1 + prop1to0 - joint0 - prop0to1));
+  adaptparams.n_alpha = 1.0;
+  
+  if(runifvar < adaptparams.alpha){ 
+    current_q = qmat;
+  } 
+  
+  if(!fixed_C_this_step){
+    // adapting at this time; 
+    MM = postparams.compute_dens_grad_neghess(joint0, xgrad, current_q);
+    
+    adaptparams.weight_average_C_temp(MM);
+    try {
+      Minvchol = arma::inv(arma::trimatl(arma::chol(arma::symmatu(MM), "lower")));
+    } catch (...) {
+      Minvchol = arma::eye(current_q.n_elem, current_q.n_elem);
+      chol_error = true;
+    }
+    adaptparams.update_C_const(MM, Minvchol); 
+  }
+  
+  adaptparams.adapt_step();
+  return current_q;
+}
+
+
 template <class T>
 inline arma::mat ellipt_slice_sampler(arma::mat current_q, 
                                T& postparams,
@@ -288,6 +386,57 @@ inline void leapfrog(pq_point &z, float epsilon, T& postparams,  int k=1){
   qmat = unvec(z.q, k);
   z.p += epsilon * 0.5  * postparams.gradient_logfullcondit(qmat);
 }
+
+// mala and rm-mala
+template <class T>
+inline arma::mat hmc_cpp(arma::mat current_q, 
+                          T& postparams,
+                          AdaptE& adaptparams, 
+                          const arma::mat& rnorm_mat,
+                          const double& runifvar,
+                          double hmc_lambda=1,
+                          bool adapt=true,
+                          bool debug=false){
+  
+  int K = current_q.n_elem;
+  
+  pq_point z(K);
+  arma::vec p0 = arma::randn(K); 
+  
+  double epsilon = adaptparams.eps;
+  
+  arma::vec veccurq = arma::vectorise(current_q);
+  
+  z.q = veccurq;
+  z.p = p0;
+  
+  double p_orig = postparams.logfullcondit(current_q) 
+    - 0.5* arma::conv_to<double>::from(z.p.t() * z.p);
+  
+  int nsteps = std::round(hmc_lambda/epsilon);
+  int Lm = std::max(1, nsteps);
+  for(int i=0; i<Lm; i++){
+    leapfrog(z, epsilon, postparams, current_q.n_cols);
+  }
+  
+  arma::mat newq = unvec(z.q, current_q.n_cols);
+  
+  double p_prop = postparams.logfullcondit(newq) 
+    - 0.5* arma::conv_to<double>::from(z.p.t() * z.p);
+  
+  double p_ratio = exp(p_prop - p_orig);
+
+  adaptparams.alpha = std::min(1.0, p_ratio);
+  adaptparams.n_alpha = 1.0;
+  
+  if(runifvar < adaptparams.alpha){ 
+    current_q = newq;
+  } 
+  
+  adaptparams.adapt_step();
+  return current_q;
+}
+
 
 template <class T>
 inline double find_reasonable_stepsize(const arma::mat& current_q, T& postparams, const arma::mat& rnorm_mat){

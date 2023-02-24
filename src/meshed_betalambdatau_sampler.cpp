@@ -123,7 +123,7 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample
         // nongaussian
         //Rcpp::Rcout << "step " << endl;
         lambda_hmc_adapt.at(j).step();
-        if((lambda_hmc_started(j) == 0) & (lambda_hmc_adapt.at(j).i == 10)){
+        if((lambda_hmc_started(j) == 0) && (lambda_hmc_adapt.at(j).i == 10)){
           // wait a few iterations before starting adaptation
           //Rcpp::Rcout << "reasonable stepsize " << endl;
           
@@ -136,7 +136,12 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample
           lambda_hmc_started(j) = 1;
           //Rcpp::Rcout << "done initiating adapting scheme" << endl;
         }
-        
+        if(which_hmc == 0){
+          // some form of manifold mala
+          sampled = simpa_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                                  rnorm_row, lambda_runif(j), lambda_runif2(j), 
+                                  true, debug);
+        }
         if(which_hmc == 1){
           // mala
           sampled = mala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
@@ -152,6 +157,10 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample
           sampled = manifmala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
                                   rnorm_row, lambda_runif(j), lambda_runif2(j), 
                                   true, debug);
+        }
+        if(which_hmc == 6){
+          sampled = hmc_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                            rnorm_row, lambda_runif(j), 0.1, true, debug);
         }
         
         //sampled = manifmala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
