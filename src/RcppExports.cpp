@@ -411,6 +411,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cube_correl_from_lambda
+arma::cube cube_correl_from_lambda(const arma::cube& lambda_mcmc);
+RcppExport SEXP _meshed_cube_correl_from_lambda(SEXP lambda_mcmcSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::cube& >::type lambda_mcmc(lambda_mcmcSEXP);
+    rcpp_result_gen = Rcpp::wrap(cube_correl_from_lambda(lambda_mcmc));
+    return rcpp_result_gen;
+END_RCPP
+}
 // summary_list_mean
 arma::mat summary_list_mean(const arma::field<arma::mat>& x, int n_threads);
 RcppExport SEXP _meshed_summary_list_mean(SEXP xSEXP, SEXP n_threadsSEXP) {
@@ -461,6 +472,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_spmeshed_predict", (DL_FUNC) &_meshed_spmeshed_predict, 16},
     {"_meshed_rmeshedgp_internal", (DL_FUNC) &_meshed_rmeshedgp_internal, 13},
     {"_meshed_cube_tcrossprod", (DL_FUNC) &_meshed_cube_tcrossprod, 1},
+    {"_meshed_cube_correl_from_lambda", (DL_FUNC) &_meshed_cube_correl_from_lambda, 1},
     {"_meshed_summary_list_mean", (DL_FUNC) &_meshed_summary_list_mean, 2},
     {"_meshed_summary_list_q", (DL_FUNC) &_meshed_summary_list_q, 3},
     {NULL, NULL, 0}

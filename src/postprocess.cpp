@@ -20,6 +20,25 @@ arma::cube cube_tcrossprod(const arma::cube& x){
 }
 
 //[[Rcpp::export]]
+arma::cube cube_correl_from_lambda(const arma::cube& lambda_mcmc){
+  int q = lambda_mcmc.n_rows;
+  int k = lambda_mcmc.n_cols;
+  int m = lambda_mcmc.n_slices;
+  
+  arma::cube llt = arma::zeros(q, q, m);
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+  for(int i=0; i<m; i++){
+    llt.slice(i) = lambda_mcmc.slice(i) * arma::trans(lambda_mcmc.slice(i));
+    arma::mat dllt = arma::diagmat(1.0/sqrt( llt.slice(i).diag() ));
+    arma::mat cc = dllt * llt.slice(i) * dllt;
+    llt.slice(i) = cc;
+  }
+  return llt;
+}
+
+//[[Rcpp::export]]
 arma::mat summary_list_mean(const arma::field<arma::mat>& x, int n_threads=1){
   // all matrices in x must be the same size.
   int nrows = x(0).n_rows;

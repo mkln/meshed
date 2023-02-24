@@ -93,6 +93,10 @@ cube_tcrossprod <- function(x) {
     .Call(`_meshed_cube_tcrossprod`, x)
 }
 
+cube_correl_from_lambda <- function(lambda_mcmc) {
+    .Call(`_meshed_cube_correl_from_lambda`, lambda_mcmc)
+}
+
 summary_list_mean <- function(x, n_threads = 1L) {
     .Call(`_meshed_summary_list_mean`, x, n_threads)
 }
