@@ -164,7 +164,7 @@ Meshed::Meshed(
   rand_norm_mat = arma::zeros(coords.n_rows, k);
   rand_unif = arma::zeros(n_blocks);
   
-  if(arma::all(familyid == 0) & forced_grid){
+  if(arma::all(familyid == 0)) { // & forced_grid){ // ** testing **
     init_gaussian();
   } 
   if(arma::any(familyid == 3) || arma::any(familyid == 4)){
@@ -775,7 +775,6 @@ void Meshed::update_block_wlogdens(int u, MeshDataLMC& data){
     for(unsigned int j=0; j<k; j++){
       wx.col(j) = wx.col(j) - 
         (*data.w_cond_mean_K_ptr.at(u)).slice(j) *
-        //data.w_cond_mean_K(u).slice(j) * 
         wpar.col(j);
     }
   }
@@ -1082,11 +1081,6 @@ void Meshed::init_for_mcmc(){
   
   w_do_hmc = arma::any(familyid > 0);
   
-  // defaults 
-  w_hmc_nuts = false;
-  w_hmc_rm = true;
-  w_hmc_srm = true;
-  
   if(w_do_hmc){
     // let user choose what to use
     if(which_hmc == 0){
@@ -1094,63 +1088,42 @@ void Meshed::init_for_mcmc(){
       if(verbose){
         Rcpp::Rcout << "Using SiMPA" << endl;
       }
-      w_hmc_nuts = false;
-      w_hmc_rm = true;
-      w_hmc_srm = true;
     }
     if(which_hmc == 1){
       // mala
       if(verbose){
         Rcpp::Rcout << "Using MALA" << endl;
       }
-      w_hmc_nuts = false;
-      w_hmc_rm = false;
-      w_hmc_srm = false;
     }
     if(which_hmc == 2){
       // nuts
       if(verbose){
         Rcpp::Rcout << "Using NUTS" << endl;
       }
-      w_hmc_nuts = true;
-      w_hmc_rm = false;
-      w_hmc_srm = false;
     }
     if(which_hmc == 3){
       // rm-mala
       if(verbose){
         Rcpp::Rcout << "Using simplified manifold MALA" << endl;
       }
-      w_hmc_nuts = false;
-      w_hmc_rm = true;
-      w_hmc_srm = false;
-    }
-    if(which_hmc == 4){
-      // rm-mala then s-mmala
-      if(verbose){
-        Rcpp::Rcout << "Using SiMPA (previous version)" << endl;
-      }
-      w_hmc_nuts = false;
-      w_hmc_rm = true;
-      w_hmc_srm = true;
     }
     if(which_hmc == 5){
       // nuts
       if(verbose){
         Rcpp::Rcout << "Using Elliptical slice sampler" << endl;
       }
-      w_hmc_nuts = true;
-      w_hmc_rm = false;
-      w_hmc_srm = false;
     }
     if(which_hmc == 6){
       // nuts
       if(verbose){
         Rcpp::Rcout << "Using HMC" << endl;
       }
-      w_hmc_nuts = true; // target an acceptance rate similar to nuts
-      w_hmc_rm = false;
-      w_hmc_srm = false;
+    }
+    if(which_hmc == 7){
+      // nuts
+      if(verbose){
+        Rcpp::Rcout << "Using Adaptive MALA (Atchade 2006)" << endl;
+      }
     }
   }
   
@@ -1181,7 +1154,7 @@ void Meshed::init_for_mcmc(){
     beta_node.push_back(new_beta_block);
     
     AdaptE new_beta_hmc_adapt;
-    new_beta_hmc_adapt.init(.05, p, w_hmc_srm, w_hmc_nuts);
+    new_beta_hmc_adapt.init(.05, p, which_hmc);
     beta_hmc_adapt.push_back(new_beta_hmc_adapt);
     
     beta_hmc_started(j) = 0;
@@ -1194,7 +1167,7 @@ void Meshed::init_for_mcmc(){
     arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
     int n_lambdas = subcols.n_elem;
     AdaptE new_lambda_adapt;
-    new_lambda_adapt.init(.05, p+n_lambdas, w_hmc_srm, w_hmc_nuts);
+    new_lambda_adapt.init(.05, p+n_lambdas, which_hmc);
     lambda_hmc_adapt.push_back(new_lambda_adapt);
   }
   
@@ -1218,7 +1191,7 @@ void Meshed::init_for_mcmc(){
       
       int blocksize = indexing(i).n_elem * k;
       AdaptE new_eps_adapt;
-      new_eps_adapt.init(hmc_eps(i), blocksize, w_hmc_srm, w_hmc_nuts);
+      new_eps_adapt.init(hmc_eps(i), blocksize, which_hmc);
       hmc_eps_adapt.push_back(new_eps_adapt);
     }
     

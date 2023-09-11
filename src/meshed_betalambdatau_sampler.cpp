@@ -26,39 +26,26 @@ arma::vec Meshed::sample_BetaLambda_row(bool sample, int j, const arma::mat& rno
   arma::mat XW = arma::join_horiz(X.rows(ix_by_q_a(j)), WWj);
   arma::mat Wcrossprod = XW.t() * XW; 
   
-  arma::mat Lprior_inv = 1e-6 * arma::eye( XW.n_cols, XW.n_cols );
+  arma::mat Lprior_inv = //1e-6 * 
+    arma::eye( XW.n_cols, XW.n_cols );
   Lprior_inv.submat(0, 0, p-1, p-1) = Vi; // prior precision for beta
   arma::vec Lprior_mean = arma::zeros(XW.n_cols);
   
-  arma::vec sampled;
-  if(sample){
-    arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * Wcrossprod + Lprior_inv
-      ), "lower");
-    
-    arma::mat Sigma_chol_L = arma::inv(arma::trimatl(Si_chol));
-    arma::mat Simean_L = tausq_inv(j) * XW.t() * y.submat(ix_by_q_a(j), oneuv*j);  
-       // - XB.submat(ix_by_q_a(j), oneuv*j));
-    
-    arma::mat Lambdarow_Sig = Sigma_chol_L.t() * Sigma_chol_L;
-    arma::mat Lambdarow_mu = Lprior_inv * Lprior_mean + 
-      Lambdarow_Sig * Simean_L;
+  arma::mat Si_chol = arma::chol(arma::symmatu(tausq_inv(j) * Wcrossprod + Lprior_inv
+    ), "lower");
   
-    sampled = Lambdarow_mu + Sigma_chol_L.t() * 
+  arma::mat Sigma_chol_L = arma::inv(arma::trimatl(Si_chol));
+  arma::mat Simean_L = tausq_inv(j) * XW.t() * y.submat(ix_by_q_a(j), oneuv*j);  
+     // - XB.submat(ix_by_q_a(j), oneuv*j));
+  
+  arma::mat Lambdarow_Sig = Sigma_chol_L.t() * Sigma_chol_L;
+  arma::mat Lambdarow_mu = Lprior_inv * Lprior_mean + 
+    Lambdarow_Sig * Simean_L;
+
+  arma::vec sampled = Lambdarow_mu + Sigma_chol_L.t() * 
         arma::trans(rnorm_precalc.submat(j, 0, j, XW.n_cols-1));
-  } else {
-    arma::mat Si_chol = arma::chol(
-      arma::symmatu(Wcrossprod + Lprior_inv), "lower");
+
     
-    arma::mat Sigma_chol_L = arma::inv(arma::trimatl(Si_chol));
-    arma::mat Simean_L = XW.t() * y.submat(ix_by_q_a(j), oneuv*j);  
-    // - XB.submat(ix_by_q_a(j), oneuv*j));
-    
-    arma::mat Lambdarow_Sig = Sigma_chol_L.t() * Sigma_chol_L;
-    arma::mat Lambdarow_mu = Lprior_inv * Lprior_mean + 
-      Lambdarow_Sig * Simean_L;
-    sampled = Lambdarow_mu;
-  }
-  
   return sampled;
 }
 
@@ -119,56 +106,53 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample
       arma::mat rnorm_row = arma::trans(rnorm_precalc.row(j).head(curLrow.n_elem));
       
       arma::vec sampled;
-      if(sample){
-        // nongaussian
-        //Rcpp::Rcout << "step " << endl;
-        lambda_hmc_adapt.at(j).step();
-        if((lambda_hmc_started(j) == 0) && (lambda_hmc_adapt.at(j).i == 10)){
-          // wait a few iterations before starting adaptation
-          //Rcpp::Rcout << "reasonable stepsize " << endl;
-          
-          double lambda_eps = find_reasonable_stepsize(curLrow, lambda_node.at(j), rnorm_row);
-          
-          int n_params = curLrow.n_elem;
-          AdaptE new_adapting_scheme;
-          new_adapting_scheme.init(lambda_eps, n_params, w_hmc_srm, w_hmc_nuts, 1e4);
-          lambda_hmc_adapt.at(j) = new_adapting_scheme;
-          lambda_hmc_started(j) = 1;
-          //Rcpp::Rcout << "done initiating adapting scheme" << endl;
-        }
-        if(which_hmc == 0){
-          // some form of manifold mala
-          sampled = simpa_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
-                                  rnorm_row, lambda_runif(j), lambda_runif2(j), 
-                                  true, debug);
-        }
-        if(which_hmc == 1){
-          // mala
-          sampled = mala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
-                             rnorm_row, lambda_runif(j), true, debug);
-        }
-        if(which_hmc == 2){
-          // nuts
-          sampled = nuts_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j)); 
-        }
+      
+      // nongaussian
+      //Rcpp::Rcout << "step " << endl;
+      lambda_hmc_adapt.at(j).step();
+      if((lambda_hmc_started(j) == 0) && (lambda_hmc_adapt.at(j).i == 10)){
+        // wait a few iterations before starting adaptation
+        //Rcpp::Rcout << "reasonable stepsize " << endl;
         
-        if((which_hmc == 3) || (which_hmc == 4)){
-          // some form of manifold mala
-          sampled = manifmala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
-                                  rnorm_row, lambda_runif(j), lambda_runif2(j), 
-                                  true, debug);
-        }
-        if(which_hmc == 6){
-          sampled = hmc_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
-                            rnorm_row, lambda_runif(j), 0.1, true, debug);
-        }
+        double lambda_eps = find_reasonable_stepsize(curLrow, lambda_node.at(j), rnorm_row);
         
-        //sampled = manifmala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
-        //                    rnorm_row, lambda_runif(j), lambda_runif2(j), 
-        //                    true, true, debug); 
-      } else {
-        //sampled = irls_step(curLrow, lambda_node.at(j).y, lambda_node.at(j).X, lambda_node.at(j).offset, BL_Vi, familyid(j), tausq_inv(j));
-        sampled = newton_step(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 1, false);
+        int n_params = curLrow.n_elem;
+        AdaptE new_adapting_scheme;
+        new_adapting_scheme.init(lambda_eps, n_params, which_hmc, 1e4);
+        lambda_hmc_adapt.at(j) = new_adapting_scheme;
+        lambda_hmc_started(j) = 1;
+        //Rcpp::Rcout << "done initiating adapting scheme" << endl;
+      }
+      if(which_hmc == 0){
+        // some form of manifold mala
+        sampled = simpa_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                                rnorm_row, lambda_runif(j), lambda_runif2(j), 
+                                debug);
+      }
+      if(which_hmc == 1){
+        // mala
+        sampled = mala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                           rnorm_row, lambda_runif(j), debug);
+      }
+      if(which_hmc == 2){
+        // nuts
+        sampled = nuts_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j)); 
+      }
+      
+      if(which_hmc == 3){
+        // some form of manifold mala
+        sampled = smmala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                                rnorm_row, lambda_runif(j), debug);
+      }
+      if(which_hmc == 6){
+        sampled = hmc_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                          rnorm_row, lambda_runif(j), 0.1, debug);
+      }
+      if(which_hmc == 7){
+        // some form of manifold mala
+        sampled = yamala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                            rnorm_row, lambda_runif(j), lambda_runif2(j), 
+                            debug);
       }
       if(sample_beta){
         Bcoeff.col(j) = sampled.head(p);

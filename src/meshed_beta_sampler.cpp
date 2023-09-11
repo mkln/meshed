@@ -50,21 +50,47 @@ void Meshed::hmc_sample_beta(bool sample){
         double beta_eps = find_reasonable_stepsize(Bcoeff.col(j), beta_node.at(j), bmat.cols(oneuv * j));
         //Rcpp::Rcout << "adapting scheme starting " << endl;
         AdaptE new_adapting_scheme;
-        new_adapting_scheme.init(beta_eps, p, w_hmc_srm, w_hmc_nuts, 1e4);
+        new_adapting_scheme.init(beta_eps, p, which_hmc, 1e4);
         beta_hmc_adapt.at(j) = new_adapting_scheme;
         beta_hmc_started(j) = 1;
         //Rcpp::Rcout << "done initiating adapting scheme" << endl;
       }
       
-      if(sample){
-        Bcoeff.col(j) = manifmala_cpp(Bcoeff.col(j), beta_node.at(j), 
-                   beta_hmc_adapt.at(j), bmat.cols(oneuv * j), bunifv(j), bunifv2(j),
-                   true, false); 
-      } else {
-        //Bcoeff.col(j) = newton_step(Bcoeff.col(j), beta_node.at(j), beta_hmc_adapt.at(j), 1, true);
-        Bcoeff.col(j) = irls_step(Bcoeff.col(j), beta_node.at(j).y, beta_node.at(j).X, beta_node.at(j).offset, Vi, familyid(j));
+      if(which_hmc == 0){
+        // some form of manifold mala
+        Bcoeff.col(j) = simpa_cpp(Bcoeff.col(j), beta_node.at(j), 
+                            beta_hmc_adapt.at(j), bmat.cols(oneuv * j), bunifv(j), 
+                            bunifv2(j), debug);
+      }
+      if(which_hmc == 1){
+        // mala
+        Bcoeff.col(j) = mala_cpp(Bcoeff.col(j), beta_node.at(j), 
+                           beta_hmc_adapt.at(j), bmat.cols(oneuv * j), bunifv(j), 
+                           debug);
+      }
+      if(which_hmc == 2){
+        // nuts
+        Bcoeff.col(j) = nuts_cpp(Bcoeff.col(j), beta_node.at(j), 
+                           beta_hmc_adapt.at(j)); 
       }
       
+      if(which_hmc == 3){
+        // some form of manifold mala
+        Bcoeff.col(j) = smmala_cpp(Bcoeff.col(j), beta_node.at(j), 
+                             beta_hmc_adapt.at(j), bmat.cols(oneuv * j), 
+                             bunifv(j),  debug);
+      }
+      if(which_hmc == 6){
+        Bcoeff.col(j) = hmc_cpp(Bcoeff.col(j), beta_node.at(j), 
+                          beta_hmc_adapt.at(j), bmat.cols(oneuv * j), bunifv(j), 
+                          0.1, debug);
+      }
+      if(which_hmc == 7){
+        // some form of manifold mala
+        Bcoeff.col(j) = yamala_cpp(Bcoeff.col(j), beta_node.at(j), 
+                   beta_hmc_adapt.at(j), bmat.cols(oneuv * j), bunifv(j), 
+                   bunifv2(j), debug);
+      }
     }
     XB.col(j) = X * Bcoeff.col(j);
   }

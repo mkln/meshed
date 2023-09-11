@@ -121,6 +121,7 @@ void Meshed::gaussian_w(MeshDataLMC& data, bool sample=true){
   start_overall = std::chrono::steady_clock::now();
   
   for(int g=0; g<n_gibbs_groups; g++){
+    
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
@@ -195,7 +196,7 @@ void Meshed::gaussian_w(MeshDataLMC& data, bool sample=true){
   
   LambdaHw = w * Lambda.t();
   
-  if(false || verbose & debug){
+  if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();
     Rcpp::Rcout << "[gibbs_sample_w] gibbs loops "
                 << std::chrono::duration_cast<std::chrono::microseconds>(end_overall - start_overall).count()
@@ -300,7 +301,7 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
           //message("found reasonable");
           int blocksize = indexing(u).n_elem * k;
           AdaptE new_adapting_scheme;
-          new_adapting_scheme.init(hmc_eps(u), blocksize, w_hmc_srm, w_hmc_nuts, 1e4);
+          new_adapting_scheme.init(hmc_eps(u), blocksize, which_hmc, 1e4);
           
           hmc_eps_adapt.at(u) = new_adapting_scheme;
           hmc_eps_started_adapting(u) = 1;
@@ -309,48 +310,47 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
         
         bool do_gibbs = arma::all(familyid == 0);
         arma::mat w_temp = w_current;
-         
-         
-        if(sample){
-          if(which_hmc == 0){
-            w_temp = simpa_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
-                                   rand_norm_mat.rows(indexing(u)),
-                                   rand_unif(u), rand_unif2(u),
-                                   true, debug);
-          }
-          if(which_hmc == 1){
-            // mala
-            w_temp = mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
-                                         rand_norm_mat.rows(indexing(u)),
-                                         rand_unif(u), true, debug);
-          }
-          if(which_hmc == 2){
-            // nuts
-            w_temp = nuts_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u)); 
-          }
-          if((which_hmc == 3) || (which_hmc == 4)){
-            // some form of manifold mala
-            w_temp = manifmala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
-                                         rand_norm_mat.rows(indexing(u)),
-                                         rand_unif(u), rand_unif2(u),
-                                         true, debug);
-          }
-          if(which_hmc == 5){
-            w_temp = ellipt_slice_sampler(w_current, w_node.at(u), hmc_eps_adapt.at(u),
-                                          rand_norm_mat.rows(indexing(u)),
-                                          rand_unif(u), rand_unif2(u),
-                                          true, debug);
-          }
-          if(which_hmc == 6){
-            w_temp = hmc_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
-                             rand_norm_mat.rows(indexing(u)),
-                             rand_unif(u), 0.1, true, debug);
-          }
-        } else {
-          w_temp = newton_step(w_current, w_node.at(u), hmc_eps_adapt.at(u), 1, false);
+       
+        if(which_hmc == 0){
+          w_temp = simpa_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
+                                 rand_norm_mat.rows(indexing(u)),
+                                 rand_unif(u), rand_unif2(u),
+                                 debug);
         }
-        
-        
+        if(which_hmc == 1){
+          // mala
+          w_temp = mala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
+                                       rand_norm_mat.rows(indexing(u)), rand_unif(u),
+                                       debug);
+        }
+        if(which_hmc == 2){
+          // nuts
+          w_temp = nuts_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u)); 
+        }
+        if((which_hmc == 3) || (which_hmc == 4)){
+          // some form of manifold mala
+          w_temp = smmala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
+                                       rand_norm_mat.rows(indexing(u)),
+                                       rand_unif(u), debug);
+        }
+        if(which_hmc == 5){
+          w_temp = ellipt_slice_sampler(w_current, w_node.at(u), hmc_eps_adapt.at(u),
+                                        rand_norm_mat.rows(indexing(u)),
+                                        rand_unif(u), debug);
+        }
+        if(which_hmc == 6){
+          w_temp = hmc_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
+                           rand_norm_mat.rows(indexing(u)),
+                           rand_unif(u), 0.1, debug);
+        }
+        if(which_hmc == 7){
+          w_temp = yamala_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
+                             rand_norm_mat.rows(indexing(u)),
+                             rand_unif(u), rand_unif2(u),
+                             debug);
+        }
+      
+      
         end = std::chrono::steady_clock::now();
         
         hmc_eps(u) = hmc_eps_adapt.at(u).eps;

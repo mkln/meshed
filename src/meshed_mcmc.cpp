@@ -243,7 +243,7 @@ Rcpp::List meshed_mcmc(
       // we have at least one non-Gaussian outcome (i.e. no MPP-like adjustment if using grid)
       if(arma::any(family > 0) + ((!forced_grid) & arma::all(family==0))){
       //if(false){
-        if(sample_lambda+sample_beta){
+        if(sample_lambda+sample_beta+sample_tausq){
           start = std::chrono::steady_clock::now();
           msp.deal_with_BetaLambdaTau(msp.param_data, true, sample_beta, sample_lambda, sample_tausq); // true = sample
           end = std::chrono::steady_clock::now();
@@ -253,7 +253,7 @@ Rcpp::List meshed_mcmc(
           }
         }
       } else {
-        if(sample_lambda+sample_beta){
+        /*if(sample_lambda+sample_beta){
           start = std::chrono::steady_clock::now();
           msp.deal_with_BetaLambdaTau(msp.param_data, true, sample_beta, sample_lambda, false); // true = sample
           end = std::chrono::steady_clock::now();
@@ -261,8 +261,7 @@ Rcpp::List meshed_mcmc(
             Rcpp::Rcout << "[BetaLambdaTau] " 
                         << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n"; 
           }
-        }
-        /*
+        }*/
         if(sample_lambda){
           start = std::chrono::steady_clock::now();
           msp.deal_with_Lambda(msp.param_data);
@@ -281,7 +280,7 @@ Rcpp::List meshed_mcmc(
             Rcpp::Rcout << "[beta] " 
                         << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n"; 
           }
-        }*/
+        }
         
         if(sample_tausq){
           start = std::chrono::steady_clock::now();

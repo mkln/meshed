@@ -230,15 +230,44 @@ void Meshed::sample_hmc_Lambda(){
         double lambda_eps = find_reasonable_stepsize(curLrow, lambda_node.at(j), rnorm_row);
         //Rcpp::Rcout << "adapting scheme starting " << endl;
         AdaptE new_adapting_scheme;
-        new_adapting_scheme.init(lambda_eps, k, w_hmc_srm, w_hmc_nuts, 1e4);
+        new_adapting_scheme.init(lambda_eps, k, which_hmc, 1e4);
         lambda_hmc_adapt.at(j) = new_adapting_scheme;
         lambda_hmc_started(j) = 1;
         //Rcpp::Rcout << "done initiating adapting scheme" << endl;
       }
       
+      arma::vec sampled;
       
-      arma::vec sampled = manifmala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
-                         rnorm_row, lambda_runif(j), lambda_runif2(j), true, debug); 
+      if(which_hmc == 0){
+        // some form of manifold mala
+        sampled = simpa_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                            rnorm_row, lambda_runif(j), lambda_runif2(j), debug);
+      }
+      if(which_hmc == 1){
+        // mala
+        sampled = mala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                           rnorm_row, lambda_runif(j), debug);
+      }
+      if(which_hmc == 2){
+        // nuts
+        sampled = nuts_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j)); 
+      }
+      
+      if(which_hmc == 3){
+        // some form of manifold mala
+        sampled = smmala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                   rnorm_row, lambda_runif(j), debug);
+      }
+      if(which_hmc == 6){
+        sampled = hmc_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                   rnorm_row, lambda_runif(j), 
+                   0.1, debug);
+      }
+      if(which_hmc == 7){
+        // some form of manifold mala
+        sampled = yamala_cpp(curLrow, lambda_node.at(j), lambda_hmc_adapt.at(j), 
+                   rnorm_row, lambda_runif(j), lambda_runif2(j), debug);
+      }
       
       Lambda.submat(oneuv*j, subcols) = sampled.t();
       

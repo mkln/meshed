@@ -151,4 +151,3 @@ arma::mat summary_list_q(const arma::field<arma::mat>& x, double q, int n_thread
   return result;
 }
 
-

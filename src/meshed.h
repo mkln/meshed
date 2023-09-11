@@ -14,13 +14,11 @@
 #include "mcmc_hmc_sample.h"
 #include "utils_caching.h"
 #include "utils_lmc.h"
-#include "utils_irls.h"
 #include "utils_others.h"
 #include "covariance_lmc.h"
 
 class Meshed {
 public:
-  
   arma::uvec familyid;
   
   // meta
@@ -154,7 +152,6 @@ public:
   arma::uvec findcc;
   
   unsigned int starting_kr;
-  
 
   double logpost;
   
@@ -205,9 +202,9 @@ public:
   // W
   int which_hmc;
   bool w_do_hmc;
-  bool w_hmc_nuts;
-  bool w_hmc_rm;
-  bool w_hmc_srm;
+  //bool w_hmc_nuts;
+  //bool w_hmc_rm;
+  //bool w_hmc_srm;
   void deal_with_w(MeshDataLMC& data, bool sample=true);
   void gaussian_w(MeshDataLMC& data, bool sample);
   void gaussian_nonreference_w(int, MeshDataLMC& data, const arma::mat&, bool sample);

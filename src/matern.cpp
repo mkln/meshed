@@ -76,6 +76,8 @@ arma::mat Cov_matern(const arma::mat& x, const arma::mat& y,
   return res;
 }
 
+
+
 //[[Rcpp::export]]
 arma::mat Cov_matern2(const arma::mat& x, const arma::mat& y, const double& phi, bool same, int twonu){
   // 0 based indexing
