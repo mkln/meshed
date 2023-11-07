@@ -24,13 +24,11 @@ Rcpp::List meshed_casc(
     const arma::field<arma::uvec>& indexing_obs,
     
     const arma::mat& beta_Vi,
-    
-    int matern_twonu,
-    
     const arma::mat& start_w,
-    const arma::mat& lambda_values,
-    const arma::umat& lambda_mask,
-    const arma::field<arma::mat>& theta_values,
+    
+    const arma::ivec& matern_twonu,
+    const arma::cube& lambda_values,
+    const arma::cube& theta_values,
     const arma::mat& beta,
     
     int maxit = 1000,
@@ -71,7 +69,7 @@ Rcpp::List meshed_casc(
   int d = coords.n_cols;
   int q  = y.n_cols;
 
-  int n_alts = theta_values.n_elem;
+  int n_alts = theta_values.n_slices;
   
   arma::mat wllsave = arma::zeros(maxit, n_alts);
   
@@ -86,13 +84,16 @@ Rcpp::List meshed_casc(
   arma::vec unused_tausq_ab;
   arma::mat unused_mcmcsd, unused_unifbounds;
   bool unused_adapting=false;
-  int unused_hmc = 0;
+
   bool use_ps = false;
   bool acceptable=true;
   
-  arma::mat start_lambda = lambda_values;
-  arma::mat start_theta = theta_values(0);
+  arma::mat start_lambda = lambda_values.slice(0);
+  arma::mat start_theta = theta_values.slice(0);
+  int matern_2nu = matern_twonu(0);
+  
   arma::vec start_tausqi = arma::ones(q);//1.0/tausq_values.col(0);
+  arma::umat lambda_mask = arma::ones<arma::umat>(q, k);
   
   bool verbose_msp = verbose & debug;
   Meshed msp(y, family,
@@ -101,7 +102,7 @@ Rcpp::List meshed_casc(
              
              indexing, indexing_obs,
              
-             matern_twonu,
+             matern_2nu,
              start_w, beta, start_lambda, lambda_mask, start_theta, start_tausqi, 
              
              beta_Vi, 
@@ -129,8 +130,10 @@ Rcpp::List meshed_casc(
     int m=0;
     
     // set theta and tausq
-    arma::mat theta_here = theta_values(i);
+    arma::mat theta_here = theta_values.slice(i);
     msp.param_data.theta = theta_here;
+    msp.Lambda = lambda_values.slice(i);
+    msp.matern.twonu = matern_twonu(i);
     
     msp.tausq_inv = arma::ones(q);//1.0/tausq_values.col(i);
     

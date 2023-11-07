@@ -1,12 +1,12 @@
 
-spmeshed.map <- function(y, x, coords, k=NULL,
-                         family = "gaussian",
+spmeshed.map <- function(y, x, 
+                         coords, k=NULL,
+                         family="binomial",
                          axis_partition = NULL, 
                          block_size = 30,
                          grid_size=NULL,
                          grid_custom = NULL,
-                         pars = list(phi=NULL, lambda=NULL, tausq=NULL, nu=NULL),
-                         tausq = NULL,
+                         phi, lambda, nu,
                          maxit = 1000,
                          n_threads = 4,
                          verbose = FALSE,
@@ -44,18 +44,17 @@ spmeshed.map <- function(y, x, coords, k=NULL,
     
     coords %<>% as.matrix()
     
-    
-    q              <- ncol(y)
+    q <- ncol(y)
     k <- ifelse(is.null(k), q, k)
     
     
-    dd             <- ncol(coords)
+    dd <- ncol(coords)
     
     if(dd > 2){
       stop("Not implemented for spacetime data.")
     }
     
-    p              <- ncol(x)
+    p <- ncol(x)
     
     # data management part 0 - reshape/rename
     if(is.null(dim(y))){
@@ -89,7 +88,7 @@ spmeshed.map <- function(y, x, coords, k=NULL,
     # family id 
     family <- if(length(family)==1){rep(family, q)} else {family}
     family_in <- data.frame(family=family)
-    available_families <- data.frame(id=0:4, family=c("gaussian", "poisson", "binomial", "beta", "negbinomial"))
+    available_families <- data.frame(id=1:4, family=c("poisson", "binomial", "beta", "negbinomial"))
     family_id <- family_in %>% left_join(available_families, by=c("family"="family")) %>% pull(.data$id)
     
     nr <- nrow(x)
@@ -156,7 +155,7 @@ spmeshed.map <- function(y, x, coords, k=NULL,
     #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     #cat("{q} outcome variables on {nrow(unique(coords))} unique locations." %>% glue::glue())
     #cat("\n")
-    if(use_forced_grid){ 
+    if(use_forced_grid){
       # user showed intention to use fixed grid
       if(!is.null(grid_custom$grid)){
         grid <- grid_custom$grid
@@ -197,14 +196,13 @@ spmeshed.map <- function(y, x, coords, k=NULL,
     
     #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     
-    simdata %<>% 
-      dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
-    
+    #simdata %<>% 
+    #  dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
     
     coords <- simdata %>% 
       dplyr::select(dplyr::contains("Var")) %>% 
       as.matrix()
-    sort_ix     <- simdata$ix
+    sort_ix <- simdata$ix
     
     # Domain partitioning and gibbs groups
     if(use_forced_grid){
@@ -245,7 +243,7 @@ spmeshed.map <- function(y, x, coords, k=NULL,
                          dplyr::left_join(fake_coords_blocking))
       coords_blocking <- dplyr::bind_rows(coords_blocking, adding_blocks)
       
-      coords_blocking %<>% dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
+      #coords_blocking %<>% dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
     }
     
   }
@@ -266,8 +264,8 @@ spmeshed.map <- function(y, x, coords, k=NULL,
   suppressMessages(simdata_in <- coords_blocking %>% #cbind(data.frame(ix=cbix)) %>% 
                      dplyr::select(-na_which) %>% dplyr::left_join(simdata))
   
-  simdata_in %<>% 
-    dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
+  #simdata_in %<>% 
+  #  dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
   blocking <- simdata_in$block %>% 
     factor() %>% as.integer()
   indexing <- (1:nrow(simdata_in)-1) %>% 
@@ -290,52 +288,26 @@ spmeshed.map <- function(y, x, coords, k=NULL,
     indexing_obs <- indexing_grid
   }
   
-  if(TRUE){
-    # prior and starting values for mcmc
-    matern_nu <- FALSE
-    start_nu <- pars$nu %>% set_default(0.5)
-    if(!(start_nu %in% c(0.5, 1.5))){
-      stop("choose nu = 0.5 or 1.5")
-    }
-    matern_fix_twonu <- ifelse(start_nu == 0.5, 1, 3)
-    
-    if(!is.null(pars$phi)){
-      if(any(family %in% c("gaussian", "beta", "negbinomial"))){
-        if(is.null(pars$tausq)){
-          stop("Must specify pars$tausq for this family.")
-        }
-      } else {
-        pars$tausq <- 1
-      }
-      
-      theta_values <- list()
-      for(i in 1:nrow(pars$phi)){
-        theta_values[[i]] <- matrix(1, ncol=k, nrow=2)
-        theta_values[[i]][1,] <- pars$phi[i,]
-      }
-      
-    } else {
-      stop("Please supply pars$phi")
-    }
-  
-    beta_Vi <- diag(ncol(x)) * 1/100
-    
-    start_beta   <- matrix(0, nrow=p, ncol=q)
-    
-    if(is.null(pars$lambda)){
-      lambda_values <- matrix(0, nrow=q, ncol=k)
-      diag(lambda_values) <- 1 #*** 10
-    } else {
-      lambda_values <- pars$lambda
-    }
-    lambda_mask <- matrix(0, nrow=q, ncol=k)
-    lambda_mask[lower.tri(lambda_mask)] <- 1
-    diag(lambda_mask) <- 1 #*** 
-    
-    
-    
-    start_w <- matrix(0, nrow = nrow(simdata_in), ncol = k)
+  if( (dim(lambda)[3] != nrow(phi)) |
+      (dim(lambda)[3] != length(nu)) | 
+      (length(nu) != nrow(phi)) ){
+    stop("lambda array, theta matrix, and nu vector must have matching lengths/nrow")
+  } else {
+    n_trials <- nrow(phi)
   }
+  
+  if(!all(nu %in% c(0.5, 1.5))){
+    stop("choose nu values in {0.5, 1.5}")
+  }
+  
+  matern_twonu <- nu * 2
+  
+  theta_arr <- array(1, dim=c(2,k,n_trials))
+  theta_arr[1,,] <- t(phi)
+  
+  beta_Vi <- diag(ncol(x)) * 1/100
+  start_beta   <- matrix(0, nrow=p, ncol=q)
+  start_w <- matrix(0, nrow = nrow(simdata_in), ncol = k)
   
   # finally prepare data
   sort_ix <- simdata_in$ix
@@ -384,15 +356,12 @@ spmeshed.map <- function(y, x, coords, k=NULL,
                            indexing_grid, indexing_obs,
                            
                            beta_Vi, 
-                           
-                           matern_fix_twonu,
-                           
                            start_w, 
                            
-                           lambda_values,
-                           lambda_mask,
+                           matern_twonu,
+                           lambda,
+                           theta_arr,
                            
-                           theta_values,
                            start_beta,
                            
                            maxit,
@@ -409,13 +378,7 @@ spmeshed.map <- function(y, x, coords, k=NULL,
                            map_beta, map_w) 
   })
   
-  returning <- list(coordsdata = coordsdata,
-                    pardf = theta_values
-                    #block_names = block_names,
-                    #block_groups = block_groups,
-                    #parents = parents,
-                    #children = children,
-                    #coordsblocking = coords_blocking
+  returning <- list(coordsdata = coordsdata
                     ) %>% 
     c(results)
   class(returning) <- "spmeshed.map"
