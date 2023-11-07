@@ -796,5 +796,46 @@ inline arma::mat nuts_cpp(arma::mat current_q,
 }
 
 
+template <class T>
+inline arma::mat newton_step(arma::mat current_q, 
+                             T& postparams,
+                             AdaptE& adaptparams,
+                             double eps=1,
+                             bool debug=false){
+  
+  int k = current_q.n_cols;
+  
+  std::chrono::steady_clock::time_point t0;
+  std::chrono::steady_clock::time_point t1;
+  //double timer=0;
+  
+  // currents
+  arma::vec xgrad;
+  double joint0;
+  arma::mat MM, Minvchol, Minv;
+  
+  MM = postparams.compute_dens_grad_neghess(joint0, xgrad, current_q);
+  
+  try {
+    Minvchol = arma::inv(arma::trimatl(arma::chol(arma::symmatu(MM), "lower")));
+  } catch(...) {
+    MM = arma::eye(current_q.n_elem, current_q.n_elem);
+    Minvchol = MM;
+  }
+  
+  
+  
+  Minv = Minvchol.t() * Minvchol;
+  
+  if(xgrad.has_inf() || std::isnan(joint0) || xgrad.has_nan()){
+    return current_q;
+  }
+  
+  arma::vec veccurq = arma::vectorise(current_q);
+  
+  arma::vec q = veccurq + 0.2 * Minv * xgrad;
+  arma::mat qmat = arma::mat(q.memptr(), q.n_elem/k, k);
 
+  return qmat;
+} 
 

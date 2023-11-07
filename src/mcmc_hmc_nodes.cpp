@@ -425,8 +425,6 @@ arma::mat NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad
   int q = y.n_cols;
   int k = x.n_cols;
   
-  //Rcpp::Rcout << "compute_dens_grad_neghess start " << endl;
-  
   arma::vec grad_loglike = arma::zeros(x.n_rows * x.n_cols);
   arma::mat neghess_logtarg = arma::zeros(x.n_rows * x.n_cols,
                                           x.n_rows * x.n_cols);

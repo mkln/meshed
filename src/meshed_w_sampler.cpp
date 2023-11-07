@@ -294,7 +294,7 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
         // adapting eps
         hmc_eps_adapt.at(u).step();
         
-        if((hmc_eps_started_adapting(u) == 0) && (hmc_eps_adapt.at(u).i==10) & sample){
+        if((hmc_eps_started_adapting(u) == 0) && (hmc_eps_adapt.at(u).i==10) & (which_hmc != 99)){
           // wait a few iterations before starting adaptation
           //message("find reasonable");
           hmc_eps(u) = find_reasonable_stepsize(w_current, w_node.at(u), rand_norm_mat.rows(indexing(u)));
@@ -349,6 +349,10 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
                              rand_unif(u), rand_unif2(u),
                              debug);
         }
+        
+        if(which_hmc == 99){
+          w_temp = newton_step(w_current, w_node.at(u), hmc_eps_adapt.at(u));
+        }
       
       
         end = std::chrono::steady_clock::now();
@@ -379,7 +383,16 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
     }
   }
   
+  
+  for(int j=0; j<k; j++){
+    w.col(j) = w.col(j) - arma::mean(w.col(j));
+  }
+  
+  arma::mat Cw = arma::cov(w);
+  w = w * arma::inv(arma::trimatu(arma::chol(Cw, "upper")));
+  
   LambdaHw = w * Lambda.t();
+  
   
   if(verbose & debug){
     end_overall = std::chrono::steady_clock::now();

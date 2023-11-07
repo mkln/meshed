@@ -5,8 +5,7 @@ spmeshed.map <- function(y, x, coords, k=NULL,
                          block_size = 30,
                          grid_size=NULL,
                          grid_custom = NULL,
-                         pars = list(phi=NULL, tausq=NULL),
-                         theta = NULL,
+                         pars = list(phi=NULL, lambda=NULL, tausq=NULL, nu=NULL),
                          tausq = NULL,
                          maxit = 1000,
                          n_threads = 4,
@@ -294,11 +293,14 @@ spmeshed.map <- function(y, x, coords, k=NULL,
   if(TRUE){
     # prior and starting values for mcmc
     matern_nu <- FALSE
-    start_nu <- 0.5
-    matern_fix_twonu <- 1
+    start_nu <- pars$nu %>% set_default(0.5)
+    if(!(start_nu %in% c(0.5, 1.5))){
+      stop("choose nu = 0.5 or 1.5")
+    }
+    matern_fix_twonu <- ifelse(start_nu == 0.5, 1, 3)
     
     if(!is.null(pars$phi)){
-      if(family %in% c("gaussian", "beta", "negbinomial")){
+      if(any(family %in% c("gaussian", "beta", "negbinomial"))){
         if(is.null(pars$tausq)){
           stop("Must specify pars$tausq for this family.")
         }
@@ -306,32 +308,31 @@ spmeshed.map <- function(y, x, coords, k=NULL,
         pars$tausq <- 1
       }
       
-      all_values <- expand.grid(as.list(pars[c("phi", "tausq")]))
-      colnames(all_values)[1:2] <- c("phi", "tausq")
+      theta_values <- list()
+      for(i in 1:nrow(pars$phi)){
+        theta_values[[i]] <- matrix(1, ncol=k, nrow=2)
+        theta_values[[i]][1,] <- pars$phi[i,]
+      }
       
-      theta_values <- cbind(all_values[,1,drop=F],1) %>% 
-        t() %>% as.data.frame() %>% as.list() %>% 
-        lapply(function(x) matrix(x, ncol=1))
-      tausq_values <- all_values[,2] %>% matrix(nrow=q)   
     } else {
-      theta_values <- theta %>% lapply(function(x) rbind(x, 1))
-      tausq_values <- tausq
-      all_values <- list(theta = theta_values, tausq = tausq_values)
+      stop("Please supply pars$phi")
     }
   
     beta_Vi <- diag(ncol(x)) * 1/100
     
     start_beta   <- matrix(0, nrow=p, ncol=q)
     
-    #if(is.null(starting$lambda)){
-    lambda_values <- matrix(0, nrow=q, ncol=k)
-    diag(lambda_values) <- 1 #*** 10
-    
+    if(is.null(pars$lambda)){
+      lambda_values <- matrix(0, nrow=q, ncol=k)
+      diag(lambda_values) <- 1 #*** 10
+    } else {
+      lambda_values <- pars$lambda
+    }
     lambda_mask <- matrix(0, nrow=q, ncol=k)
     lambda_mask[lower.tri(lambda_mask)] <- 1
     diag(lambda_mask) <- 1 #*** 
     
-    lambda_values <- lambda_mask
+    
     
     start_w <- matrix(0, nrow = nrow(simdata_in), ncol = k)
   }
@@ -393,7 +394,6 @@ spmeshed.map <- function(y, x, coords, k=NULL,
                            
                            theta_values,
                            start_beta,
-                           tausq_values,
                            
                            maxit,
                            n_threads,
@@ -410,7 +410,7 @@ spmeshed.map <- function(y, x, coords, k=NULL,
   })
   
   returning <- list(coordsdata = coordsdata,
-                    pardf = all_values
+                    pardf = theta_values
                     #block_names = block_names,
                     #block_groups = block_groups,
                     #parents = parents,

@@ -32,7 +32,6 @@ Rcpp::List meshed_casc(
     const arma::umat& lambda_mask,
     const arma::field<arma::mat>& theta_values,
     const arma::mat& beta,
-    const arma::mat& tausq_values,
     
     int maxit = 1000,
     int num_threads = 1,
@@ -93,7 +92,7 @@ Rcpp::List meshed_casc(
   
   arma::mat start_lambda = lambda_values;
   arma::mat start_theta = theta_values(0);
-  arma::vec start_tausqi = 1.0/tausq_values.col(0);
+  arma::vec start_tausqi = arma::ones(q);//1.0/tausq_values.col(0);
   
   bool verbose_msp = verbose & debug;
   Meshed msp(y, family,
@@ -108,7 +107,7 @@ Rcpp::List meshed_casc(
              beta_Vi, 
              
              unused_tausq_ab, 
-             unused_hmc,
+             99,
              unused_adapting,
              unused_mcmcsd, unused_unifbounds,
              
@@ -133,7 +132,7 @@ Rcpp::List meshed_casc(
     arma::mat theta_here = theta_values(i);
     msp.param_data.theta = theta_here;
     
-    msp.tausq_inv = 1.0/tausq_values.col(i);
+    msp.tausq_inv = arma::ones(q);//1.0/tausq_values.col(i);
     
     if(maxit > 0){
       acceptable = msp.get_loglik_comps_w( msp.param_data );
@@ -176,15 +175,6 @@ Rcpp::List meshed_casc(
       }
       
       
-      if(false){
-        start = std::chrono::steady_clock::now();
-        msp.deal_with_tausq(msp.param_data);
-        end = std::chrono::steady_clock::now();
-        if(verbose_mcmc & verbose){
-          Rcpp::Rcout << "[tausq] " 
-                      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
-        }
-      }
       
       
       wllsave(m, i) = msp.param_data.loglik_w;

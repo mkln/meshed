@@ -50,8 +50,8 @@ spmeshed <- function(y, x, coords, k=NULL,
     mcmc_thin <- n_thin
     
     which_hmc    <- settings$hmc %>% set_default(0)
-    if(!(which_hmc %in% c(0,1,2,3,4,6))){
-      warning("Invalid sampling algorithm choice. Choose settings$hmc in {0,1,2,3,4,6}")
+    if(!(which_hmc %in% c(0,1,2,3,4,6,7))){
+      warning("Invalid sampling algorithm choice. Choose settings$hmc in {0,1,2,3,4,6,7}")
       which_hmc <- 0
     } 
     
@@ -61,7 +61,7 @@ spmeshed <- function(y, x, coords, k=NULL,
     saving <- settings$saving %>% set_default(TRUE)
     low_mem <- settings$low_mem %>% set_default(FALSE)
     
-    debugdag <- 1#debug$dag %>% set_default(1)
+    debugdag <- debug$dag %>% set_default(1)
     
     coords %<>% as.matrix()
     
@@ -248,8 +248,8 @@ spmeshed <- function(y, x, coords, k=NULL,
     
     #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     
-    simdata %<>% 
-      dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
+    #simdata %<>% 
+    #  dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
     
     coords <- simdata %>% 
       dplyr::select(dplyr::contains("Var")) %>% 
@@ -294,7 +294,7 @@ spmeshed <- function(y, x, coords, k=NULL,
                          dplyr::left_join(fake_coords_blocking))
       coords_blocking <- dplyr::bind_rows(coords_blocking, adding_blocks)
       
-      coords_blocking %<>% dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
+      #coords_blocking %<>% dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
     }
     
   }
@@ -331,8 +331,8 @@ spmeshed <- function(y, x, coords, k=NULL,
     dplyr::select(-na_which) %>% dplyr::left_join(simdata))
   #simdata[is.na(simdata$ix), "ix"] <- seq(nr_start+1, nr_full)
   
-  simdata_in %<>% 
-    dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
+  #simdata_in %<>% 
+  #  dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
   blocking <- simdata_in$block %>% 
     factor() %>% as.integer()
   indexing <- (1:nrow(simdata_in)-1) %>% 

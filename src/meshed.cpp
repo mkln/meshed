@@ -1125,6 +1125,9 @@ void Meshed::init_for_mcmc(){
         Rcpp::Rcout << "Using Adaptive MALA (Atchade 2006)" << endl;
       }
     }
+    if(which_hmc == 99){
+      Rcpp::Rcout << "MAP of w -- must disable sampling everywhere else!" << endl;
+    }
   }
   
   beta_node.reserve(q); // for beta
