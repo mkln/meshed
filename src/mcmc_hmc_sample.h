@@ -800,7 +800,7 @@ template <class T>
 inline arma::mat newton_step(arma::mat current_q, 
                              T& postparams,
                              AdaptE& adaptparams,
-                             double eps=1,
+                             double eps=.5,
                              bool debug=false){
   
   int k = current_q.n_cols;
@@ -833,8 +833,26 @@ inline arma::mat newton_step(arma::mat current_q,
   
   arma::vec veccurq = arma::vectorise(current_q);
   
-  arma::vec q = veccurq + 0.2 * Minv * xgrad;
-  arma::mat qmat = arma::mat(q.memptr(), q.n_elem/k, k);
+  double newdens = 0;
+  double deltadens = -1;
+  arma::vec q;
+  arma::mat qmat;
+  int ctr = 0;
+  
+  while((deltadens < 0) & ctr < 10){
+    q = veccurq + eps * Minv * xgrad;
+    qmat = arma::mat(q.memptr(), q.n_elem/k, k);
+    
+    //arma::vec dumpgrad;
+    //MM = postparams.compute_dens_grad_neghess(newdens, dumpgrad, qmat);
+    
+    newdens = postparams.logfullcondit(qmat);
+    deltadens = newdens - joint0;
+    //Rcpp::Rcout << "newdens: " << newdens << " olddens: " << joint0 << ", eps " << eps << endl; 
+    //Rcpp::Rcout << current_q << endl << qmat << endl;
+    eps = eps/2.0;
+    ctr ++;
+  }
 
   return qmat;
 } 

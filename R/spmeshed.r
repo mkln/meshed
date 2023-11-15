@@ -248,8 +248,8 @@ spmeshed <- function(y, x, coords, k=NULL,
     
     #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     
-    #simdata %<>% 
-    #  dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
+    simdata %<>% 
+      dplyr::arrange(!!!rlang::syms(paste0("Var", 1:dd)))
     
     coords <- simdata %>% 
       dplyr::select(dplyr::contains("Var")) %>% 

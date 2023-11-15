@@ -72,6 +72,7 @@ Rcpp::List meshed_casc(
   int n_alts = theta_values.n_slices;
   
   arma::mat wllsave = arma::zeros(maxit, n_alts);
+  arma::mat wsave = arma::zeros(n, k);
   
   arma::cube beta_map = arma::zeros(X.n_cols, q, n_alts);
   arma::cube v_map = arma::zeros(n, k, n_alts);
@@ -142,10 +143,16 @@ Rcpp::List meshed_casc(
     }
     double current_loglik = msp.param_data.loglik_w;
     
+    wsave = arma::zeros(n, k);
+    
+    
     for(m=0; (m<maxit) & keep_running; m++){
       msp.predicting = false;
       
       if(casc_w){
+        
+        wsave = msp.w;
+        
         start = std::chrono::steady_clock::now();
         msp.deal_with_w(msp.param_data, false);
         end = std::chrono::steady_clock::now();
@@ -182,7 +189,12 @@ Rcpp::List meshed_casc(
       
       wllsave(m, i) = msp.param_data.loglik_w;
       
-      if(abs((current_loglik - wllsave(m, i))/wllsave(m, i)) < 1e-5){
+      double delta_wll = wllsave(m, i) - current_loglik;
+      bool delta_wval_small = arma::all(arma::max(abs(wsave - msp.w)) < 1e-4);
+      //Rcpp::Rcout << "change: " << delta_wll << endl;
+      
+      bool stop_criterion = delta_wval_small | (abs(delta_wll) < 1e-5) | ((delta_wll < 1e-5) & (m > 20));
+      if(stop_criterion){
         keep_running = false;
       } else {
         current_loglik = wllsave(m, i);
