@@ -383,16 +383,6 @@ void Meshed::nongaussian_w(MeshDataLMC& data, bool sample){
     }
   }
   
-  if(which_hmc != 99){
-    for(int j=0; j<k; j++){
-      w.col(j) = w.col(j) - arma::mean(w.col(j));
-    }
-    
-    arma::mat Cw = arma::cov(w);
-    w = w * arma::inv(arma::trimatu(arma::chol(Cw, "upper")));  
-  }
-  
-  
   LambdaHw = w * Lambda.t();
   
   

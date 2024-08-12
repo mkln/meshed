@@ -843,13 +843,9 @@ inline arma::mat newton_step(arma::mat current_q,
     q = veccurq + eps * Minv * xgrad;
     qmat = arma::mat(q.memptr(), q.n_elem/k, k);
     
-    //arma::vec dumpgrad;
-    //MM = postparams.compute_dens_grad_neghess(newdens, dumpgrad, qmat);
-    
     newdens = postparams.logfullcondit(qmat);
     deltadens = newdens - joint0;
-    //Rcpp::Rcout << "newdens: " << newdens << " olddens: " << joint0 << ", eps " << eps << endl; 
-    //Rcpp::Rcout << current_q << endl << qmat << endl;
+    
     eps = eps/2.0;
     ctr ++;
   }

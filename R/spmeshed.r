@@ -10,7 +10,7 @@ spmeshed <- function(y, x, coords, k=NULL,
              n_threads = 4,
              verbose = 0,
              predict_everywhere = FALSE,
-             settings = list(adapting=TRUE, forced_grid=NULL, cache=NULL, 
+             settings = list(adapting=TRUE, forced_grid=FALSE, cache=NULL, 
                                 ps=TRUE, saving=TRUE, low_mem=FALSE, hmc=0),
              prior = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                           phi=NULL, a=NULL, nu = NULL,
@@ -23,7 +23,8 @@ spmeshed <- function(y, x, coords, k=NULL,
                           verbose=FALSE, debug=FALSE),
              indpart=FALSE
 ){
-
+  
+  
   # init
   if(verbose > 0){
     cat("Bayesian Meshed GP regression model fit via Markov chain Monte Carlo\n")
@@ -596,6 +597,8 @@ spmeshed <- function(y, x, coords, k=NULL,
     dplyr::select(dplyr::contains("Y_")) %>% 
     as.matrix()
   colnames(y) <- orig_y_colnames
+  
+  
   
   x <- simdata_in %>% 
     dplyr::select(dplyr::contains("X_")) %>% 
