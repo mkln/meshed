@@ -12,7 +12,7 @@ summary_list_q(x, q, n_threads=1)
 }
 \value{The matrix of quantiles.}
 \author{
-  Michele Peruzzi \email{michele.peruzzi@duke.edu}
+  Michele Peruzzi \email{michele.peruzzi@umich.edu}
 }
 \examples{
 # make some data into a list

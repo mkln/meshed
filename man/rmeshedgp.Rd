@@ -61,11 +61,11 @@ rmeshedgp(coords, theta,
 \references{
   Gneiting, T (2002) Nonseparable, Stationary Covariance Functions for Space-Time Data. \emph{Journal of the American Statistical Association}. \doi{10.1198/016214502760047113}
   
-  Peruzzi, M., Banerjee, S., and Finley, A.O. (2020)
-  Highly Scalable Bayesian Geostatistical Modeling via Meshed Gaussian Processes on Partitioned Domains. \emph{Journal of the American Statistical Association}, in press. \doi{10.1080/01621459.2020.1833889}
+  Peruzzi, M., Banerjee, S., and Finley, A.O. (2022)
+  Highly Scalable Bayesian Geostatistical Modeling via Meshed Gaussian Processes on Partitioned Domains. \emph{Journal of the American Statistical Association}, 117(538):969-982. \doi{10.1080/01621459.2020.1833889}
 }
 \author{
-Michele Peruzzi <michele.peruzzi@duke.edu>
+Michele Peruzzi <michele.peruzzi@umich.edu>
 }
 
 \examples{

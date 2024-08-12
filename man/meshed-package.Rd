@@ -28,8 +28,8 @@ Michele Peruzzi
   Peruzzi, M., Banerjee, S., Dunson, D.B., and Finley, A.O.  (2021)
   Grid-Parametrize-Split (GriPS) for Improved Scalable Inference in Spatial Big Data Analysis. \url{https://arxiv.org/abs/2101.03579}
   
-  Peruzzi, M., Dunson, D.B. (2022)
-  Spatial meshing for general Bayesian multivariate models. \url{https://arxiv.org/abs/2201.10080}
+  Peruzzi, M., Dunson, D.B. (2024)
+  Spatial meshing for general Bayesian multivariate models. \emph{Journal of Machine Learning Research}, 25(87):1−49. \url{https://arxiv.org/abs/2201.10080}
 }
 
 \keyword{ package }

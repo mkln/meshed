@@ -11,7 +11,7 @@ summary_list_mean(x, n_threads=1)
 }
 \value{The matrix of mean values.}
 \author{
-  Michele Peruzzi \email{michele.peruzzi@duke.edu}
+  Michele Peruzzi \email{michele.peruzzi@umich.edu}
 }
 \examples{
 # make some data into a list

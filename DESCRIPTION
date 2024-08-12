@@ -1,11 +1,11 @@
 Package: meshed
 Type: Package
 Title: Bayesian Regression with Meshed Gaussian Processes
-Version: 0.2.5
-Date: 2023-09-12
+Version: 0.3
+Date: 2024-08-12
 Author: Michele Peruzzi
-Maintainer: Michele Peruzzi <michele.peruzzi@duke.edu>
-Description: Fits Bayesian regression models based on latent Meshed Gaussian Processes (MGP) as described in Peruzzi, Banerjee, Finley (2020) <doi:10.1080/01621459.2020.1833889>, Peruzzi, Banerjee, Dunson, and Finley (2021) <arXiv:2101.03579>, Peruzzi and Dunson (2022) <arXiv:2201.10080>. Funded by ERC grant 856506 and NIH grant R01ES028804.
+Maintainer: Michele Peruzzi <michele.peruzzi@umich.edu>
+Description: Fits Bayesian regression models based on latent Meshed Gaussian Processes (MGP) as described in Peruzzi, Banerjee, Finley (2020) <doi:10.1080/01621459.2020.1833889>, Peruzzi, Banerjee, Dunson, and Finley (2021) <arXiv:2101.03579>, Peruzzi and Dunson (2024) <arXiv:2201.10080>. Funded by ERC grant 856506 and NIH grant R01ES028804.
 License: GPL (>= 3)
 Imports: Rcpp (>= 1.0.5), stats, dplyr, glue, rlang, magrittr, FNN
 Suggests: ggplot2, abind, rmarkdown, knitr, tidyr
