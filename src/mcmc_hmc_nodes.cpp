@@ -15,14 +15,12 @@ arma::vec NodeData::gradient_logfullcondit(const arma::vec& x){
 
 NodeDataW::NodeDataW(){
   n=-1;
-  fgrid = false;
 }
 
 NodeDataW::NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
                                     const arma::umat& na_mat_all, const arma::mat& offset_all, 
                                     const arma::uvec& indexing_target_in,
-                                    const arma::uvec& outtype, int k, 
-                                    bool fgrid_in){
+                                    const arma::uvec& outtype, int k){
   
   indexing_target = indexing_target_in;
   y = y_all.rows(indexing_target);
@@ -45,8 +43,6 @@ NodeDataW::NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
   
   n = y.n_rows;
   z = arma::ones(n); //Z_in.col(0);
-  
-  fgrid = fgrid_in;
 }
 
 void NodeDataW::initialize(){
@@ -229,16 +225,8 @@ arma::vec NodeDataW::compute_dens_and_grad(double& xtarget, const arma::mat& x){
   double loglike = 0;
   for(int i=0; i<nr; i++){
     arma::mat LambdaH, Hloc;
-    arma::mat wloc;
-    if(fgrid){
-      Hloc = (*Hproject).slice(i);
-      wloc = arma::sum(arma::trans((*Hproject).slice(i) % arma::trans(x)), 0);
-    } else {
-      wloc = x.row(i);
-    }
-    if(fgrid){
-      LambdaH = arma::zeros(q, k*indxsize);
-    }
+    arma::mat wloc = x.row(i);
+    
     for(unsigned int j=0; j<q; j++){
       if(na_mat(i, j) > 0){
         
@@ -248,22 +236,12 @@ arma::vec NodeDataW::compute_dens_and_grad(double& xtarget, const arma::mat& x){
         arma::vec gradloc = get_likdens_likgrad(loglike, y(i,j), ystarij, tausq(j), 
                                                 offset(i, j), xij, family(j));
         
-        if(fgrid){
-          for(unsigned int jx=0; jx<k; jx++){
-            arma::mat Hsub = Hloc.row(jx); //data.Hproject(u).subcube(jx,0,ix,jx,indxsize-1, ix);
-            // this outcome margin observed at this location
-            LambdaH.submat(j, jx*indxsize, j, (jx+1)*indxsize-1) += Lambda_lmc(j, jx) * Hsub;
-          }
-          arma::vec adding_grad = arma::trans(LambdaH.row(j)) * gradloc;
-          grad_loglike += adding_grad;
-        } else {
-          arma::mat LambdaHt = Lambda_lmc.row(j).t();
-          arma::vec Lgrad = LambdaHt * gradloc;
-          for(unsigned int s1=0; s1<k; s1++){
-            grad_loglike(s1 * indxsize + i) += Lgrad(s1);   
-          }  
-          
-        }
+        arma::mat LambdaHt = Lambda_lmc.row(j).t();
+        arma::vec Lgrad = LambdaHt * gradloc;
+        for(unsigned int s1=0; s1<k; s1++){
+          grad_loglike(s1 * indxsize + i) += Lgrad(s1);   
+        }  
+      
       }
     }
   }
@@ -295,12 +273,8 @@ double NodeDataW::logfullcondit(const arma::mat& x){
   double loglike = 0;
   
   for(unsigned int i=0; i<y.n_rows; i++){
-    arma::mat wloc;
-    if(fgrid){
-      wloc = arma::sum(arma::trans((*Hproject).slice(i) % arma::trans(x)), 0);
-    } else {
-      wloc = x.row(i);
-    }
+    arma::mat wloc = x.row(i);
+    
     for(unsigned int j=0; j<y.n_cols; j++){
       //Rcpp::Rcout << i << " - " << j << endl;
       if(na_mat(i, j) > 0){
@@ -326,12 +300,8 @@ double NodeDataW::loglike(const arma::mat& x){
   double loglike = 0;
   
   for(unsigned int i=0; i<y.n_rows; i++){
-    arma::mat wloc;
-    if(fgrid){
-      wloc = arma::sum(arma::trans((*Hproject).slice(i) % arma::trans(x)), 0);
-    } else {
-      wloc = x.row(i);
-    }
+    arma::mat wloc = x.row(i);
+    
     for(unsigned int j=0; j<y.n_cols; j++){
       //Rcpp::Rcout << i << " - " << j << endl;
       if(na_mat(i, j) > 0){
@@ -355,55 +325,23 @@ arma::vec NodeDataW::gradient_logfullcondit(const arma::mat& x){
   
   int nr = y.n_rows;
   int indxsize = x.n_rows;
-  
-  if(fgrid){
+
+  for(int i=0; i<nr; i++){
+    arma::mat wloc = x.row(i);
     
-    for(int i=0; i<nr; i++){
-      arma::mat wloc = arma::sum(arma::trans((*Hproject).slice(i) % arma::trans(x)), 0);
-      arma::mat LambdaH = arma::zeros(q, k*indxsize);  
-      arma::mat Hloc = (*Hproject).slice(i);
-      for(int j=0; j<q; j++){
-        if(na_mat(i, j) == 1){
-          for(int jx=0; jx<k; jx++){
-            arma::mat Hsub = Hloc.row(jx); //data.Hproject(u).subcube(jx,0,ix,jx,indxsize-1, ix);
-            // this outcome margin observed at this location
-            LambdaH.submat(j, jx*indxsize, j, (jx+1)*indxsize-1) += Lambda_lmc(j, jx) * Hsub;
-          }
+    for(unsigned int j=0; j<y.n_cols; j++){
+      if(na_mat(i, j) > 0){
+        double loglike = 0;
+        arma::mat LambdaHt = Lambda_lmc.row(j).t();
+        double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
+        double ystarij = family(j) == 3? ystar(i, j) : 0;
+        arma::vec gradloc = LambdaHt * get_likdens_likgrad(loglike, y(i,j), ystarij, tausq(j), 
+                                                           offset(i, j), xij, family(j));
+        
+        for(int s=0; s<k; s++){
+          grad_loglike(s * indxsize + i) += gradloc(s);   
         }
-      }
-      
-      for(unsigned int j=0; j<y.n_cols; j++){
-        if(na_mat(i, j) > 0){
-          double loglike = 0;
-          double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
-          arma::mat LambdaHt = LambdaH.row(j).t();
-          
-          double ystarij = family(j) == 3? ystar(i, j) : 0;
-          arma::vec gradloc = get_likdens_likgrad(loglike, y(i,j), ystarij, tausq(j), 
-                                                  offset(i, j), xij, family(j));
-          grad_loglike += LambdaHt * gradloc;
-        }
-      }
-    }
-    
-  } else {
-    for(int i=0; i<nr; i++){
-      arma::mat wloc = x.row(i);
-      
-      for(unsigned int j=0; j<y.n_cols; j++){
-        if(na_mat(i, j) > 0){
-          double loglike = 0;
-          arma::mat LambdaHt = Lambda_lmc.row(j).t();
-          double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
-          double ystarij = family(j) == 3? ystar(i, j) : 0;
-          arma::vec gradloc = LambdaHt * get_likdens_likgrad(loglike, y(i,j), ystarij, tausq(j), 
-                                                             offset(i, j), xij, family(j));
-          
-          for(int s=0; s<k; s++){
-            grad_loglike(s * indxsize + i) += gradloc(s);   
-          }
-        } 
-      }
+      } 
     }
   }
 
@@ -437,12 +375,7 @@ arma::mat NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad
     arma::mat wloc, Hloc;
     arma::mat LambdaH;
     
-    if(fgrid){
-      Hloc = (*Hproject).slice(i);
-      wloc = arma::sum(arma::trans(Hloc % arma::trans(x)), 0);
-    } else {
-      wloc = x.row(i);
-    }
+    wloc = x.row(i);
     
     // get mult
     arma::vec mult = arma::zeros(q);
@@ -451,11 +384,6 @@ arma::mat NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad
         double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
         mult(j) = get_mult(y(i,j), tausq(j), offset(i,j), xij, family(j));
       }
-    }
-    
-    
-    if(fgrid){
-      LambdaH = arma::zeros(q, k*indxsize);
     }
     
     for(int j=0; j<q; j++){
@@ -467,38 +395,23 @@ arma::mat NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad
         arma::vec gradloc = get_likdens_likgrad(loglike, y(i,j), ystarij, tausq(j), 
                                                 offset(i, j), xij, family(j));
 
-        if(fgrid){
-          for(unsigned int jx=0; jx<k; jx++){
-            arma::mat Hsub = Hloc.row(jx); //data.Hproject(u).subcube(jx,0,ix,jx,indxsize-1, ix);
-            // this outcome margin observed at this location
-            LambdaH.submat(j, jx*indxsize, j, (jx+1)*indxsize-1) += (mult(j) * Lambda_lmc(j, jx)) * Hsub;
+
+        arma::mat LambdaHt = Lambda_lmc.row(j).t();
+        arma::vec Lgrad = LambdaHt * gradloc;
+        
+        arma::mat hess_LambdaH = Lambda_lmc.row(j).t() * mult(j);
+        arma::mat neghessloc = hess_LambdaH * hess_LambdaH.t();
+        
+        for(int s1=0; s1<k; s1++){
+          grad_loglike(s1 * indxsize + i) += Lgrad(s1);   
+          for(int s2=0; s2<k; s2++){
+            neghess_logtarg(s1 * indxsize + i, s2*indxsize + i) += neghessloc(s1, s2);
           }
-          arma::vec adding_grad = arma::trans(LambdaH.row(j)/mult(j)) * gradloc;
-          grad_loglike += adding_grad;
-      
-        } else {
-          arma::mat LambdaHt = Lambda_lmc.row(j).t();
-          arma::vec Lgrad = LambdaHt * gradloc;
+        }  
           
-          arma::mat hess_LambdaH = Lambda_lmc.row(j).t() * mult(j);
-          arma::mat neghessloc = hess_LambdaH * hess_LambdaH.t();
-          
-          for(int s1=0; s1<k; s1++){
-            grad_loglike(s1 * indxsize + i) += Lgrad(s1);   
-            for(int s2=0; s2<k; s2++){
-              neghess_logtarg(s1 * indxsize + i, s2*indxsize + i) += neghessloc(s1, s2);
-            }
-          }  
-          
-        }
+        
       }
     }
-    
-    if(fgrid){
-      neghess_logtarg += LambdaH.t() * LambdaH;
-    }
-    
-    
     
   }
   
@@ -549,50 +462,23 @@ arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
   int nr = y.n_rows;
   int indxsize = x.n_rows;
 
-  if(fgrid){
-    
-    for(int i=0; i<nr; i++){
-      arma::mat wloc = arma::sum(arma::trans((*Hproject).slice(i) % arma::trans(x)), 0);
-      for(int j=0; j<q; j++){
-        if(na_mat(i, j) > 0){
-          arma::mat Hloc = (*Hproject).slice(i);
-          arma::rowvec LambdaHrowj = arma::zeros<arma::rowvec>(k*indxsize);  
-          for(int jx=0; jx<k; jx++){
-            arma::mat Hsub = Hloc.row(jx); //data.Hproject(u).subcube(jx,0,ix,jx,indxsize-1, ix);
-            // this outcome margin observed at this location
-            //LambdaH.submat(j, jx*indxsize, j, (jx+1)*indxsize-1) += Lambda_lmc(j, jx) * Hsub;
-            double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
-            double mult = get_mult(y(i,j), tausq(j), offset(i,j), xij, family(j));
-            
-            LambdaHrowj.subvec(jx*indxsize, (jx+1)*indxsize-1) += (mult * Lambda_lmc(j, jx)) * Hsub;
-          }
-          
-          neghess_logtarg += LambdaHrowj.t() * LambdaHrowj; 
-        }
-      }
-    }
-    
-  } else {
-    
-    for(int i=0; i<nr; i++){
-      arma::mat wloc = x.row(i);
-      for(unsigned int j=0; j<y.n_cols; j++){
-        if(na_mat(i, j) > 0){
-          double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
-          double mult = get_mult(y(i,j), tausq(j), offset(i,j), xij, family(j));
-          
-          arma::mat LambdaHt = Lambda_lmc.row(j).t() * mult;
-          arma::mat neghessloc = LambdaHt * LambdaHt.t();
-          
-          for(int s1=0; s1<k; s1++){
-            for(int s2=0; s2<k; s2++){
-              neghess_logtarg(s1 * indxsize + i, s2*indxsize + i) += neghessloc(s1, s2);
-            }
+  for(int i=0; i<nr; i++){
+    arma::mat wloc = x.row(i);
+    for(unsigned int j=0; j<y.n_cols; j++){
+      if(na_mat(i, j) > 0){
+        double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
+        double mult = get_mult(y(i,j), tausq(j), offset(i,j), xij, family(j));
+        
+        arma::mat LambdaHt = Lambda_lmc.row(j).t() * mult;
+        arma::mat neghessloc = LambdaHt * LambdaHt.t();
+        
+        for(int s1=0; s1<k; s1++){
+          for(int s2=0; s2<k; s2++){
+            neghess_logtarg(s1 * indxsize + i, s2*indxsize + i) += neghessloc(s1, s2);
           }
         }
       }
     }
-    
   }
   
   neghess_fwdcond_dmvn(neghess_logtarg, x);

@@ -55,7 +55,6 @@ Rcpp::List meshed_mcmc(
     bool adapting=false,
     
     bool use_cache=true,
-    bool forced_grid=true,
     bool use_ps=true,
     
     bool verbose=false,
@@ -129,7 +128,7 @@ Rcpp::List meshed_mcmc(
                 mcmcsd,
                 set_unif_bounds_in,
                 
-                use_cache, forced_grid, use_ps,
+                use_cache, use_ps,
                 verbose, debug, num_threads);
   
   Rcpp::List caching_info;
@@ -245,58 +244,17 @@ Rcpp::List meshed_mcmc(
       // do block beta&lambda update if 
       // we can do Gibbs for both in all-Gaussian case, or
       // we have at least one non-Gaussian outcome (i.e. no MPP-like adjustment if using grid)
-      if(arma::any(family > 0) + ((!forced_grid) & arma::all(family==0))){
-      //if(false){
-        if(sample_lambda+sample_beta+sample_tausq){
-          start = std::chrono::steady_clock::now();
-          msp.deal_with_BetaLambdaTau(msp.param_data, true, sample_beta, sample_lambda, sample_tausq); // true = sample
-          end = std::chrono::steady_clock::now();
-          if(verbose_mcmc & verbose){
-            Rcpp::Rcout << "[BetaLambdaTau] " 
-                        << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n"; 
-          }
-        }
-      } else {
-        /*if(sample_lambda+sample_beta){
-          start = std::chrono::steady_clock::now();
-          msp.deal_with_BetaLambdaTau(msp.param_data, true, sample_beta, sample_lambda, false); // true = sample
-          end = std::chrono::steady_clock::now();
-          if(verbose_mcmc & verbose){
-            Rcpp::Rcout << "[BetaLambdaTau] " 
-                        << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n"; 
-          }
-        }*/
-        if(sample_lambda){
-          start = std::chrono::steady_clock::now();
-          msp.deal_with_Lambda(msp.param_data);
-          end = std::chrono::steady_clock::now();
-          if(verbose_mcmc & verbose){
-            Rcpp::Rcout << "[Lambda] " 
-                        << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n"; 
-          }
-        }
-        
-        if(sample_beta){
-          start = std::chrono::steady_clock::now();
-          msp.deal_with_beta();
-          end = std::chrono::steady_clock::now();
-          if(verbose_mcmc & verbose){
-            Rcpp::Rcout << "[beta] " 
-                        << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n"; 
-          }
-        }
-        
-        if(sample_tausq){
-          start = std::chrono::steady_clock::now();
-          msp.deal_with_tausq(msp.param_data);
-          end = std::chrono::steady_clock::now();
-          if(verbose_mcmc & verbose){
-            Rcpp::Rcout << "[tausq] " 
-                        << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n";
-          }
+
+      if(sample_lambda+sample_beta+sample_tausq){
+        start = std::chrono::steady_clock::now();
+        msp.deal_with_BetaLambdaTau(msp.param_data, sample_beta, sample_lambda, sample_tausq); // true = sample
+        end = std::chrono::steady_clock::now();
+        if(verbose_mcmc & verbose){
+          Rcpp::Rcout << "[BetaLambdaTau] " 
+                      << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "us.\n"; 
         }
       }
-      
+
       if(sample_tausq || sample_beta || sample_w || sample_lambda){
         start = std::chrono::steady_clock::now();
         msp.logpost_refresh_after_gibbs(msp.param_data);

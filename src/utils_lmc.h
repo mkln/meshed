@@ -35,9 +35,9 @@ struct MeshDataLMC {
   double loglik_w; // will be pml
   double ll_y_all;
   
-  arma::field<arma::cube> Hproject; // moves from w to observed coords
-  arma::field<arma::cube> Rproject; // stores R for obs
-  arma::field<arma::cube> Riproject;
+  //arma::field<arma::cube> Hproject; // moves from w to observed coords
+  //arma::field<arma::cube> Rproject; // stores R for obs
+  //arma::field<arma::cube> Riproject;
   
   arma::cube DplusSi;
   arma::cube DplusSi_c;
@@ -48,7 +48,6 @@ struct MeshDataLMC {
   arma::field<arma::mat> Smu_start;
   
   arma::field<arma::field<arma::cube> > AK_uP;
-  //arma::field<arma::field<arma::mat> > LambdaH_Ditau; // for forced grids;
 };
 
 inline bool compute_block(bool predicting, int block_ct, bool rfc){

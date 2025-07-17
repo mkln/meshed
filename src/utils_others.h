@@ -31,28 +31,6 @@ struct MeshData {
   
 };
 
-/*
-struct MeshData {
-  
-  arma::vec theta; 
-  
-  arma::vec wcore; 
-  arma::field<arma::mat> w_cond_mean_K;
-  arma::field<arma::mat> w_cond_prec;
-  arma::field<arma::mat> w_cond_cholprec;
-  arma::field<arma::mat> w_cond_prec_parents;
-  
-  arma::vec logdetCi_comps;
-  double logdetCi;
-  
-  arma::vec loglik_w_comps;
-  double loglik_w;
-  
-  arma::uvec track_chol_fails;
-  bool cholfail;
-  
-};
-*/
 
 inline arma::vec armarowsum(const arma::mat& x){
   return arma::sum(x, 1);

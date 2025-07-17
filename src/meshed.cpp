@@ -39,7 +39,6 @@ Meshed::Meshed(
   const arma::mat& metrop_theta_bounds,
   
   bool use_cache=true,
-  bool use_forced_grid=false,
   bool use_ps=true,
   
   bool verbose_in=false,
@@ -51,7 +50,7 @@ Meshed::Meshed(
   
   verbose = verbose_in;
   debug = debugging;
-  forced_grid = use_forced_grid;
+  
   cached = use_cache;
   
   if(verbose & debug){
@@ -159,12 +158,11 @@ Meshed::Meshed(
   init_matern(num_threads, matern_twonu_in, use_ps);
   
   LambdaHw = w * Lambda.t(); // arma::zeros(coords.n_rows, q); 
-  wU = w;
   
   rand_norm_mat = arma::zeros(coords.n_rows, k);
   rand_unif = arma::zeros(n_blocks);
   
-  if(arma::all(familyid == 0)) { // & forced_grid){ // ** testing **
+  if(arma::all(familyid == 0)) { 
     init_gaussian();
   } 
   if(arma::any(familyid == 3) || arma::any(familyid == 4)){
@@ -242,16 +240,9 @@ void Meshed::make_gibbs_groups(){
   int pblocks = 0;
   for(unsigned int i=0; i<n_blocks; i++){
     int u = block_names(i) - 1;
-    if(forced_grid){
-      // forced grid, then predict blocks are all those that have some missing
-      if(block_ct_obs(u) < na_1_blocks(u).n_elem){
-        pblocks ++;
-      }
-    } else {
-      // original grid, then predict blocks are the empty ones
-      if(block_ct_obs(u) == 0){
-        pblocks ++;
-      }
+    // original grid, then predict blocks are the empty ones
+    if(block_ct_obs(u) == 0){
+      pblocks ++;
     }
   }
   
@@ -266,20 +257,11 @@ void Meshed::make_gibbs_groups(){
     int p=0; 
     for(unsigned int i=0; i<n_blocks; i++){
       int u = block_names(i) - 1;
-      if(forced_grid){
-        // forced grid, then predict blocks are all those that have some missing
-        if(block_ct_obs(u) < na_1_blocks(u).n_elem){
-          u_predicts(p) = u;
-          p ++;
-        }
-      } else {
-        // original grid, then predict blocks are the empty ones
-        if(block_ct_obs(u) == 0){
-          u_predicts(p) = u;
-          
-          p ++;
-        }
+      if(block_ct_obs(u) < na_1_blocks(u).n_elem){
+        u_predicts(p) = u;
+        p ++;
       }
+       
     }
   } else {
     if(verbose & debug){
@@ -418,13 +400,7 @@ void Meshed::init_cache(){
   kr_caching = arma::unique(kr_caching_ix);
   
   starting_kr = 0;
-  if(forced_grid){
-    cx_and_kr_caching = arma::join_vert(coords_caching,
-                                        kr_caching);
-    starting_kr = coords_caching.n_elem;
-  } else {
-    cx_and_kr_caching = kr_caching;
-  }
+  cx_and_kr_caching = kr_caching;
   
   // 
   findkr = arma::zeros<arma::uvec>(n_blocks);
@@ -438,12 +414,10 @@ void Meshed::init_cache(){
     int kr_cached_ix = kr_caching_ix(u);
     arma::uvec cpx = arma::find(kr_caching == kr_cached_ix, 1, "first");
     findkr(u) = cpx(0);
-    
-    //if(forced_grid){
+  
     int u_cached_ix = coords_caching_ix(u);
     arma::uvec cx = arma::find( coords_caching == u_cached_ix, 1, "first" );
     findcc(u) = cx(0);
-    //}
   }
   
   if(verbose & debug){
@@ -565,9 +539,9 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
   //param_data.w_cond_mean_K = arma::field<arma::cube> (n_blocks);
   //param_data.w_cond_prec   = arma::field<arma::cube> (n_blocks);
   
-  param_data.Rproject = arma::field<arma::cube>(n_blocks);
-  param_data.Riproject = arma::field<arma::cube>(n_blocks);
-  param_data.Hproject = arma::field<arma::cube>(n_blocks);
+  //param_data.Rproject = arma::field<arma::cube>(n_blocks);
+  //param_data.Riproject = arma::field<arma::cube>(n_blocks);
+  //param_data.Hproject = arma::field<arma::cube>(n_blocks);
   
   param_data.Smu_start = arma::field<arma::mat>(n_blocks);
   param_data.Sigi_chol = arma::field<arma::mat>(n_blocks);
@@ -580,15 +554,6 @@ void Meshed::init_meshdata(const arma::mat& theta_in){
 #pragma omp parallel for 
 #endif
   for(unsigned int i=0; i<n_blocks; i++){
-    //int u=block_names(i) - 1;
-    //param_data.w_cond_mean_K(i) = arma::zeros(indexing(i).n_elem, parents_indexing(i).n_elem, k);
-    //param_data.w_cond_prec(i) = arma::zeros(indexing(i).n_elem, indexing(i).n_elem, k);
-    
-    if(forced_grid){
-      param_data.Hproject(i) = arma::zeros(k, indexing(i).n_elem, indexing_obs(i).n_elem);
-      param_data.Rproject(i) = arma::zeros(k, k, indexing_obs(i).n_elem);
-      param_data.Riproject(i) = arma::zeros(k, k, indexing_obs(i).n_elem);
-    }
     param_data.Smu_start(i) = arma::zeros(k*indexing(i).n_elem, 1);
     param_data.Sigi_chol(i) = arma::zeros(k*indexing(i).n_elem, k*indexing(i).n_elem);
     param_data.AK_uP(i) = arma::field<arma::cube>(children(i).n_elem);
@@ -754,15 +719,6 @@ void Meshed::update_block_covpars(int u, MeshDataLMC& data){
     data.w_cond_prec_parents_ptr.at(u) = &data.Kppi_cache(krfound);
   } 
   
-  if(forced_grid){
-    int ccfound = findcc(u);
-    CviaKron_HRj_bdiag_(data.Hproject(u), data.Rproject(u), data.Riproject(u),
-                        data.Kxxi_cache(ccfound),
-                        coords, indexing_obs(u), 
-                        na_1_blocks(u), indexing(u), 
-                        k, data.theta, matern);
-    
-  }
   //message("[update_block_covpars] done.");
 }
 
@@ -847,6 +803,7 @@ void Meshed::init_betareg(){
   }
 }
 
+/*
 void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const arma::vec& tsqi){
   //message("[calc_DplusSi] start.");
   //int indxsize = indexing(u).n_elem;
@@ -898,6 +855,7 @@ void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const
   
   
 }
+*/
 
 bool Meshed::calc_ywlogdens(MeshDataLMC& data){
   start_overall = std::chrono::steady_clock::now();
@@ -913,13 +871,6 @@ bool Meshed::calc_ywlogdens(MeshDataLMC& data){
     int u = block_names(r)-1;
     update_block_covpars(u, data);
     update_block_wlogdens(u, data);
-    
-    if(forced_grid){
-      if(arma::all(familyid == 0)){
-        calc_DplusSi(u, data, Lambda, tausq_inv);
-      }
-      update_lly(u, data, LambdaHw, false);
-    }
   }
   
   data.loglik_w = 
@@ -1018,7 +969,7 @@ void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw, bool m
   end = std::chrono::steady_clock::now();
 }
 
-void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data, bool sample){
+void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data){
   
   if(verbose & debug){
     Rcpp::Rcout << "logpost_refresh_after_gibbs\n";
@@ -1033,17 +984,6 @@ void Meshed::logpost_refresh_after_gibbs(MeshDataLMC& data, bool sample){
     int u = block_names(r)-1;
     //update_block_covpars(u, data);
     update_block_wlogdens(u, data);
-    
-    if(forced_grid){
-      if(arma::all(familyid==0)){
-        calc_DplusSi(u, data, Lambda, tausq_inv);
-      }
-      update_lly(u, data, LambdaHw, false);
-    } else {
-      if(!sample){
-        update_lly(u, data, LambdaHw, true);
-      }
-    }
   }
   
   data.loglik_w = arma::accu(data.logdetCi_comps) + 
@@ -1130,13 +1070,13 @@ void Meshed::init_for_mcmc(){
     }
   }
   
-  beta_node.reserve(q); // for beta
+  //beta_node.reserve(q); // for beta
   lambda_node.reserve(q); // for lambda
   
   // start with small epsilon for a few iterations,
   // then find reasonable and then start adapting
   
-  beta_hmc_started = arma::zeros<arma::uvec>(q);
+  //beta_hmc_started = arma::zeros<arma::uvec>(q);
   lambda_hmc_started = arma::zeros<arma::uvec>(q);
   
   arma::mat LHW = w * Lambda.t();
@@ -1154,13 +1094,13 @@ void Meshed::init_for_mcmc(){
     NodeDataB new_beta_block(yj_obs, offsets_for_beta, X_obs, family);
     //new_beta_block.update_mv(offset_for_w, 1.0 / tausq_inv, Lambda);
     
-    beta_node.push_back(new_beta_block);
+    //beta_node.push_back(new_beta_block);
     
-    AdaptE new_beta_hmc_adapt;
-    new_beta_hmc_adapt.init(.05, p, which_hmc);
-    beta_hmc_adapt.push_back(new_beta_hmc_adapt);
+    //AdaptE new_beta_hmc_adapt;
+    //new_beta_hmc_adapt.init(.05, p, which_hmc);
+    //beta_hmc_adapt.push_back(new_beta_hmc_adapt);
     
-    beta_hmc_started(j) = 0;
+    //beta_hmc_started(j) = 0;
     
     // Lambda
     NodeDataB new_lambda_block(yj_obs, offsets_for_beta, X_obs, family);
@@ -1204,17 +1144,13 @@ void Meshed::init_for_mcmc(){
     for(unsigned int i=0; i<n_blocks; i++){
       int u = block_names(i)-1;
       
-      arma::uvec indexing_target;
-      if(forced_grid){
-        indexing_target = indexing_obs(u);
-      } else {
-        indexing_target = indexing(u);
-      }
+      arma::uvec indexing_target = indexing(u);
+    
       
       NodeDataW new_block(y, na_mat, //Z.rows(indexing(u)), 
                               offset_for_w,
                               indexing_target,
-                              familyid, k, forced_grid);
+                              familyid, k);
       
       new_block.update_mv(offset_for_w, 1.0 / tausq_inv, Lambda);
       
@@ -1264,7 +1200,6 @@ Meshed::Meshed(
   
   oneuv = arma::ones<arma::uvec>(1);//utils
   k = 1;
-  forced_grid = false;
   
   verbose = verbose_in;
   debug = debugging;

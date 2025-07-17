@@ -8,20 +8,19 @@ void apply2sd(arma::mat& x){
   }
 }
 
-void Meshed::deal_with_BetaLambdaTau(MeshDataLMC& data, bool sample,
+void Meshed::deal_with_BetaLambdaTau(MeshDataLMC& data, 
                                      bool sample_beta, bool sample_lambda, bool sample_tau){
-  sample_hmc_BetaLambdaTau(sample, sample_beta, sample_lambda, sample_tau);
+  sample_hmc_BetaLambdaTau( sample_beta, sample_lambda, sample_tau);
 }
 
 
-arma::vec Meshed::sample_BetaLambda_row(bool sample, int j, const arma::mat& rnorm_precalc){
+arma::vec Meshed::sample_BetaLambda_row(int j, const arma::mat& rnorm_precalc){
   // build W
   arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
   // filter: choose value of spatial processes at locations of Yj that are available
   
-  arma::mat WWj = wU.submat(ix_by_q_a(j), subcols); // acts as X //*********
+  arma::mat WWj = w.submat(ix_by_q_a(j), subcols); // acts as X //*********
   //wmean.submat(ix_by_q_a(j), subcols); // acts as X
-  if(!sample) { apply2sd(WWj); } // ***
   
   arma::mat XW = arma::join_horiz(X.rows(ix_by_q_a(j)), WWj);
   arma::mat Wcrossprod = XW.t() * XW; 
@@ -49,7 +48,7 @@ arma::vec Meshed::sample_BetaLambda_row(bool sample, int j, const arma::mat& rno
   return sampled;
 }
 
-void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample_lambda, bool sample_tau){
+void Meshed::sample_hmc_BetaLambdaTau(bool sample_beta, bool sample_lambda, bool sample_tau){
   if(verbose & debug){
     Rcpp::Rcout << "[sample_hmc_BetaLambdaTau] starting\n";
   }
@@ -73,7 +72,7 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample
     ///
     arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
     if(familyid(j) == 0){
-      arma::vec sampled = sample_BetaLambda_row(sample, j, rnorm_precalc);
+      arma::vec sampled = sample_BetaLambda_row(j, rnorm_precalc);
       
       if(sample_beta){
         Bcoeff.col(j) = sampled.head(p);
@@ -86,10 +85,9 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample
       
       // build W
       // filter: choose value of spatial processes at locations of Yj that are available
-      arma::mat WWj = wU.submat(ix_by_q_a(j), subcols); // acts as X //*********
+      arma::mat WWj = w.submat(ix_by_q_a(j), subcols); // acts as X //*********
       //wmean.submat(ix_by_q_a(j), subcols); // acts as X
-      if(!sample) { apply2sd(WWj); } // ***
-      
+
       arma::mat XW = arma::join_horiz(X.rows(ix_by_q_a(j)), WWj);
       //arma::mat Wcrossprod = XW.t() * XW; 
       
@@ -165,7 +163,7 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample
     XB.col(j) = X * Bcoeff.col(j);
     LambdaHw.col(j) = w * arma::trans(Lambda.row(j));
 
-    if(sample & sample_tau){
+    if(sample_tau){
       ///
       /// ** tausq update for beta/negbinom outcomes **
       ///
@@ -252,7 +250,7 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample, bool sample_beta, bool sample
   ///
   /// ** tausq update for gaussian outcomes when others are non-gaussian **
   ///
-  if(sample & sample_tau & arma::any(familyid == 0)){
+  if(sample_tau & arma::any(familyid == 0)){
     double aprior = tausq_ab(0);
     double bprior = tausq_ab(1);
     for(unsigned int j=0; j<q; j++){

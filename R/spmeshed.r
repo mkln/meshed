@@ -2,15 +2,13 @@ spmeshed <- function(y, x, coords, k=NULL,
              family = "gaussian",
              axis_partition = NULL, 
              block_size = 30,
-             grid_size=NULL,
-             grid_custom = NULL,
              n_samples = 1000,
              n_burnin = 100,
              n_thin = 1,
              n_threads = 4,
              verbose = 0,
              predict_everywhere = FALSE,
-             settings = list(adapting=TRUE, forced_grid=FALSE, cache=NULL, 
+             settings = list(adapting=TRUE, cache=NULL, 
                                 ps=TRUE, saving=TRUE, low_mem=FALSE, hmc=0),
              prior = list(beta=NULL, tausq=NULL, sigmasq = NULL,
                           phi=NULL, a=NULL, nu = NULL,
@@ -166,27 +164,8 @@ spmeshed <- function(y, x, coords, k=NULL,
       }
     }
     
-    if(is.null(settings$forced_grid)){
-      if(data_likely_gridded){
-        #cat("I think the data look gridded so I'm setting forced_grid=FALSE.\n")
-        use_forced_grid <- FALSE
-      } else {
-        #cat("I think the data don't look gridded so I'm setting forced_grid=TRUE.\n")
-        use_forced_grid <- TRUE
-      }
-    } else {
-      use_forced_grid <- settings$forced_grid %>% set_default(TRUE)
-      #if(!use_forced_grid & !data_likely_gridded){
-      #  warning("Data look not gridded: force a grid with settings$forced_grid=T.")
-      #}
-    }
-    
-    
     use_cache <- settings$cache %>% set_default(TRUE)
-    if(use_forced_grid & (!use_cache)){
-      warning("Using a forced grid with no cache is a waste of resources.")
-    }
-     
+
     # what are we sampling
     sample_w       <- debug$sample_w %>% set_default(TRUE)
     sample_beta    <- debug$sample_beta %>% set_default(TRUE)
@@ -208,42 +187,13 @@ spmeshed <- function(y, x, coords, k=NULL,
     #cat("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - \n")
     #cat("{q} outcome variables on {nrow(unique(coords))} unique locations." %>% glue::glue())
     #cat("\n")
-    if(use_forced_grid){ 
-      # user showed intention to use fixed grid
-      if(!is.null(grid_custom$grid)){
-        grid <- grid_custom$grid
-        gridcoords_lmc <- grid %>% as.data.frame()
-        colnames(gridcoords_lmc)[1:dd] <- colnames(coords)
-        if(ncol(grid) == dd + p){
-          # we have the covariate values at the reference grid, so let's use them to make predictions
-          colnames(gridcoords_lmc)[-(1:dd)] <- colnames(x)
-        }
-      } else {
-        gs <- round(nrow(coords)^(1/ncol(coords)))
-        gsize <- if(is.null(grid_size)){ rep(gs, ncol(coords)) } else { grid_size }
-        
-        xgrids <- list()
-        for(j in 1:dd){
-          xgrids[[j]] <- seq(min(coords[,j]), max(coords[,j]), length.out=gsize[j])
-        }
-        
-        gridcoords_lmc <- expand.grid(xgrids)
-      }
-      
-      #cat("Forced grid built with {nrow(gridcoords_lmc)} locations." %>% glue::glue())
-      #cat("\n")
-      simdata <- dplyr::bind_rows(simdata %>% dplyr::mutate(thegrid=0), 
-                           gridcoords_lmc %>% dplyr::mutate(thegrid=1))
-      
-      absize <- round(nrow(gridcoords_lmc)/prod(axis_partition))
-    } else {
-      if(length(axis_partition) < ncol(coords)){
-        stop("Error: axis_partition not specified for all axes.")
-      }
-      simdata %<>% 
-        dplyr::mutate(thegrid = 0)
-      absize <- round(nrow(simdata)/prod(axis_partition))
+  
+    if(length(axis_partition) < ncol(coords)){
+      stop("Error: axis_partition not specified for all axes.")
     }
+    
+    absize <- round(nrow(simdata)/prod(axis_partition))
+  
     #cat("Partitioning grid axes into {paste0(axis_partition, collapse=', ')} intervals. Approx block size {absize}" %>% glue::glue())
     #cat("\n")
     
@@ -258,17 +208,8 @@ spmeshed <- function(y, x, coords, k=NULL,
     sort_ix     <- simdata$ix
     
     # Domain partitioning and gibbs groups
-    if(use_forced_grid){
-      if(!is.null(grid_custom$axis_interval_partition)){
-        fixed_thresholds <- grid_custom$axis_interval_partition
-        axis_partition <- sapply(fixed_thresholds, function(x) length(x) + 1)
-      } else {
-        gridded_coords <- simdata %>% dplyr::filter(.data$thegrid==1) %>% dplyr::select(dplyr::contains("Var")) %>% as.matrix()
-        fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(gridded_coords[,i], axis_partition[i])) 
-      }
-    } else {
-      fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], axis_partition[i])) 
-    }
+    fixed_thresholds <- 1:dd %>% lapply(function(i) kthresholdscp(coords[,i], axis_partition[i])) 
+    
     
     
     # guaranteed to produce blocks using Mv
@@ -338,23 +279,10 @@ spmeshed <- function(y, x, coords, k=NULL,
     factor() %>% as.integer()
   indexing <- (1:nrow(simdata_in)-1) %>% 
     split(blocking)
-  
-  if(use_forced_grid){
-    indexing_grid_ids <- simdata_in$thegrid %>% split(blocking)
-    indexing_grid <- list()
-    indexing_obs <- list()
-    for(i in 1:length(indexing)){
-      indexing_grid[[i]] <- indexing[[i]][which(indexing_grid_ids[[i]] == 1)]
-      if(predict_everywhere){
-        indexing_obs[[i]] <- indexing[[i]]
-      } else {
-        indexing_obs[[i]] <- indexing[[i]][which(indexing_grid_ids[[i]] == 0)]
-      }
-    }
-  } else {
-    indexing_grid <- indexing
-    indexing_obs <- indexing_grid
-  }
+
+  indexing_grid <- indexing
+  indexing_obs <- indexing_grid
+
   
   if(1){
     # prior and starting values for mcmc
@@ -617,18 +545,8 @@ spmeshed <- function(y, x, coords, k=NULL,
   names(coords_renamer) <- orig_coords_colnames
   
   coordsdata <- simdata_in %>% 
-    dplyr::select(1:dd, .data$thegrid) %>%
-    dplyr::rename(!!!coords_renamer,
-                  forced_grid=.data$thegrid)
-  
-  ## checking
-  if(use_forced_grid){
-    suppressMessages(checking <- coordsdata %>% left_join(coords_blocking) %>% 
-      group_by(.data$block) %>% summarise(nfg = sum(.data$forced_grid)) %>% filter(.data$nfg==0))
-    if(nrow(checking) > 0){
-      stop("Partition is too fine for the current reference set. ")
-    }
-  }
+    dplyr::select(1:dd) %>%
+    dplyr::rename(!!!coords_renamer)
   
   if(verbose > 0){
     cat("Sending to MCMC.\n")
@@ -674,7 +592,6 @@ spmeshed <- function(y, x, coords, k=NULL,
                               mcmc_adaptive, # adapting
                               
                               use_cache,
-                              use_forced_grid,
                               use_ps,
                               
                               mcmc_verbose, mcmc_debug, # verbose, debug
@@ -727,7 +644,6 @@ spmeshed <- function(y, x, coords, k=NULL,
       
       mcmc_adaptive, # adapting
       
-      use_forced_grid,
       use_ps,
       matern_fix_twonu,
       

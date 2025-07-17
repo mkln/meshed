@@ -90,7 +90,6 @@ public:
   arma::mat Lambda;
   arma::umat Lambda_mask; // 1 where we want lambda to be nonzero
   arma::mat LambdaHw; // part of the regression mean explained by the latent process
-  arma::mat wU; // nonreference locations
   
   arma::mat XB; // by outcome
   arma::mat linear_predictor;
@@ -110,7 +109,6 @@ public:
   // setup
   bool predicting;
   bool cached;
-  bool forced_grid;
   
   bool verbose;
   bool debug;
@@ -177,7 +175,7 @@ public:
   arma::vec tausq_inv; // tausq for the l=q variables
   
   // MCMC
-  // ModifiedPP-like updates for tausq -- used if not forced_grid
+  // ModifiedPP-like updates for tausq -- used if not forced_grid //***
   int tausq_mcmc_counter;
   RAMAdapt tausq_adapt;
   arma::mat tausq_unif_bounds;
@@ -195,7 +193,7 @@ public:
   void init_betareg();
   void init_gaussian();
   void update_lly(int, MeshDataLMC&, const arma::mat& LamHw, bool map=false);
-  void calc_DplusSi(int, MeshDataLMC& data, const arma::mat& Lam, const arma::vec& tsqi);
+  //void calc_DplusSi(int, MeshDataLMC& data, const arma::mat& Lam, const arma::vec& tsqi);
   void update_block_w_cache(int, MeshDataLMC& data);
   void refresh_w_cache(MeshDataLMC& data);
   
@@ -205,10 +203,10 @@ public:
   //bool w_hmc_nuts;
   //bool w_hmc_rm;
   //bool w_hmc_srm;
-  void deal_with_w(MeshDataLMC& data, bool sample=true);
-  void gaussian_w(MeshDataLMC& data, bool sample);
-  void gaussian_nonreference_w(int, MeshDataLMC& data, const arma::mat&, bool sample);
-  void nongaussian_w(MeshDataLMC& data, bool sample);
+  void deal_with_w(MeshDataLMC& data);
+  void gaussian_w(MeshDataLMC& data);
+  //void gaussian_nonreference_w(int, MeshDataLMC& data, const arma::mat&);
+  void nongaussian_w(MeshDataLMC& data);
   void w_prior_sample(MeshDataLMC& data);
   std::vector<NodeDataW> w_node;
   arma::vec hmc_eps;
@@ -220,23 +218,21 @@ public:
   bool calc_ywlogdens(MeshDataLMC& data);
   
   // Beta
-  void deal_with_beta(bool sample=true);
-  void hmc_sample_beta(bool sample=true);
+  //void deal_with_beta(bool sample=true);
+  //void hmc_sample_beta(bool sample=true);
   //void tester_beta(bool sample=true);
-  std::vector<NodeDataB> beta_node; // std::vector
-  std::vector<AdaptE> beta_hmc_adapt; // std::vector
-  arma::uvec beta_hmc_started;
+  //std::vector<NodeDataB> beta_node; // std::vector
+  //std::vector<AdaptE> beta_hmc_adapt; // std::vector
+  //arma::uvec beta_hmc_started;
   
-  void deal_with_BetaLambdaTau(MeshDataLMC& data, bool sample, 
-                               bool sample_beta, bool sample_lambda, bool sample_tau);
-  arma::vec sample_BetaLambda_row(bool sample, int j, const arma::mat& rnorm_precalc);
-  void sample_hmc_BetaLambdaTau(bool sample, 
-                                bool sample_beta, bool sample_lambda, bool sample_tau);
+  void deal_with_BetaLambdaTau(MeshDataLMC& data, bool sample_beta, bool sample_lambda, bool sample_tau);
+  arma::vec sample_BetaLambda_row(int j, const arma::mat& rnorm_precalc);
+  void sample_hmc_BetaLambdaTau(bool sample_beta, bool sample_lambda, bool sample_tau);
   
   // Lambda
   void deal_with_Lambda(MeshDataLMC& data);
   void sample_nc_Lambda_std(); // noncentered
-  void sample_nc_Lambda_fgrid(MeshDataLMC& data);
+  
   arma::vec sample_Lambda_row(int j);
   void sample_hmc_Lambda();
   std::vector<NodeDataB> lambda_node; // std::vector
@@ -247,9 +243,8 @@ public:
   // Tausq
   void deal_with_tausq(MeshDataLMC& data, bool ref_pardata=false);
   void gibbs_sample_tausq_std(bool ref_pardata);
-  void gibbs_sample_tausq_fgrid(MeshDataLMC& data, bool ref_pardata);
   
-  void logpost_refresh_after_gibbs(MeshDataLMC& data, bool sample=true); 
+  void logpost_refresh_after_gibbs(MeshDataLMC& data); 
   
   // Predictions for W and Y
   void predict(bool sample=true);
@@ -308,7 +303,6 @@ public:
     const arma::mat& metrop_theta_bounds,
     
     bool use_cache,
-    bool use_forced_grid,
     bool use_ps,
     
     bool verbose_in,

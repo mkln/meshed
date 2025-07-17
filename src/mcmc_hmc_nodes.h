@@ -39,8 +39,6 @@ public:
   
   arma::uvec indexing_target;
   
-  bool fgrid;
-  
   //arma::cube Kxxi;
   arma::cube * Kcx;
   arma::cube * Ri;
@@ -101,8 +99,7 @@ public:
   NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
             const arma::umat& na_mat_all, const arma::mat& offset_all, 
             const arma::uvec& indexing_target,
-            const arma::uvec& outtype, int k, 
-            bool fgrid_in);
+            const arma::uvec& outtype, int k);
   
   NodeDataW();
   
