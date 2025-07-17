@@ -89,11 +89,11 @@ where \eqn{\epsilon(s) \sim N(0, \tau^2)}.
 \item{lp_map}{matrix with \eqn{n} rows and \eqn{M} columns storing the MAP estimates for the linear predictor \eqn{X\beta + w} for each combination of hyperparameter values.}
 }
 \references{
-Peruzzi, M., Banerjee, S., and Finley, A.O. (2020)
+Peruzzi, M., Banerjee, S., and Finley, A.O. (2022)
   Highly Scalable Bayesian Geostatistical Modeling via Meshed Gaussian Processes on Partitioned Domains. \emph{Journal of the American Statistical Association}, in press. \doi{10.1080/01621459.2020.1833889}
 }
 \author{
-Michele Peruzzi <michele.peruzzi@duke.edu>
+Michele Peruzzi <michele.peruzzi@umich.edu>
 }
 
 \examples{

@@ -100,12 +100,12 @@ where \eqn{y(s)} is a \eqn{q}-dimensional vector of outcomes at spatial location
 \references{
   Peruzzi, M., Banerjee, S., and Finley, A.O. (2022)
   Highly Scalable Bayesian Geostatistical Modeling via Meshed Gaussian Processes on Partitioned Domains. \emph{Journal of the American Statistical Association}, 117(538):969-982. \doi{10.1080/01621459.2020.1833889}
-  
-  Peruzzi, M., Banerjee, S., Dunson, D.B., and Finley, A.O.  (2021)
-  Grid-Parametrize-Split (GriPS) for Improved Scalable Inference in Spatial Big Data Analysis. \url{https://arxiv.org/abs/2101.03579}
-  
+
   Peruzzi, M., Dunson, D.B. (2024)
   Spatial meshing for general Bayesian multivariate models. \emph{Journal of Machine Learning Research}, 25(87):1−49. \url{https://arxiv.org/abs/2201.10080}
+  
+  Peruzzi, M., Banerjee, S., Dunson, D.B., and Finley, A.O.  (2025)
+  Gridding and Parameter Expansion for Scalable Latent Gaussian Models of Spatial Multivariate Data. \emph{Bayesian Analysis} \doi{10.1214/25-BA1515}
 }
 
 \author{
