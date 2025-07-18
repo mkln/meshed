@@ -22,7 +22,7 @@ arma::cube cube_tcrossprod(const arma::cube& x){
 //[[Rcpp::export]]
 arma::cube cube_correl_from_lambda(const arma::cube& lambda_mcmc){
   int q = lambda_mcmc.n_rows;
-  int k = lambda_mcmc.n_cols;
+  //int k = lambda_mcmc.n_cols;
   int m = lambda_mcmc.n_slices;
   
   arma::cube llt = arma::zeros(q, q, m);

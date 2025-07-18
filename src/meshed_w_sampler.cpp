@@ -245,10 +245,7 @@ void Meshed::nongaussian_w(MeshDataLMC& data){
           hmc_eps_started_adapting(u) = 1;
         }
         
-        
-        bool do_gibbs = arma::all(familyid == 0);
         arma::mat w_temp = w_current;
-       
         if(which_hmc == 0){
           w_temp = simpa_cpp(w_current, w_node.at(u), hmc_eps_adapt.at(u),
                                  rand_norm_mat.rows(indexing(u)),
@@ -286,10 +283,6 @@ void Meshed::nongaussian_w(MeshDataLMC& data){
                              rand_norm_mat.rows(indexing(u)),
                              rand_unif(u), rand_unif2(u),
                              debug);
-        }
-        
-        if(which_hmc == 99){
-          w_temp = newton_step(w_current, w_node.at(u), hmc_eps_adapt.at(u));
         }
       
       
