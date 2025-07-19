@@ -27,14 +27,6 @@ spmeshed <- function(y, x, coords, k=NULL,
   if(verbose > 0){
     cat("Bayesian Meshed GP regression model fit via Markov chain Monte Carlo\n")
   }
-  model_tag <- "Bayesian Meshed GP regression model\n
-    o --> o --> o
-    ^     ^     ^
-    |     |     | 
-    o --> o --> o
-    ^     ^     ^
-    |     |     | 
-    o --> o --> o\n(Markov chain Monte Carlo)\n"
   
   set_default <- function(x, default_val){
     return(if(is.null(x)){
@@ -245,11 +237,11 @@ spmeshed <- function(y, x, coords, k=NULL,
   # DAG
   if(dd < 4){
     graph_time <- system.time({
-      parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-.data$ix), axis_partition, FALSE, n_threads, debugdag)
+      parents_children <- mesh_graph_build(coords_blocking %>% dplyr::select(-ix), axis_partition, FALSE, n_threads, debugdag)
       })
   } else {
     graph_time <- system.time({
-      parents_children <- mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-.data$ix))
+      parents_children <- mesh_graph_build_hypercube(coords_blocking %>% dplyr::select(-ix))
     })
   }
   
@@ -280,10 +272,6 @@ spmeshed <- function(y, x, coords, k=NULL,
   indexing <- (1:nrow(simdata_in)-1) %>% 
     split(blocking)
 
-  indexing_grid <- indexing
-  indexing_obs <- indexing_grid
-
-  
   if(1){
     # prior and starting values for mcmc
     
@@ -554,13 +542,20 @@ spmeshed <- function(y, x, coords, k=NULL,
   
   mcmc_run <- meshed_mcmc
   
+  osix <- order(sort_ix)
+  #osix[is.na(sort_ix)] <- NA
+  osix <- osix[!is.na(sort_ix)] - 1
+  
+  
   comp_time <- system.time({
       results <- mcmc_run(y, family_id, x, coords, k,
                               
                               parents, children, 
                               block_names, block_groups,
                               
-                              indexing_grid, indexing_obs,
+                              indexing,
+                          
+                              osix,
                               
                               set_unif_bounds,
                               beta_Vi, 
@@ -612,13 +607,16 @@ spmeshed <- function(y, x, coords, k=NULL,
       anonList
     }
     
+    osix <- osix+1
+    
+    imtellingyou <- "saved data may be ordered differently from input data, use carefully"
     saved <- listN(y, x, coords_blocking, k,
       
                    family,
       parents, children, 
       block_names, block_groups,
       
-      indexing_grid, indexing_obs,
+      indexing,
       
       set_unif_bounds,
       beta_Vi, 
@@ -654,12 +652,12 @@ spmeshed <- function(y, x, coords, k=NULL,
       sample_beta, sample_tausq, 
       sample_lambda,
       sample_theta, sample_w,
-      fixed_thresholds)
+      fixed_thresholds, imtellingyou)
   } else {
     saved <- "Model data not saved."
   }
   
-  returning <- list(coordsdata = coordsdata,
+  returning <- list(#coordsdata = coordsdata,
                     savedata = saved) %>% 
     c(results)
   

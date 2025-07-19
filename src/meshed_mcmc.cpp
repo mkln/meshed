@@ -22,9 +22,9 @@ Rcpp::List meshed_mcmc(
     const arma::vec& layer_names,
     const arma::vec& layer_gibbs_group,
     
-    
     const arma::field<arma::uvec>& indexing,
-    const arma::field<arma::uvec>& indexing_obs,
+    
+    const arma::uvec& osix,
     
     const arma::mat& set_unif_bounds_in,
     const arma::mat& beta_Vi,
@@ -117,7 +117,7 @@ Rcpp::List meshed_mcmc(
             X, coords, k,
                 parents, children, layer_names, layer_gibbs_group,
                 
-                indexing, indexing_obs,
+                indexing, 
                 
                 matern_twonu,
                 start_w, beta, start_lambda, lambda_mask, start_theta, 1.0/tausq, 
@@ -144,10 +144,6 @@ Rcpp::List meshed_mcmc(
   arma::cube vcov_mcmc = arma::zeros(k, k, mcmc_thin*mcmc_keep);
   
   arma::cube lambda_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
-  arma::cube lambdastar_mcmc = arma::zeros(1,1,1);
-  if(use_ps){
-    lambdastar_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
-  }
   
   arma::cube lambda_identify_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   
@@ -272,7 +268,7 @@ Rcpp::List meshed_mcmc(
         ps_back(msp.param_data.theta, d, msp.matern.twonu, use_ps);
       
       if(mx >= 0){
-        arma::mat v_temp = msp.w * ps_forward(msp.param_data.theta, 
+        arma::mat v_temp = msp.w.rows(osix) * ps_forward(msp.param_data.theta, 
                                               d, msp.matern.twonu, use_ps);
         arma::mat vcov = arma::cov(v_temp);
         vcov_mcmc.slice(w_saved) = vcov;
@@ -283,10 +279,6 @@ Rcpp::List meshed_mcmc(
         
         theta_mcmc.slice(w_saved) = msp.param_data.theta;
 
-        // lambda here reconstructs based on 1/phi Matern reparametrization
-        if(use_ps){
-          lambdastar_mcmc.slice(w_saved) = msp.Lambda;
-        }
         lambda_mcmc.slice(w_saved) = lambda_transf_back;
         lambda_identify_mcmc.slice(w_saved) = lambda_transf_back * U.t();
           
@@ -301,11 +293,15 @@ Rcpp::List meshed_mcmc(
           
           Rcpp::RNGScope scope;
           msp.predicty();
-          yhat_mcmc[iname] = Rcpp::wrap(msp.yhat);
+          arma::mat yh = msp.yhat.rows(osix);
+          yhat_mcmc[iname] = Rcpp::wrap(yh);
           
           if(!low_mem){
-            w_mcmc[iname] = Rcpp::wrap(msp.LambdaHw);
-            lp_mcmc[iname] = Rcpp::wrap(msp.linear_predictor);
+            arma::mat LHW = msp.LambdaHw.rows(osix);
+            w_mcmc[iname] = Rcpp::wrap(LHW);
+            
+            arma::mat lp = msp.linear_predictor.rows(osix);
+            lp_mcmc[iname] = Rcpp::wrap(lp);
           }
           
           mcmc_ix(mcmc_saved) = w_saved;
@@ -379,12 +375,7 @@ Rcpp::List meshed_mcmc(
             arma::vec lvec = arma::vectorise(msp.Lambda);
             unsigned int n_lambda = lvec.n_elem;
             unsigned int n_print_lambda = min(printlimit, n_lambda);
-            if(debug){
-              Rprintf("\n  lambdastar = ");
-              for(unsigned int pp=0; pp<n_print_lambda; pp++){
-                Rprintf("%.3f ", lvec(pp));
-              } 
-            }
+
             lvec = arma::vectorise(lambda_transf_back);
             Rprintf("\n  lambda = ");
             for(unsigned int pp=0; pp<n_print_lambda; pp++){
@@ -415,7 +406,6 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
-      Rcpp::Named("lambdastar_mcmc") = lambdastar_mcmc,
       Rcpp::Named("lambda_identify_mcmc") = lambda_identify_mcmc,
       Rcpp::Named("paramsd") = msp.theta_adapt.paramsd,
       Rcpp::Named("mcmc") = mcmc,
@@ -443,7 +433,6 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
-      Rcpp::Named("lambdastar_mcmc") = lambdastar_mcmc,
       Rcpp::Named("lambda_identify_mcmc") = lambda_identify_mcmc,
       Rcpp::Named("paramsd") = msp.theta_adapt.paramsd,
       Rcpp::Named("mcmc") = mcmc,

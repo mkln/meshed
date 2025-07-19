@@ -30,14 +30,14 @@ void Meshed::update_block_w_cache(int u, MeshDataLMC& data){
     add_AK_AKu_multiply_(Sigi_tot, data.AK_uP(u)(c), AK_u);
   }
   
-  arma::mat u_tau_inv = arma::zeros(indexing_obs(u).n_elem, q);
-  arma::mat ytilde = arma::zeros(indexing_obs(u).n_elem, q);
+  arma::mat u_tau_inv = arma::zeros(indexing(u).n_elem, q);
+  arma::mat ytilde = arma::zeros(indexing(u).n_elem, q);
   
   for(unsigned int j=0; j<q; j++){
-    for(unsigned int ix=0; ix<indexing_obs(u).n_elem; ix++){
-      if(na_mat(indexing_obs(u)(ix), j) == 1){
+    for(unsigned int ix=0; ix<indexing(u).n_elem; ix++){
+      if(na_mat(indexing(u)(ix), j) == 1){
         u_tau_inv(ix, j) = pow(tausq_inv(j), .5);
-        ytilde(ix, j) = (y(indexing_obs(u)(ix), j) - XB(indexing_obs(u)(ix), j))*u_tau_inv(ix, j);
+        ytilde(ix, j) = (y(indexing(u)(ix), j) - XB(indexing(u)(ix), j))*u_tau_inv(ix, j);
       }
     }
     // dont erase:
@@ -312,57 +312,6 @@ void Meshed::nongaussian_w(MeshDataLMC& data){
   
 }
 
-/*
-void Meshed::gaussian_nonreference_w(int u, MeshDataLMC& data, const arma::mat& rand_norm_mat){
-  //message("[sample_nonreference_w] start.");
-  // for updating lambda and tau which will only look at observed locations
-  // centered updates instead use the partially marginalized thing
-  
-  for(unsigned int ix=0; ix<indexing_obs(u).n_elem; ix++){
-    if(na_1_blocks(u)(ix) == 1){
-      arma::mat Stemp = data.Riproject(u).slice(ix);
-      arma::mat tsqi = tausq_inv;
-      for(unsigned int j=0; j<q; j++){
-        if(na_mat(indexing_obs(u)(ix), j) == 0){
-          tsqi(j) = 0;
-        }
-      }
-      
-      arma::mat Smu_par = Stemp.diag() % arma::vectorise(w.row(indexing_obs(u)(ix)));
-      arma::mat Smu_y = Lambda.t() * (tsqi % arma::trans(y.row(indexing_obs(u)(ix)) - XB.row(indexing_obs(u)(ix))));
-      arma::mat Smu_tot = Smu_par + Smu_y;
-      
-      arma::mat Sigi_tot = Stemp + Lambda.t() * arma::diagmat(tsqi) * Lambda;
-      
-      arma::mat Sigi_chol;
-      try {
-        Sigi_chol = arma::inv(arma::trimatl(arma::chol( arma::symmatu( Sigi_tot ), "lower")));
-      } catch(...) {
-        Sigi_chol = arma::zeros(k, k);
-        for(unsigned int j=0; j<k; j++){
-          if(Sigi_tot(j, j) == 0){
-            Sigi_chol(j, j) = 0;
-          } else {
-            Sigi_chol(j, j) = pow( Sigi_tot(j, j), -0.5 );
-          }
-        }
-      }
-      
-      arma::vec wmean = Sigi_chol.t() * Sigi_chol * Smu_tot;
-      arma::vec wtemp = wmean;
-      
-      if(sample){
-        arma::vec rnvec = arma::vectorise(rand_norm_mat.row(indexing_obs(u)(ix)));
-        wtemp += Sigi_chol.t() * rnvec;
-      }
-      
-      wU.row(indexing_obs(u)(ix)) = arma::trans(wtemp);
-    }
-  }
-  //message("[sample_nonreference_w] done.");
-}
-*/
-
 void Meshed::predict(bool sample){
   start_overall = std::chrono::steady_clock::now();
   if(predict_group_exists == 1){
@@ -384,26 +333,26 @@ void Meshed::predict(bool sample){
         predict_parent_indexing = indexing(u); // uses knots which by construction include all k processes
         int ccfound = findcc(u);
         CviaKron_HRj_chol_bdiag_wcache(Hpred(i), Rcholpred(i), param_data.Kxxi_cache(ccfound), na_1_blocks(u),
-                                       coords, indexing_obs(u), predict_parent_indexing, k, param_data.theta, matern);
+                                       coords, indexing(u), predict_parent_indexing, k, param_data.theta, matern);
       } else {
         // no observed locations, use line of sight
         predict_parent_indexing = parents_indexing(u);
         CviaKron_HRj_chol_bdiag(Hpred(i), Rcholpred(i), Kxxi_parents,
                                 na_1_blocks(u),
-                                coords, indexing_obs(u), predict_parent_indexing, k, param_data.theta, matern);
+                                coords, indexing(u), predict_parent_indexing, k, param_data.theta, matern);
       }
       
       arma::mat wpars = w.rows(predict_parent_indexing);
       
-      for(unsigned int ix=0; ix<indexing_obs(u).n_elem; ix++){
+      for(unsigned int ix=0; ix<indexing(u).n_elem; ix++){
         if(na_1_blocks(u)(ix) == 0){
           arma::rowvec wtemp = arma::sum(arma::trans(Hpred(i).slice(ix)) % wpars, 0);
           
-          wtemp += arma::trans(Rcholpred(i).col(ix)) % rand_norm_mat.row(indexing_obs(u)(ix));
+          wtemp += arma::trans(Rcholpred(i).col(ix)) % rand_norm_mat.row(indexing(u)(ix));
           
-          w.row(indexing_obs(u)(ix)) = wtemp;
+          w.row(indexing(u)(ix)) = wtemp;
           
-          LambdaHw.row(indexing_obs(u)(ix)) = w.row(indexing_obs(u)(ix)) * Lambda.t();
+          LambdaHw.row(indexing(u)(ix)) = w.row(indexing(u)(ix)) * Lambda.t();
         }
       }
       

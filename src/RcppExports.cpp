@@ -261,8 +261,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // meshed_mcmc
-Rcpp::List meshed_mcmc(const arma::mat& y, const arma::uvec& family, const arma::mat& X, const arma::mat& coords, int k, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& indexing_obs, const arma::mat& set_unif_bounds_in, const arma::mat& beta_Vi, const arma::vec& sigmasq_ab, const arma::vec& tausq_ab, int matern_twonu, const arma::mat& start_w, const arma::mat& lambda, const arma::umat& lambda_mask, const arma::mat& theta, const arma::mat& beta, const arma::vec& tausq, const arma::mat& mcmcsd, int mcmc_keep, int mcmc_burn, int mcmc_thin, int mcmc_startfrom, int num_threads, int which_hmc, bool adapting, bool use_cache, bool use_ps, bool verbose, bool debug, int print_every, bool low_mem, bool sample_beta, bool sample_tausq, bool sample_lambda, bool sample_theta, bool sample_w);
-RcppExport SEXP _meshed_meshed_mcmc(SEXP ySEXP, SEXP familySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP kSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP sigmasq_abSEXP, SEXP tausq_abSEXP, SEXP matern_twonuSEXP, SEXP start_wSEXP, SEXP lambdaSEXP, SEXP lambda_maskSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP mcmcsdSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP mcmc_startfromSEXP, SEXP num_threadsSEXP, SEXP which_hmcSEXP, SEXP adaptingSEXP, SEXP use_cacheSEXP, SEXP use_psSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP print_everySEXP, SEXP low_memSEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_lambdaSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
+Rcpp::List meshed_mcmc(const arma::mat& y, const arma::uvec& family, const arma::mat& X, const arma::mat& coords, int k, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::uvec& osix, const arma::mat& set_unif_bounds_in, const arma::mat& beta_Vi, const arma::vec& sigmasq_ab, const arma::vec& tausq_ab, int matern_twonu, const arma::mat& start_w, const arma::mat& lambda, const arma::umat& lambda_mask, const arma::mat& theta, const arma::mat& beta, const arma::vec& tausq, const arma::mat& mcmcsd, int mcmc_keep, int mcmc_burn, int mcmc_thin, int mcmc_startfrom, int num_threads, int which_hmc, bool adapting, bool use_cache, bool use_ps, bool verbose, bool debug, int print_every, bool low_mem, bool sample_beta, bool sample_tausq, bool sample_lambda, bool sample_theta, bool sample_w);
+RcppExport SEXP _meshed_meshed_mcmc(SEXP ySEXP, SEXP familySEXP, SEXP XSEXP, SEXP coordsSEXP, SEXP kSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP osixSEXP, SEXP set_unif_bounds_inSEXP, SEXP beta_ViSEXP, SEXP sigmasq_abSEXP, SEXP tausq_abSEXP, SEXP matern_twonuSEXP, SEXP start_wSEXP, SEXP lambdaSEXP, SEXP lambda_maskSEXP, SEXP thetaSEXP, SEXP betaSEXP, SEXP tausqSEXP, SEXP mcmcsdSEXP, SEXP mcmc_keepSEXP, SEXP mcmc_burnSEXP, SEXP mcmc_thinSEXP, SEXP mcmc_startfromSEXP, SEXP num_threadsSEXP, SEXP which_hmcSEXP, SEXP adaptingSEXP, SEXP use_cacheSEXP, SEXP use_psSEXP, SEXP verboseSEXP, SEXP debugSEXP, SEXP print_everySEXP, SEXP low_memSEXP, SEXP sample_betaSEXP, SEXP sample_tausqSEXP, SEXP sample_lambdaSEXP, SEXP sample_thetaSEXP, SEXP sample_wSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -276,7 +276,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type layer_names(layer_namesSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type layer_gibbs_group(layer_gibbs_groupSEXP);
     Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
-    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing_obs(indexing_obsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type osix(osixSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type set_unif_bounds_in(set_unif_bounds_inSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type beta_Vi(beta_ViSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type sigmasq_ab(sigmasq_abSEXP);
@@ -307,7 +307,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type sample_lambda(sample_lambdaSEXP);
     Rcpp::traits::input_parameter< bool >::type sample_theta(sample_thetaSEXP);
     Rcpp::traits::input_parameter< bool >::type sample_w(sample_wSEXP);
-    rcpp_result_gen = Rcpp::wrap(meshed_mcmc(y, family, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, which_hmc, adapting, use_cache, use_ps, verbose, debug, print_every, low_mem, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w));
+    rcpp_result_gen = Rcpp::wrap(meshed_mcmc(y, family, X, coords, k, parents, children, layer_names, layer_gibbs_group, indexing, osix, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, which_hmc, adapting, use_cache, use_ps, verbose, debug, print_every, low_mem, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -338,8 +338,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // rmeshedgp_internal
-arma::mat rmeshedgp_internal(const arma::mat& coords, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, const arma::field<arma::uvec>& indexing_obs, int matern_twonu, const arma::mat& theta, int num_threads, bool use_cache, bool verbose, bool debug);
-RcppExport SEXP _meshed_rmeshedgp_internal(SEXP coordsSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP indexing_obsSEXP, SEXP matern_twonuSEXP, SEXP thetaSEXP, SEXP num_threadsSEXP, SEXP use_cacheSEXP, SEXP verboseSEXP, SEXP debugSEXP) {
+arma::mat rmeshedgp_internal(const arma::mat& coords, const arma::field<arma::uvec>& parents, const arma::field<arma::uvec>& children, const arma::vec& layer_names, const arma::vec& layer_gibbs_group, const arma::field<arma::uvec>& indexing, int matern_twonu, const arma::mat& theta, int num_threads, bool use_cache, bool verbose, bool debug);
+RcppExport SEXP _meshed_rmeshedgp_internal(SEXP coordsSEXP, SEXP parentsSEXP, SEXP childrenSEXP, SEXP layer_namesSEXP, SEXP layer_gibbs_groupSEXP, SEXP indexingSEXP, SEXP matern_twonuSEXP, SEXP thetaSEXP, SEXP num_threadsSEXP, SEXP use_cacheSEXP, SEXP verboseSEXP, SEXP debugSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -349,14 +349,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type layer_names(layer_namesSEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type layer_gibbs_group(layer_gibbs_groupSEXP);
     Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
-    Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing_obs(indexing_obsSEXP);
     Rcpp::traits::input_parameter< int >::type matern_twonu(matern_twonuSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type theta(thetaSEXP);
     Rcpp::traits::input_parameter< int >::type num_threads(num_threadsSEXP);
     Rcpp::traits::input_parameter< bool >::type use_cache(use_cacheSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
     Rcpp::traits::input_parameter< bool >::type debug(debugSEXP);
-    rcpp_result_gen = Rcpp::wrap(rmeshedgp_internal(coords, parents, children, layer_names, layer_gibbs_group, indexing, indexing_obs, matern_twonu, theta, num_threads, use_cache, verbose, debug));
+    rcpp_result_gen = Rcpp::wrap(rmeshedgp_internal(coords, parents, children, layer_names, layer_gibbs_group, indexing, matern_twonu, theta, num_threads, use_cache, verbose, debug));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -429,7 +428,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_repeat_centroid_perturb", (DL_FUNC) &_meshed_repeat_centroid_perturb, 2},
     {"_meshed_meshed_mcmc", (DL_FUNC) &_meshed_meshed_mcmc, 41},
     {"_meshed_spmeshed_predict", (DL_FUNC) &_meshed_spmeshed_predict, 16},
-    {"_meshed_rmeshedgp_internal", (DL_FUNC) &_meshed_rmeshedgp_internal, 13},
+    {"_meshed_rmeshedgp_internal", (DL_FUNC) &_meshed_rmeshedgp_internal, 12},
     {"_meshed_cube_tcrossprod", (DL_FUNC) &_meshed_cube_tcrossprod, 1},
     {"_meshed_cube_correl_from_lambda", (DL_FUNC) &_meshed_cube_correl_from_lambda, 1},
     {"_meshed_summary_list_mean", (DL_FUNC) &_meshed_summary_list_mean, 2},

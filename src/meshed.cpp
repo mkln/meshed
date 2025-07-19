@@ -19,7 +19,6 @@ Meshed::Meshed(
   const arma::vec& block_groups_in,
   
   const arma::field<arma::uvec>& indexing_in,
-  const arma::field<arma::uvec>& indexing_obs_in,
   
   int matern_twonu_in,
   
@@ -101,7 +100,7 @@ Meshed::Meshed(
   
   // domain partitioning
   indexing    = indexing_in;
-  indexing_obs = indexing_obs_in;
+  indexing = indexing_in;
   
   // initial values
   w = w_in; 
@@ -280,11 +279,11 @@ void Meshed::make_gibbs_groups(){
     for(unsigned int i=0; i<u_predicts.n_elem; i++){
       int u = u_predicts(i);
       if(block_ct_obs(u) > 0){
-        Hpred(i) = arma::zeros(k,indexing(u).n_elem,indexing_obs(u).n_elem);
+        Hpred(i) = arma::zeros(k,indexing(u).n_elem,indexing(u).n_elem);
       } else {
-        Hpred(i) = arma::zeros(k,parents_indexing(u).n_elem,indexing_obs(u).n_elem);
+        Hpred(i) = arma::zeros(k,parents_indexing(u).n_elem,indexing(u).n_elem);
       }
-      Rcholpred(i) = arma::zeros(k,indexing_obs(u).n_elem);
+      Rcholpred(i) = arma::zeros(k,indexing(u).n_elem);
     }
   }
   if(verbose & debug){
@@ -311,7 +310,7 @@ void Meshed::na_study(){
 #pragma omp parallel for 
 #endif
   for(unsigned int i=0; i<n_blocks;i++){
-    arma::mat yvec = y.rows(indexing_obs(i));
+    arma::mat yvec = y.rows(indexing(i));
     na_1_blocks(i) = arma::zeros<arma::uvec>(yvec.n_rows);
     na_0_blocks(i) = arma::zeros<arma::uvec>(yvec.n_rows);
     // consider NA if all margins are missing
@@ -479,7 +478,7 @@ void Meshed::init_gibbs_index(){
   for(unsigned int i=0; i<n_blocks; i++){ // all blocks
     int u = block_names(i)-1; // block name
     
-    if(indexing_obs(u).n_elem > 0){ 
+    if(indexing(u).n_elem > 0){ 
       // number of coords of the jth parent of the child
       dim_by_parent(u) = arma::zeros<arma::uvec>(parents(u).n_elem + 1);
       for(unsigned int j=0; j<parents(u).n_elem; j++){
@@ -803,60 +802,6 @@ void Meshed::init_betareg(){
   }
 }
 
-/*
-void Meshed::calc_DplusSi(int u, MeshDataLMC & data, const arma::mat& Lam, const arma::vec& tsqi){
-  //message("[calc_DplusSi] start.");
-  //int indxsize = indexing(u).n_elem;
-  
-  if((k==1) & (q==1)){
-    for(unsigned int ix=0; ix<indexing_obs(u).n_elem; ix++){
-      if(na_1_blocks(u)(ix) == 1){
-        arma::mat Dtau = Lam(0, 0) * Lam(0, 0) * data.Rproject(u).slice(ix) + 1.0/tsqi(0);
-        // fill 
-        data.DplusSi_ldet(indexing_obs(u)(ix)) = - log(Dtau(0,0));
-        data.DplusSi.slice(indexing_obs(u)(ix)) = 1.0/Dtau; // 1.0/ (L * L);
-        data.DplusSi_c.slice(indexing_obs(u)(ix)) = pow(Dtau, -0.5);
-      }
-    }
-  } else {
-    for(unsigned int ix=0; ix<indexing_obs(u).n_elem; ix++){
-      if(na_1_blocks(u)(ix) == 1){
-        arma::mat Dtau = Lam * data.Rproject(u).slice(ix) * Lam.t();
-        arma::vec II = arma::ones(q);
-        for(unsigned int j=0; j<q; j++){
-          if(na_mat(indexing_obs(u)(ix), j) == 1){
-            // this outcome margin observed at this location
-            Dtau(j, j) += 1/tsqi(j);
-          } else {
-            II(j) = 0;
-          }
-        }
-        arma::uvec obs = arma::find(II == 1);
-        // Dtau = D + S
-        arma::mat L = arma::chol(Dtau.submat(obs, obs), "lower");  
-        
-        // L Lt = D + S, therefore Lti Li = (D + S)^-1
-        arma::mat Li = arma::inv(arma::trimatl(L));
-        
-        arma::mat Ditau = arma::zeros(q, q);
-        arma::mat Ditau_obs = Li.t() * Li;
-        Ditau.submat(obs, obs) = Ditau_obs;
-        
-        arma::mat Lifull = arma::zeros(arma::size(Ditau));
-        Lifull.submat(obs, obs) = Li;
-        
-        // fill 
-        data.DplusSi_ldet(indexing_obs(u)(ix)) = 2.0 * arma::accu(log(Li.diag()));
-        data.DplusSi.slice(indexing_obs(u)(ix)) = Ditau;
-        data.DplusSi_c.slice(indexing_obs(u)(ix)) = Lifull;
-      }
-    }
-  }
-  
-  
-}
-*/
-
 bool Meshed::calc_ywlogdens(MeshDataLMC& data){
   start_overall = std::chrono::steady_clock::now();
   // called for a proposal of theta
@@ -910,24 +855,24 @@ bool Meshed::get_loglik_comps_w(MeshDataLMC& data){
 void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw, bool map){
   //message("[update_lly] start.");
   start = std::chrono::steady_clock::now();
-  data.ll_y.rows(indexing_obs(u)).fill(0.0);
+  data.ll_y.rows(indexing(u)).fill(0.0);
   
   if(arma::all(familyid == 0) & (!map)){
-    for(unsigned int ix=0; ix<indexing_obs(u).n_elem; ix++){
+    for(unsigned int ix=0; ix<indexing(u).n_elem; ix++){
       if(na_1_blocks(u)(ix) == 1){
         // at least one outcome available
-        arma::vec ymean = arma::trans(y.row(indexing_obs(u)(ix)) - 
-          XB.row(indexing_obs(u)(ix)) - LamHw.row(indexing_obs(u)(ix)));
-        data.ll_y.row(indexing_obs(u)(ix)) += 
-          + 0.5 * data.DplusSi_ldet(indexing_obs(u)(ix)) - 0.5 * ymean.t() * 
-          data.DplusSi.slice(indexing_obs(u)(ix)) * ymean;
+        arma::vec ymean = arma::trans(y.row(indexing(u)(ix)) - 
+          XB.row(indexing(u)(ix)) - LamHw.row(indexing(u)(ix)));
+        data.ll_y.row(indexing(u)(ix)) += 
+          + 0.5 * data.DplusSi_ldet(indexing(u)(ix)) - 0.5 * ymean.t() * 
+          data.DplusSi.slice(indexing(u)(ix)) * ymean;
       }
     }
   } else {
     // some nongaussian
-    int nr = indexing_obs(u).n_elem;
+    int nr = indexing(u).n_elem;
     for(int ix=0; ix<nr; ix++){
-      int i = indexing_obs(u)(ix);
+      int i = indexing(u)(ix);
       double loglike = 0;
       for(unsigned int j=0; j<q; j++){
         if(na_mat(i, j) > 0){
@@ -1183,7 +1128,6 @@ Meshed::Meshed(
   const arma::vec& block_groups_in,
   
   const arma::field<arma::uvec>& indexing_in,
-  const arma::field<arma::uvec>& indexing_obs_in,
   
   int matern_twonu_in,
   
@@ -1226,7 +1170,7 @@ Meshed::Meshed(
   
   // domain partitioning
   indexing    = indexing_in;
-  indexing_obs = indexing_obs_in;
+  indexing = indexing_in;
   
   // init
   u_is_which_col_f    = arma::field<arma::field<arma::field<arma::uvec> > > (n_blocks);

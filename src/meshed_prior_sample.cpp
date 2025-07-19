@@ -12,7 +12,6 @@ arma::mat rmeshedgp_internal(const arma::mat& coords,
                              const arma::vec& layer_gibbs_group,
                              
                              const arma::field<arma::uvec>& indexing,
-                             const arma::field<arma::uvec>& indexing_obs,
                              
                              int matern_twonu,
                              
@@ -32,7 +31,7 @@ arma::mat rmeshedgp_internal(const arma::mat& coords,
   
   Meshed msp(coords, parents, children, layer_names, layer_gibbs_group,
              
-             indexing, indexing_obs,
+             indexing, 
              
              matern_twonu, theta, 
              use_cache,
