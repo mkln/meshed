@@ -303,6 +303,11 @@ spmeshed <- function(y, x, coords, k=NULL,
           strmessage <- paste0("nu set to ", start_nu/2)
           message(strmessage)
         } else {
+          if(q > 1){
+            stop("Unsupported estimation of nu (Matern smoothness) with multivariate data and coregionalization model of cross-covariance.\n 
+             Refer to Genton and Kleibler (2015) for a theoretical justification.\n
+             Fix nu instead. ")
+          }
           if(is.null(starting$nu)){
             start_nu <- mean(nu_limits)
           } else {
@@ -598,6 +603,9 @@ spmeshed <- function(y, x, coords, k=NULL,
                               sample_lambda,
                               sample_theta, sample_w) 
     })
+  
+  rownames(results$theta_mcmc) <- theta_names
+  colnames(results$theta_mcmc) <- paste0("process", 1:k)
   
   if(saving){
     

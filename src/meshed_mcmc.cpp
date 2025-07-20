@@ -327,60 +327,66 @@ Rcpp::List meshed_mcmc(
           msp.theta_adapt.print_summary(time_tick, time_mcmc, m, mcmc);
           
           tick_mcmc = std::chrono::steady_clock::now();
-          if(verbose & debug){
-            Rprintf("  p(w|theta) = %.2f    p(y|...) = %.2f  \n ", msp.param_data.loglik_w, msp.logpost);
-          }
+
           unsigned int printlimit = 10;
           
           msp.theta_adapt.print_acceptance();
-          Rprintf("  theta = ");
-          unsigned int n_theta = msp.param_data.theta.n_elem;
-          unsigned int n_print_theta = min(printlimit, n_theta);
-          for(unsigned int pp=0; pp<n_print_theta; pp++){
-            Rprintf("%.3f ", msp.param_data.theta(pp));
+          
+          if(debug){
+            if(verbose & debug){
+              Rprintf("  p(w|theta) = %.2f    p(y|...) = %.2f  \n ", msp.param_data.loglik_w, msp.logpost);
+            }
+            
+            Rprintf("  theta = ");
+            unsigned int n_theta = msp.param_data.theta.n_elem;
+            unsigned int n_print_theta = min(printlimit, n_theta);
+            for(unsigned int pp=0; pp<n_print_theta; pp++){
+              Rprintf("%.3f ", msp.param_data.theta(pp));
+            }
+            
+            if(arma::any(msp.familyid == 0)){
+              Rprintf("\n  tausq = ");
+              unsigned int n_print_tsq = min(printlimit, q);
+              for(unsigned int pp=0; pp<n_print_tsq; pp++){
+                if(msp.familyid(pp) == 0){
+                  Rprintf("(%d) %.6f ", pp+1, 1.0/msp.tausq_inv(pp));
+                }
+              }
+            }
+            if(arma::any(msp.familyid == 3)){
+              Rprintf("\n  tau (betareg) = ");
+              unsigned int n_print_tsq = min(printlimit, q);
+              for(unsigned int pp=0; pp<n_print_tsq; pp++){
+                if(msp.familyid(pp) == 3){
+                  Rprintf("(%d) %.4f ", pp+1, 1.0/msp.tausq_inv(pp));
+                }
+              }
+            }
+            if(arma::any(msp.familyid == 4)){
+              Rprintf("\n  tau (negbinom) = ");
+              unsigned int n_print_tsq = min(printlimit, q);
+              for(unsigned int pp=0; pp<n_print_tsq; pp++){
+                if(msp.familyid(pp) == 4){
+                  Rprintf("(%d) %.4f ", pp+1, 1.0/msp.tausq_inv(pp));
+                }
+              }
+            }
+            if(use_ps || q > 1){
+              arma::vec lvec = arma::vectorise(msp.Lambda);
+              unsigned int n_lambda = lvec.n_elem;
+              unsigned int n_print_lambda = min(printlimit, n_lambda);
+              
+              lvec = arma::vectorise(lambda_transf_back);
+              Rprintf("\n  lambda = ");
+              for(unsigned int pp=0; pp<n_print_lambda; pp++){
+                Rprintf("%.3f ", lvec(pp));
+              }
+            }
+            Rprintf("\n\n");
           }
           
           
-          if(arma::any(msp.familyid == 0)){
-            Rprintf("\n  tausq = ");
-            unsigned int n_print_tsq = min(printlimit, q);
-            for(unsigned int pp=0; pp<n_print_tsq; pp++){
-              if(msp.familyid(pp) == 0){
-                Rprintf("(%d) %.6f ", pp+1, 1.0/msp.tausq_inv(pp));
-              }
-            }
-          }
-          if(arma::any(msp.familyid == 3)){
-            Rprintf("\n  tau (betareg) = ");
-            unsigned int n_print_tsq = min(printlimit, q);
-            for(unsigned int pp=0; pp<n_print_tsq; pp++){
-              if(msp.familyid(pp) == 3){
-                Rprintf("(%d) %.4f ", pp+1, 1.0/msp.tausq_inv(pp));
-              }
-            }
-          }
-          if(arma::any(msp.familyid == 4)){
-            Rprintf("\n  tau (negbinom) = ");
-            unsigned int n_print_tsq = min(printlimit, q);
-            for(unsigned int pp=0; pp<n_print_tsq; pp++){
-              if(msp.familyid(pp) == 4){
-                Rprintf("(%d) %.4f ", pp+1, 1.0/msp.tausq_inv(pp));
-              }
-            }
-          }
-          if(use_ps || q > 1){
-            arma::vec lvec = arma::vectorise(msp.Lambda);
-            unsigned int n_lambda = lvec.n_elem;
-            unsigned int n_print_lambda = min(printlimit, n_lambda);
-
-            lvec = arma::vectorise(lambda_transf_back);
-            Rprintf("\n  lambda = ");
-            for(unsigned int pp=0; pp<n_print_lambda; pp++){
-              Rprintf("%.3f ", lvec(pp));
-            }
-          }
           
-          Rprintf("\n\n");
         } 
       } else {
         tick_mcmc = std::chrono::steady_clock::now();

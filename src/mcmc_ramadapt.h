@@ -290,9 +290,9 @@ inline void RAMAdapt::print_summary(int time_tick, int time_mcmc, int m, int mcm
   etr = etr > 60 ? etr/60 : etr;
   
   //Rcpp::Rcout << m+1 << " " << mcmc << " " << time_iter << " " << mcmc-m-1 << " " << (mcmc-m-1) * time_iter << "\n";
-  Rprintf("%.1f%% elapsed: %5dms (+%5dms). ETR: %.2f%s. \n",
+  Rprintf("%.1f%% elapsed: %5.2fs (+%5dms). ETR: %.2f%s. \n",
          100.0*(m+1.0)/mcmc,
-         time_mcmc,
+         time_mcmc / 1000.0,
          time_tick,
          etr, unit);
 }
