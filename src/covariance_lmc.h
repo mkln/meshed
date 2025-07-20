@@ -35,6 +35,12 @@ arma::mat Correlationf(const arma::mat& coords, const arma::uvec& ix, const arma
 arma::mat Correlationc(const arma::mat& coordsx, const arma::mat& coordsy, 
                        const arma::vec& theta, MaternParams& matern, bool same);
 
+
+
+void reorganize_variance_terms(arma::mat& lambda, arma::mat& theta, unsigned int d);
+
+
+
 // inplace functions
 void CviaKron_invsympd_(arma::cube& CCi, 
                         const arma::mat& coords, const arma::uvec& indx, 

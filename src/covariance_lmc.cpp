@@ -243,42 +243,6 @@ void gneiting2002_inplace(arma::mat& res, const arma::mat& coords,
     }
   }
 }
-
-
-void kernelp_inplace(arma::mat& res,
-             const arma::mat& Xcoords, const arma::uvec& ind1, const arma::uvec& ind2, 
-             const arma::vec& theta, bool same){
-  
-  double sigmasq = theta(theta.n_elem-1);
-  arma::vec kweights = theta.subvec(0, theta.n_elem-2);
-  
-  if(same){
-    for(unsigned int i=0; i<ind1.n_elem; i++){
-      arma::rowvec cri = Xcoords.row(ind1(i));
-      for(unsigned int j=i; j<ind2.n_elem; j++){
-        //arma::rowvec deltasq = kweights.t() % (cri - Xcoords.row(ind2(j)));
-        //double weighted = sqrt(arma::accu(deltasq % deltasq));
-        arma::rowvec deltasq = cri - Xcoords.row(ind2(j));
-        double weighted = (arma::accu(kweights.t() % deltasq % deltasq));
-        res(i, j) = sigmasq * exp(-weighted) + (weighted == 0? 1e-6 : 0);
-      }
-    }
-    res = arma::symmatu(res);
-  } else {
-    //int cc = 0;
-    for(unsigned int i=0; i<ind1.n_elem; i++){
-      arma::rowvec cri = Xcoords.row(ind1(i));
-      for(unsigned int j=0; j<ind2.n_elem; j++){
-        //arma::rowvec deltasq = kweights.t() % (cri - Xcoords.row(ind2(j)));
-        //double weighted = sqrt(arma::accu(deltasq % deltasq));
-        arma::rowvec deltasq = cri - Xcoords.row(ind2(j));
-        double weighted = (arma::accu(kweights.t() % deltasq % deltasq));
-        res(i, j) = sigmasq * exp(-weighted) + (weighted == 0? 1e-6 : 0);
-      }
-    }
-  }
-}
-
 arma::mat Correlationf(
     const arma::mat& coords,
     const arma::uvec& ix, const arma::uvec& iy,
@@ -338,11 +302,7 @@ arma::mat Correlationf(
     double nu = matern.twonu/2.0;
     gneiting2002_inplace(res, coords, ix, iy, theta(0), theta(1), theta(2), sigmasq, nu, same);
     return res;
-  } else {
-    // p exposures, p+1 params
-    kernelp_inplace(res, coords, ix, iy, theta, same);
-    return res;
-  }
+  } 
 }
 
 
@@ -365,6 +325,26 @@ arma::mat Correlationc(
     return Correlationf(coords, ix, iy, theta, matern, same);
   }
   
+}
+
+void reorganize_variance_terms(arma::mat& lambda, arma::mat& theta, unsigned int d){
+  arma::mat llt = lambda * lambda.t();
+  arma::vec vars = llt.diag();
+  arma::mat sdinv = arma::diagmat(1.0/sqrt(vars));
+  lambda = sdinv * lambda;
+  
+ if(d==2){
+   if(theta.n_rows == 3){
+     // estimating nu and sigmasq is at (2)
+     theta.row(2) = vars.t();
+   } else {
+     // not estimating nu and sigmasq is at (1)
+     theta.row(1) = vars.t();
+   }
+ } else {
+   // sigmasq is at (3)
+   theta.row(3) = vars.t();
+ }
 }
 
 

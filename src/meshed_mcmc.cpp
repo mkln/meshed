@@ -140,13 +140,8 @@ Rcpp::List meshed_mcmc(
   arma::cube b_mcmc = arma::zeros(X.n_cols, q, mcmc_thin*mcmc_keep);
   arma::mat tausq_mcmc = arma::zeros(q, mcmc_thin*mcmc_keep);
   arma::cube theta_mcmc = arma::zeros(param.n_elem/k, k, mcmc_thin*mcmc_keep);
-  
   arma::cube vcov_mcmc = arma::zeros(k, k, mcmc_thin*mcmc_keep);
-  
   arma::cube lambda_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
-  
-  arma::cube lambda_identify_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
-  
   arma::vec logaccept_mcmc = arma::zeros(mcmc);
   
   arma::uvec mcmc_ix = arma::zeros<arma::uvec>(mcmc_keep);
@@ -272,16 +267,18 @@ Rcpp::List meshed_mcmc(
                                               d, msp.matern.twonu, use_ps);
         arma::mat vcov = arma::cov(v_temp);
         vcov_mcmc.slice(w_saved) = vcov;
-        arma::mat U = arma::chol(vcov, "upper");
         
         tausq_mcmc.col(w_saved) = 1.0 / msp.tausq_inv;
         b_mcmc.slice(w_saved) = msp.Bcoeff;
         
-        theta_mcmc.slice(w_saved) = msp.param_data.theta;
-
-        lambda_mcmc.slice(w_saved) = lambda_transf_back;
-        lambda_identify_mcmc.slice(w_saved) = lambda_transf_back * U.t();
+        arma::mat theta_save = msp.param_data.theta;
+        arma::mat lambda_save = lambda_transf_back;
+        
+        reorganize_variance_terms(lambda_save, theta_save, d);
           
+        theta_mcmc.slice(w_saved) = theta_save;
+        lambda_mcmc.slice(w_saved) = lambda_save;
+        
         llsave(w_saved) = msp.logpost;
         wllsave(w_saved) = msp.param_data.loglik_w;
         w_saved++;
@@ -406,7 +403,7 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
-      Rcpp::Named("lambda_identify_mcmc") = lambda_identify_mcmc,
+      Rcpp::Named("vcov_mcmc") = vcov_mcmc,
       Rcpp::Named("paramsd") = msp.theta_adapt.paramsd,
       Rcpp::Named("mcmc") = mcmc,
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
@@ -433,7 +430,7 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
       Rcpp::Named("lambda_mcmc") = lambda_mcmc,
-      Rcpp::Named("lambda_identify_mcmc") = lambda_identify_mcmc,
+      Rcpp::Named("vcov_mcmc") = vcov_mcmc,
       Rcpp::Named("paramsd") = msp.theta_adapt.paramsd,
       Rcpp::Named("mcmc") = mcmc,
       Rcpp::Named("mcmc_time") = mcmc_time/1000.0,
