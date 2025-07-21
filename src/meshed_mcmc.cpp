@@ -16,6 +16,8 @@ Rcpp::List meshed_mcmc(
     
     int k,
     
+    const arma::uvec& binomial_n,
+    
     const arma::field<arma::uvec>& parents,
     const arma::field<arma::uvec>& children,
     
@@ -115,6 +117,9 @@ Rcpp::List meshed_mcmc(
   
   Meshed msp(y, family,
             X, coords, k,
+            
+            binomial_n, 
+            
                 parents, children, layer_names, layer_gibbs_group,
                 
                 indexing, 

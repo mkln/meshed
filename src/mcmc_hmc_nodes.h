@@ -26,7 +26,9 @@ public:
 
 class NodeDataW : public NodeData {
 public:
-  arma::uvec family; // 0: gaussian, 1: poisson, 2: bernoulli, 3: beta, length q
+  arma::uvec family; // 0: gaussian, 1: poisson, 2: binomial, 3: beta, length q
+  arma::uvec binomial_n;
+  
   int k;
   arma::vec z;
   
@@ -99,7 +101,9 @@ public:
   NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
             const arma::umat& na_mat_all, const arma::mat& offset_all, 
             const arma::uvec& indexing_target,
-            const arma::uvec& outtype, int k);
+            const arma::uvec& outtype, 
+            const arma::uvec& binomial_n_in,
+            int k);
   
   NodeDataW();
   
@@ -109,6 +113,7 @@ public:
 class NodeDataB : public NodeData {
 public:
   int family; // for beta
+  int binomial_n;
   
   arma::mat X; //for updates of beta
   double tausq; // reg variance
@@ -139,7 +144,7 @@ public:
   void set_XtDX(const arma::vec& x);
   
   NodeDataB(const arma::vec& y_in, const arma::vec& offset_in, 
-            const arma::mat& X_in, int family_in);
+            const arma::mat& X_in, int family_in, int binomial_n_in);
   NodeDataB();
   
   double logfullcondit(const arma::vec& x);

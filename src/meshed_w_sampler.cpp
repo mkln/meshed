@@ -312,7 +312,8 @@ void Meshed::nongaussian_w(MeshDataLMC& data){
   
 }
 
-void Meshed::predict(bool sample){
+void Meshed::predict(){
+  // posterior predictive sampling
   start_overall = std::chrono::steady_clock::now();
   if(predict_group_exists == 1){
     if(verbose & debug){
@@ -370,7 +371,8 @@ void Meshed::predict(bool sample){
   }
 }
 
-void Meshed::predicty(bool sample){  
+void Meshed::predicty(){  
+  bool sample = true;
   int n = XB.n_rows;
   yhat.fill(0);
   Rcpp::RNGScope scope;
@@ -393,9 +395,9 @@ void Meshed::predicty(bool sample){
     } else if(familyid(j) == 2){
       // binomial
       if(sample){
-        yhat.col(j) = vrbern(1.0/(1.0 + exp(-linear_predictor.col(j))));
+        yhat.col(j) = vrbinomial(1.0/(1.0 + exp(-linear_predictor.col(j))), binomial_n(j));
       } else {
-        yhat.col(j) = 1.0/(1.0 + exp(-linear_predictor.col(j)));
+        yhat.col(j) = binomial_n(j)/(1.0 + exp(-linear_predictor.col(j)));
       }
     } else if(familyid(j) == 3){
       arma::vec mu =  1.0/ (1.0 + exp(-linear_predictor.col(j)));

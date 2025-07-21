@@ -20,7 +20,8 @@ NodeDataW::NodeDataW(){
 NodeDataW::NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
                                     const arma::umat& na_mat_all, const arma::mat& offset_all, 
                                     const arma::uvec& indexing_target_in,
-                                    const arma::uvec& outtype, int k){
+                                    const arma::uvec& outtype, 
+                                    const arma::uvec& binomial_n_in, int k){
   
   indexing_target = indexing_target_in;
   y = y_all.rows(indexing_target);
@@ -30,6 +31,7 @@ NodeDataW::NodeDataW(const arma::mat& y_all, //const arma::mat& Z_in,
   // ----
   
   family = outtype; //= arma::vectorise(familymat);
+  binomial_n = binomial_n_in;
   
   if(arma::any(family == 3)){
     ystar = arma::zeros(arma::size(y));
@@ -234,7 +236,7 @@ arma::vec NodeDataW::compute_dens_and_grad(double& xtarget, const arma::mat& x){
         
         double ystarij = family(j) == 3? ystar(i, j) : 0;
         arma::vec gradloc = get_likdens_likgrad(loglike, y(i,j), ystarij, tausq(j), 
-                                                offset(i, j), xij, family(j));
+                                                offset(i, j), xij, family(j), binomial_n(j));
         
         arma::mat LambdaHt = Lambda_lmc.row(j).t();
         arma::vec Lgrad = LambdaHt * gradloc;
@@ -336,7 +338,7 @@ arma::vec NodeDataW::gradient_logfullcondit(const arma::mat& x){
         double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
         double ystarij = family(j) == 3? ystar(i, j) : 0;
         arma::vec gradloc = LambdaHt * get_likdens_likgrad(loglike, y(i,j), ystarij, tausq(j), 
-                                                           offset(i, j), xij, family(j));
+                                                           offset(i, j), xij, family(j), binomial_n(j));
         
         for(int s=0; s<k; s++){
           grad_loglike(s * indxsize + i) += gradloc(s);   
@@ -382,7 +384,7 @@ arma::mat NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad
     for(int j=0; j<q; j++){
       if(na_mat(i, j) > 0){
         double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
-        mult(j) = get_mult(y(i,j), tausq(j), offset(i,j), xij, family(j));
+        mult(j) = get_mult(y(i,j), tausq(j), offset(i,j), xij, family(j), binomial_n(j));
       }
     }
     
@@ -393,7 +395,7 @@ arma::mat NodeDataW::compute_dens_grad_neghess(double& xtarget, arma::vec& xgrad
         
         double ystarij = family(j) == 3? ystar(i, j) : 0;
         arma::vec gradloc = get_likdens_likgrad(loglike, y(i,j), ystarij, tausq(j), 
-                                                offset(i, j), xij, family(j));
+                                                offset(i, j), xij, family(j), binomial_n(j));
 
 
         arma::mat LambdaHt = Lambda_lmc.row(j).t();
@@ -467,7 +469,7 @@ arma::mat NodeDataW::neghess_logfullcondit(const arma::mat& x){
     for(unsigned int j=0; j<q; j++){
       if(na_mat(i, j) > 0){
         double xij = arma::conv_to<double>::from(Lambda_lmc.row(j) * wloc.t());
-        double mult = get_mult(y(i,j), tausq(j), offset(i,j), xij, family(j));
+        double mult = get_mult(y(i,j), tausq(j), offset(i,j), xij, family(j), binomial_n(j));
         
         arma::mat LambdaHt = Lambda_lmc.row(j).t() * mult;
         arma::mat neghessloc = LambdaHt * LambdaHt.t();
@@ -518,8 +520,9 @@ NodeDataB::NodeDataB(){
 }
 
 NodeDataB::NodeDataB(const arma::vec& y_in, const arma::vec& offset_in, 
-                                          const arma::mat& X_in, int family_in){
+                                          const arma::mat& X_in, int family_in, int binomial_n_in){
   family = family_in;
+  binomial_n = binomial_n_in;
   n = y_in.n_elem;
   y = y_in;
   offset = offset_in;
@@ -717,7 +720,7 @@ void NodeDataB::set_XtDX(const arma::vec& x){
       mult(i) = negbin_neghess_mult_sqrt(y(i), logmu, alpha);
     }*/
     
-    mult(i) = get_mult(y(i), tausq, offset(i), Xb(i), family);
+    mult(i) = get_mult(y(i), tausq, offset(i), Xb(i), family, binomial_n);
     Xresult.row(i) = X.row(i) * mult(i);
   }
   

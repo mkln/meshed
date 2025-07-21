@@ -108,10 +108,22 @@ spmeshed <- function(y, x, coords, k=NULL,
     # family id 
     family <- if(length(family)==1){rep(family, q)} else {family}
     
-    if(all(family == "gaussian")){ 
+    if(all(family == "gaussian") & (q == 1)){ 
       use_ps <- settings$ps %>% set_default(TRUE)
     } else {
       use_ps <- settings$ps %>% set_default(FALSE)
+    }
+    
+    binomial_n <- rep(0, q)
+    for(i in 1:q){
+      if(grepl("binomial", family[i], ignore.case = TRUE)){
+        binomial_n[i] <- as.numeric(gsub("binomial", "", family[i], ignore.case = TRUE))
+        if(is.na(binomial_n[i])){
+          # the user did not provide n. infer from max of y
+          binomial_n[i] <- max(y[,i], na.rm=TRUE) 
+        }
+        family[i] <- "binomial"
+      }
     }
     
     family_in <- data.frame(family=family)
@@ -555,6 +567,7 @@ spmeshed <- function(y, x, coords, k=NULL,
   comp_time <- system.time({
       results <- mcmc_run(y, family_id, x, coords, k,
                               
+                          binomial_n, 
                               parents, children, 
                               block_names, block_groups,
                               

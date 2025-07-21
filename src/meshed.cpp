@@ -12,6 +12,8 @@ Meshed::Meshed(
   
   int k_in,
   
+  const arma::uvec& binomial_n_in,
+  
   const arma::field<arma::uvec>& parents_in,
   const arma::field<arma::uvec>& children_in,
   
@@ -60,6 +62,7 @@ Meshed::Meshed(
   y = y_in;
   
   familyid = familyid_in;
+  binomial_n = binomial_n_in;
   
   offsets = arma::zeros(arma::size(y));
   Z = arma::ones(y.n_rows);
@@ -852,12 +855,12 @@ bool Meshed::get_loglik_comps_w(MeshDataLMC& data){
   }
 }
 
-void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw, bool map){
+void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw){
   //message("[update_lly] start.");
   start = std::chrono::steady_clock::now();
   data.ll_y.rows(indexing(u)).fill(0.0);
   
-  if(arma::all(familyid == 0) & (!map)){
+  if(arma::all(familyid == 0)){
     for(unsigned int ix=0; ix<indexing(u).n_elem; ix++){
       if(na_1_blocks(u)(ix) == 1){
         // at least one outcome available
@@ -882,7 +885,7 @@ void Meshed::update_lly(int u, MeshDataLMC& data, const arma::mat& LamHw, bool m
           double tausq = 1.0/tausq_inv(j);
           arma::vec nograd = 
             get_likdens_likgrad(loglike, y(i,j), ystar, tausq, offsets(i, j), 
-                                xb, familyid(j), false);
+                                xb, familyid(j), binomial_n(j), false);
           /*
           double sigmoid, poislambda;
           if(familyid(j) == 0){ //if(family == "gaussian"){
@@ -1036,7 +1039,7 @@ void Meshed::init_for_mcmc(){
     int family = familyid(j);
     
     // Beta
-    NodeDataB new_beta_block(yj_obs, offsets_for_beta, X_obs, family);
+    NodeDataB new_beta_block(yj_obs, offsets_for_beta, X_obs, family, binomial_n(j));
     //new_beta_block.update_mv(offset_for_w, 1.0 / tausq_inv, Lambda);
     
     //beta_node.push_back(new_beta_block);
@@ -1048,7 +1051,7 @@ void Meshed::init_for_mcmc(){
     //beta_hmc_started(j) = 0;
     
     // Lambda
-    NodeDataB new_lambda_block(yj_obs, offsets_for_beta, X_obs, family);
+    NodeDataB new_lambda_block(yj_obs, offsets_for_beta, X_obs, family, binomial_n(j));
     lambda_node.push_back(new_lambda_block);
     
     // *** sampling beta and lambda together so we use p+k here
@@ -1095,7 +1098,7 @@ void Meshed::init_for_mcmc(){
       NodeDataW new_block(y, na_mat, //Z.rows(indexing(u)), 
                               offset_for_w,
                               indexing_target,
-                              familyid, k);
+                              familyid, binomial_n, k);
       
       new_block.update_mv(offset_for_w, 1.0 / tausq_inv, Lambda);
       

@@ -20,6 +20,7 @@
 class Meshed {
 public:
   arma::uvec familyid;
+  arma::uvec binomial_n; // number of trials for binomial outcomes
   
   // meta
   unsigned int n; // number of locations, total
@@ -192,7 +193,7 @@ public:
   
   void init_betareg();
   void init_gaussian();
-  void update_lly(int, MeshDataLMC&, const arma::mat& LamHw, bool map=false);
+  void update_lly(int, MeshDataLMC&, const arma::mat& LamHw);
   //void calc_DplusSi(int, MeshDataLMC& data, const arma::mat& Lam, const arma::vec& tsqi);
   void update_block_w_cache(int, MeshDataLMC& data);
   void refresh_w_cache(MeshDataLMC& data);
@@ -247,8 +248,8 @@ public:
   void logpost_refresh_after_gibbs(MeshDataLMC& data); 
   
   // Predictions for W and Y
-  void predict(bool sample=true);
-  void predicty(bool sample=true);
+  void predict();
+  void predicty();
   
   // --------------------------------------------------------------- from SP
   
@@ -275,6 +276,8 @@ public:
     const arma::mat& coords_in, 
     
     int k_in,
+    
+    const arma::uvec& binomial_n_in,
     
     const arma::field<arma::uvec>& parents_in,
     const arma::field<arma::uvec>& children_in,

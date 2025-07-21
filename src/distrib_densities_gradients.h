@@ -5,9 +5,9 @@
 
 using namespace std;
 
-const double TOL_LOG_LOW=exp(-10);
-const double TOL_HIGH=exp(10);
-const double TOL_LOG_HIGH=10;
+const double TOL_LOG_LOW=exp(-20);
+const double TOL_HIGH=exp(20);
+const double TOL_LOG_HIGH=20;
 
 inline double gaussian_logdensity(const double& x, const double& sigsq){
   return -0.5*log(2.0 * M_PI * sigsq) -0.5/sigsq * x*x;
@@ -44,6 +44,7 @@ inline double poisson_neghess_mult_sqrt(const double& mu){
   return pow(mu, 0.5);
 }
 
+/*
 inline double bernoulli_logpmf(const double& x, double p){
   if(p > 1-TOL_LOG_LOW){
     p = 1-TOL_LOG_LOW;
@@ -54,16 +55,33 @@ inline double bernoulli_logpmf(const double& x, double p){
   }
   return x * log(p) + (1-x) * log(1-p);
 }
+*/
 
+inline double binomial_logpmf(const double& x, double p, int n){
+  if(p > 1-TOL_LOG_LOW){
+    p = 1-TOL_LOG_LOW;
+  } else {
+    if(p < TOL_LOG_LOW){
+      p = TOL_LOG_LOW;
+    }
+  }
+  return x * log(p) + (n-x) * log(1-p);
+}
+
+/*
 inline double bernoulli_loggradient(const double& y, const double& offset, const double& w){
   // llik: (y-1) * (o+w) - log{1+exp(-o-w)}
   // grad: y-1 + exp(-o-w)/(1+exp(-o-w))
-  return y-1 + 1.0/(1.0+exp(offset+w));
+  return y - 1.0/(1.0+exp(-offset-w));
+}*/
+
+inline double binomial_loggradient(const double& y, const double& offset, const double& w, int n){
+  return y - (n+.0)/(1.0+exp(-offset-w));
 }
 
-inline double bernoulli_neghess_mult_sqrt(const double& exij){
+inline double binomial_neghess_mult_sqrt(const double& exij, int n){
   double opexij = (1.0 + exij);
-  return pow(exij / (opexij*opexij), 0.5);
+  return pow((n+.0) * exij / (opexij*opexij), 0.5);
 }
 
 inline double betareg_logdens(const double& y, const double& mu, double phi){
@@ -138,7 +156,7 @@ inline double negbin_neghess_mult_sqrt(const double& y, double logmu, const doub
 
 
 inline double get_mult(const double& y, const double& tausq, const double& offset, 
-                       const double& xij, const int& family){
+                       const double& xij, const int& family, const int& binomial_n){
   // if m is the output from this function, then
   // m^2 X'X is the negative hessian of a glm model in which X*x is the linear term
   double mult=1;
@@ -149,7 +167,7 @@ inline double get_mult(const double& y, const double& tausq, const double& offse
     mult = poisson_neghess_mult_sqrt(mu);
   } else if (family == 2){
     double exij = exp(- offset - xij);
-    mult = bernoulli_neghess_mult_sqrt(exij);
+    mult = binomial_neghess_mult_sqrt(exij, binomial_n);
   } else if (family == 3){
     double sigmoid = 1.0/(1.0 + exp(-offset - xij));
     mult = betareg_neghess_mult_sqrt(sigmoid, tausq);
@@ -163,7 +181,8 @@ inline double get_mult(const double& y, const double& tausq, const double& offse
 
 inline arma::vec get_likdens_likgrad(double& loglike,
                               const double& y, const double& ystar, const double& tausq, 
-                              const double& offset, const double& xij, const int& family,
+                              const double& offset, const double& xij, 
+                              const int& family, const int& binomial_n,
                               bool do_grad=true){
   
   arma::vec gradloc;
@@ -179,8 +198,8 @@ inline arma::vec get_likdens_likgrad(double& loglike,
     double exij = exp(-offset - xij);
     double opexij = (1.0 + exij);
     double sigmoid = 1.0/opexij;//xz ));
-    loglike += bernoulli_logpmf(y, sigmoid);
-    if(do_grad){ gradloc = bernoulli_loggradient(y, offset, xij); } //xz) * z(i);
+    loglike += binomial_logpmf(y, sigmoid, binomial_n);
+    if(do_grad){ gradloc = binomial_loggradient(y, offset, xij, binomial_n); } //xz) * z(i);
   } else if(family == 3){
     double sigmoid = 1.0/(1.0 + exp(-offset - xij));
     loglike += betareg_logdens(y, sigmoid, 1.0/tausq);

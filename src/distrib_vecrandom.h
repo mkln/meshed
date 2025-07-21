@@ -33,13 +33,17 @@ inline arma::vec vrunif(int n){
   return result;
 }
 
-inline arma::vec vrbern(const arma::vec& p){
+inline arma::vec vrbinomial(const arma::vec& p, int n){
   arma::vec result = arma::zeros(p.n_elem);
   
   for(unsigned int i=0; i<p.n_elem; i++){
-    result(i) = R::rbinom(1, p(i));
+    result(i) = R::rbinom(n, p(i));
   }
   return result;
+}
+
+inline arma::vec vrbern(const arma::vec& p){
+  return vrbinomial(p, 1);
 }
 
 inline arma::vec vrbeta(const arma::vec& a, const arma::vec& b){
