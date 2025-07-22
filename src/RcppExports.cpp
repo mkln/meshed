@@ -371,6 +371,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// identify_variance
+arma::cube identify_variance(const arma::cube& lambda, const arma::mat& sigsq, const arma::cube& vcov);
+RcppExport SEXP _meshed_identify_variance(SEXP lambdaSEXP, SEXP sigsqSEXP, SEXP vcovSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::cube& >::type lambda(lambdaSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type sigsq(sigsqSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type vcov(vcovSEXP);
+    rcpp_result_gen = Rcpp::wrap(identify_variance(lambda, sigsq, vcov));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cube_correl_from_lambda
 arma::cube cube_correl_from_lambda(const arma::cube& lambda_mcmc);
 RcppExport SEXP _meshed_cube_correl_from_lambda(SEXP lambda_mcmcSEXP) {
@@ -431,6 +444,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_spmeshed_predict", (DL_FUNC) &_meshed_spmeshed_predict, 16},
     {"_meshed_rmeshedgp_internal", (DL_FUNC) &_meshed_rmeshedgp_internal, 12},
     {"_meshed_cube_tcrossprod", (DL_FUNC) &_meshed_cube_tcrossprod, 1},
+    {"_meshed_identify_variance", (DL_FUNC) &_meshed_identify_variance, 3},
     {"_meshed_cube_correl_from_lambda", (DL_FUNC) &_meshed_cube_correl_from_lambda, 1},
     {"_meshed_summary_list_mean", (DL_FUNC) &_meshed_summary_list_mean, 2},
     {"_meshed_summary_list_q", (DL_FUNC) &_meshed_summary_list_q, 3},

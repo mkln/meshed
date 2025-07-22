@@ -328,22 +328,20 @@ arma::mat Correlationc(
 }
 
 void reorganize_variance_terms(arma::mat& lambda, arma::mat& theta, unsigned int d){
-  arma::mat llt = lambda * lambda.t();
-  arma::vec vars = llt.diag();
-  arma::mat sdinv = arma::diagmat(1.0/sqrt(vars));
-  lambda = sdinv * lambda;
+  arma::vec ldiag = lambda.diag();
+  lambda = lambda * arma::diagmat(1.0/ldiag);
   
  if(d==2){
    if(theta.n_rows == 3){
      // estimating nu and sigmasq is at (2)
-     theta.row(2) = vars.t();
+     theta.row(2) = pow(ldiag, 2.0).t();
    } else {
      // not estimating nu and sigmasq is at (1)
-     theta.row(1) = vars.t();
+     theta.row(1) = pow(ldiag, 2.0).t();
    }
  } else {
    // sigmasq is at (3)
-   theta.row(3) = vars.t();
+   theta.row(3) = pow(ldiag, 2.0).t();
  }
 }
 

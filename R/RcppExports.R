@@ -89,6 +89,10 @@ cube_tcrossprod <- function(x) {
     .Call(`_meshed_cube_tcrossprod`, x)
 }
 
+identify_variance <- function(lambda, sigsq, vcov) {
+    .Call(`_meshed_identify_variance`, lambda, sigsq, vcov)
+}
+
 cube_correl_from_lambda <- function(lambda_mcmc) {
     .Call(`_meshed_cube_correl_from_lambda`, lambda_mcmc)
 }

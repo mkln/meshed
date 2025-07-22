@@ -20,6 +20,31 @@ arma::cube cube_tcrossprod(const arma::cube& x){
 }
 
 //[[Rcpp::export]]
+arma::cube identify_variance(const arma::cube& lambda, const arma::mat& sigsq, const arma::cube& vcov){
+  // this is *as if* we were forcing each sample of the latent process v to have identity covariance
+  // this operation is similar to identifying the intercept by "moving" the mean of Lambda*v to beta
+  
+  int q = lambda.n_rows;
+  //int k = lambda.n_cols;
+  int m = lambda.n_slices;
+  
+  arma::cube sigma = arma::zeros(q, q, m);
+  
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+  for(int i=0; i<m; i++){
+    arma::mat vhere = vcov.slice(i);
+    arma::mat U = arma::chol(vhere, "upper");
+    arma::mat lambdahere = lambda.slice(i) * U.t();
+    arma::vec sigsqhere = sigsq.col(i);
+    
+    sigma.slice(i) = lambdahere * arma::diagmat(sigsqhere) * lambdahere.t();
+  }
+  return sigma;
+}
+
+//[[Rcpp::export]]
 arma::cube cube_correl_from_lambda(const arma::cube& lambda_mcmc){
   int q = lambda_mcmc.n_rows;
   //int k = lambda_mcmc.n_cols;
