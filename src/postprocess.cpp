@@ -20,47 +20,30 @@ arma::cube cube_tcrossprod(const arma::cube& x){
 }
 
 //[[Rcpp::export]]
-arma::cube identify_variance(const arma::cube& lambda, const arma::mat& sigsq, const arma::cube& vcov){
-  // this is *as if* we were forcing each sample of the latent process v to have identity covariance
-  // this operation is similar to identifying the intercept by "moving" the mean of Lambda*v to beta
-  
+arma::cube compute_sigma(const arma::cube& lambda, const arma::mat& sigsq, bool correl=false){
   int q = lambda.n_rows;
   //int k = lambda.n_cols;
   int m = lambda.n_slices;
   
   arma::cube sigma = arma::zeros(q, q, m);
-  
 #ifdef _OPENMP
 #pragma omp parallel for 
 #endif
   for(int i=0; i<m; i++){
-    arma::mat vhere = vcov.slice(i);
-    arma::mat U = arma::chol(vhere, "upper");
-    arma::mat lambdahere = lambda.slice(i) * U.t();
+    //arma::mat vhere = vcov.slice(i);
+    //arma::mat U = arma::chol(vhere, "upper");
+    arma::mat lambdahere = lambda.slice(i); // * U.t();
     arma::vec sigsqhere = sigsq.col(i);
     
     sigma.slice(i) = lambdahere * arma::diagmat(sigsqhere) * lambdahere.t();
+    
+    if(correl){
+      arma::mat dsigma = arma::diagmat(1.0/sqrt( sigma.slice(i).diag() ));
+      arma::mat correlmat = dsigma * sigma.slice(i) * dsigma;
+      sigma.slice(i) = correlmat;
+    }
   }
   return sigma;
-}
-
-//[[Rcpp::export]]
-arma::cube cube_correl_from_lambda(const arma::cube& lambda_mcmc){
-  int q = lambda_mcmc.n_rows;
-  //int k = lambda_mcmc.n_cols;
-  int m = lambda_mcmc.n_slices;
-  
-  arma::cube llt = arma::zeros(q, q, m);
-#ifdef _OPENMP
-#pragma omp parallel for 
-#endif
-  for(int i=0; i<m; i++){
-    llt.slice(i) = lambda_mcmc.slice(i) * arma::trans(lambda_mcmc.slice(i));
-    arma::mat dllt = arma::diagmat(1.0/sqrt( llt.slice(i).diag() ));
-    arma::mat cc = dllt * llt.slice(i) * dllt;
-    llt.slice(i) = cc;
-  }
-  return llt;
 }
 
 //[[Rcpp::export]]
