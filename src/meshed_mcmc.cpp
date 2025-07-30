@@ -269,7 +269,8 @@ Rcpp::List meshed_mcmc(
       
       if(mx >= 0){
         arma::mat v_temp = msp.w.rows(osix) * ps_forward(msp.param_data.theta, 
-                                              d, msp.matern.twonu, use_ps);
+                                              d, msp.matern.twonu, use_ps) * 
+                                                arma::diagmat(arma::sign(lambda_transf_back));
         arma::mat vcov = arma::cov(v_temp);
         vcov_mcmc.slice(w_saved) = vcov;
         

@@ -327,8 +327,13 @@ arma::mat Correlationc(
   
 }
 
-void reorganize_variance_terms(arma::mat& lambda, arma::mat& theta, unsigned int d){
+void reorganize_variance_terms(arma::mat& lambda, arma::mat& theta, //arma::mat& v, 
+                               unsigned int d){
   arma::vec ldiag = lambda.diag();
+  //arma::vec lsign = arma::sign(ldiag);
+  //if(arma::any(lsign != 1)){
+  //  v = v * arma::diagmat(lsign);
+  //}
   lambda = lambda * arma::diagmat(1.0/ldiag);
   
  if(d==2){

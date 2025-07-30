@@ -25,7 +25,7 @@ arma::vec Meshed::sample_BetaLambda_row(int j, const arma::mat& rnorm_precalc){
   arma::mat XW = arma::join_horiz(X.rows(ix_by_q_a(j)), WWj);
   arma::mat Wcrossprod = XW.t() * XW; 
   
-  arma::mat Lprior_inv = //1e-6 * 
+  arma::mat Lprior_inv = 1e-6 * 
     arma::eye( XW.n_cols, XW.n_cols );
   Lprior_inv.submat(0, 0, p-1, p-1) = Vi; // prior precision for beta
   arma::vec Lprior_mean = arma::zeros(XW.n_cols);
@@ -91,7 +91,7 @@ void Meshed::sample_hmc_BetaLambdaTau(bool sample_beta, bool sample_lambda, bool
       arma::mat XW = arma::join_horiz(X.rows(ix_by_q_a(j)), WWj);
       //arma::mat Wcrossprod = XW.t() * XW; 
       
-      arma::mat BL_Vi = arma::eye( XW.n_cols, XW.n_cols );
+      arma::mat BL_Vi = arma::zeros( XW.n_cols, XW.n_cols );
       BL_Vi.submat(0, 0, p-1, p-1) = Vi; // prior precision for beta
       arma::vec BL_Vim = arma::zeros(XW.n_cols);
       
