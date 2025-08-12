@@ -171,6 +171,10 @@ public:
   // --------------------------------------------------------------- from Gaussian
   
 
+  // sigmasq and lambda_prec
+  double lambda_prec;
+  arma::vec sigmasq_ab;
+  
   // tausq 
   arma::vec tausq_ab;
   arma::vec tausq_inv; // tausq for the l=q variables
@@ -297,6 +301,9 @@ public:
     const arma::vec& tausq_inv_in,
     
     const arma::mat& beta_Vi_in,
+    
+    double lambda_prec_in,
+    const arma::vec& sigmasq_ab_in,
     const arma::vec& tausq_ab_in,
     
     int which_hmc_in,

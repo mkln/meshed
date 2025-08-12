@@ -1,4 +1,5 @@
 #include <RcppArmadillo.h>
+#include "covariance_lmc.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -20,25 +21,57 @@ arma::cube cube_tcrossprod(const arma::cube& x){
 }
 
 //[[Rcpp::export]]
-arma::cube compute_sigma(const arma::cube& lambda, const arma::mat& sigsq, bool correl=false){
+arma::cube crosscov_matfun_h(double h, 
+                             const arma::cube& lambda, 
+                             const arma::cube& theta, 
+                             bool correl=false,
+                             int num_threads=1,
+                             int dd=2, int matern_twonu_in=1){
   int q = lambda.n_rows;
-  //int k = lambda.n_cols;
+  int k = lambda.n_cols;
   int m = lambda.n_slices;
   
+  MaternParams matern;
+  
+  int bessel_ws_inc = 5;
+  matern.bessel_ws = (double *) R_alloc(num_threads*bessel_ws_inc, sizeof(double));
+  matern.twonu = matern_twonu_in;
+  matern.using_ps = false;
+  matern.estimating_nu = (dd == 2) & (theta.n_rows == 3);
+  
+  arma::mat x = arma::zeros(1, dd);
+  arma::mat y = x;
+  
   arma::cube sigma = arma::zeros(q, q, m);
-#ifdef _OPENMP
-#pragma omp parallel for 
-#endif
+//#ifdef _OPENMP
+//#pragma omp parallel for num_threads(num_threads)
+//#endif
   for(int i=0; i<m; i++){
-    //arma::mat vhere = vcov.slice(i);
-    //arma::mat U = arma::chol(vhere, "upper");
-    arma::mat lambdahere = lambda.slice(i); // * U.t();
-    arma::vec sigsqhere = sigsq.col(i);
     
-    sigma.slice(i) = lambdahere * arma::diagmat(sigsqhere) * lambdahere.t();
+    y(0) = h;
+    arma::mat theta_iter = theta.slice(i);
+    
+    arma::mat covar = arma::eye(k, k);
+    for(int j=0; j<k; j++){
+      arma::vec thetaj = theta_iter.col(j);
+      arma::mat cmat = Correlationc(x, y, thetaj, matern, false);
+      covar(j,j) = cmat(0,0);
+    }
+    
+    arma::mat lambdahere = lambda.slice(i); // * U.t();
+
+    sigma.slice(i) = lambdahere * covar * lambdahere.t();
     
     if(correl){
-      arma::mat dsigma = arma::diagmat(1.0/sqrt( sigma.slice(i).diag() ));
+      arma::vec covar0 = arma::zeros(k);
+      for(int j=0; j<k; j++){
+        arma::vec thetaj = theta_iter.col(j);
+        arma::mat cmat = Correlationc(x, x, thetaj, matern, true);
+        covar0(j) = cmat(0,0);
+      }
+      arma::mat omega = lambdahere * arma::diagmat(covar0) * lambdahere.t();
+      
+      arma::mat dsigma = arma::diagmat(1.0/sqrt(omega.diag()));
       arma::mat correlmat = dsigma * sigma.slice(i) * dsigma;
       sigma.slice(i) = correlmat;
     }

@@ -50,7 +50,7 @@ void Meshed::metrop_theta(){
     current_loglik = param_data.loglik_w;
     
     prior_logratio = calc_prior_logratio(
-        alter_data.theta.tail_rows(1).t(), param_data.theta.tail_rows(1).t(), 2, 1); // sigmasq
+        alter_data.theta.tail_rows(1).t(), param_data.theta.tail_rows(1).t(), sigmasq_ab(0), sigmasq_ab(1)); // sigmasq
     
     if(param_data.theta.n_rows > 5){
       for(int i=0; i<param_data.theta.n_rows-2; i++){

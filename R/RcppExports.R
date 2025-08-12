@@ -73,8 +73,8 @@ repeat_centroid_perturb <- function(x, times) {
     .Call(`_meshed_repeat_centroid_perturb`, x, times)
 }
 
-meshed_mcmc <- function(y, family, X, coords, k, binomial_n, parents, children, layer_names, layer_gibbs_group, indexing, osix, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, mcmc_startfrom = 0L, num_threads = 1L, which_hmc = 0L, adapting = FALSE, use_cache = TRUE, use_ps = TRUE, verbose = FALSE, debug = FALSE, print_every = FALSE, low_mem = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_lambda = TRUE, sample_theta = TRUE, sample_w = TRUE) {
-    .Call(`_meshed_meshed_mcmc`, y, family, X, coords, k, binomial_n, parents, children, layer_names, layer_gibbs_group, indexing, osix, set_unif_bounds_in, beta_Vi, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, which_hmc, adapting, use_cache, use_ps, verbose, debug, print_every, low_mem, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w)
+meshed_mcmc <- function(y, family, X, coords, k, binomial_n, parents, children, layer_names, layer_gibbs_group, indexing, osix, set_unif_bounds_in, beta_Vi, lambda_prec, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep = 100L, mcmc_burn = 100L, mcmc_thin = 1L, mcmc_startfrom = 0L, num_threads = 1L, which_hmc = 0L, adapting = FALSE, use_cache = TRUE, use_ps = TRUE, verbose = FALSE, debug = FALSE, print_every = FALSE, low_mem = FALSE, sample_beta = TRUE, sample_tausq = TRUE, sample_lambda = TRUE, sample_theta = TRUE, sample_w = TRUE) {
+    .Call(`_meshed_meshed_mcmc`, y, family, X, coords, k, binomial_n, parents, children, layer_names, layer_gibbs_group, indexing, osix, set_unif_bounds_in, beta_Vi, lambda_prec, sigmasq_ab, tausq_ab, matern_twonu, start_w, lambda, lambda_mask, theta, beta, tausq, mcmcsd, mcmc_keep, mcmc_burn, mcmc_thin, mcmc_startfrom, num_threads, which_hmc, adapting, use_cache, use_ps, verbose, debug, print_every, low_mem, sample_beta, sample_tausq, sample_lambda, sample_theta, sample_w)
 }
 
 spmeshed_predict <- function(predx, predcoords, predblock, coords, parents, block_names, indexing, v_sampled, theta_sampled, lambda_sampled, beta_sampled, tausq_sampled, twonu, use_ps, verbose = FALSE, num_threads = 4L) {
@@ -89,8 +89,8 @@ cube_tcrossprod <- function(x) {
     .Call(`_meshed_cube_tcrossprod`, x)
 }
 
-compute_sigma <- function(lambda, sigsq, correl = FALSE) {
-    .Call(`_meshed_compute_sigma`, lambda, sigsq, correl)
+crosscov_matfun_h <- function(h, lambda, theta, correl = FALSE, num_threads = 1L, dd = 2L, matern_twonu_in = 1L) {
+    .Call(`_meshed_crosscov_matfun_h`, h, lambda, theta, correl, num_threads, dd, matern_twonu_in)
 }
 
 summary_list_mean <- function(x, n_threads = 1L) {

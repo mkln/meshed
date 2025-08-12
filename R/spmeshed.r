@@ -370,14 +370,20 @@ spmeshed <- function(y, x, coords, k=NULL,
       }
     }
     
+    if(is.null(prior$lambda_prec)){
+      lambda_prec <- 1
+    } else {
+      lambda_prec <- prior$lambda_prec
+    }
+    
     if(is.null(prior$sigmasq)){
       sigmasq_ab <- c(2, 1)
     } else {
       sigmasq_ab <- prior$sigmasq
     }
     
-    btmlim <- prior$btmlim %>% set_default(1e-3)
-    toplim <- prior$toplim %>% set_default(1e3)
+    btmlim <- prior$btmlim %>% set_default(1e-13)
+    toplim <- prior$toplim %>% set_default(1e10)
     
     # starting values
     if(is.null(starting$beta)){
@@ -578,11 +584,11 @@ spmeshed <- function(y, x, coords, k=NULL,
                               set_unif_bounds,
                               beta_Vi, 
                               
-                          
+                              lambda_prec,
                               sigmasq_ab,
                               tausq_ab,
                           
-                              matern_fix_twonu,
+                              matern_fix_twonu, # needed for postprocessing
                               
                               start_v, 
                           

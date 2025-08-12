@@ -31,6 +31,7 @@ Rcpp::List meshed_mcmc(
     const arma::mat& set_unif_bounds_in,
     const arma::mat& beta_Vi,
     
+    double lambda_prec,
     const arma::vec& sigmasq_ab,
     const arma::vec& tausq_ab,
     
@@ -73,7 +74,6 @@ Rcpp::List meshed_mcmc(
   if(verbose & debug){
     Rcpp::Rcout << "Initializing.\n";
   }
-  
   
 #ifdef _OPENMP
   omp_set_num_threads(num_threads);
@@ -126,7 +126,9 @@ Rcpp::List meshed_mcmc(
                 
                 matern_twonu,
                 start_w, beta, start_lambda, lambda_mask, start_theta, 1.0/tausq, 
-                beta_Vi, tausq_ab,
+                beta_Vi, 
+                lambda_prec,
+                sigmasq_ab, tausq_ab,
                 
                 which_hmc,
                 adapting,
@@ -146,6 +148,7 @@ Rcpp::List meshed_mcmc(
   arma::mat tausq_mcmc = arma::zeros(q, mcmc_thin*mcmc_keep);
   arma::cube theta_mcmc = arma::zeros(param.n_elem/k, k, mcmc_thin*mcmc_keep);
   arma::cube vcov_mcmc = arma::zeros(k, k, mcmc_thin*mcmc_keep);
+  arma::mat w_mean_mcmc = arma::zeros(q, mcmc_thin*mcmc_keep);
   arma::cube lambda_mcmc = arma::zeros(q, k, mcmc_thin*mcmc_keep);
   arma::vec logaccept_mcmc = arma::zeros(mcmc);
   
@@ -268,11 +271,16 @@ Rcpp::List meshed_mcmc(
         ps_back(msp.param_data.theta, d, msp.matern.twonu, use_ps);
       
       if(mx >= 0){
+        arma::mat lambdasign = arma::sign(lambda_transf_back);
+        
         arma::mat v_temp = msp.w.rows(osix) * ps_forward(msp.param_data.theta, 
                                               d, msp.matern.twonu, use_ps) * 
-                                                arma::diagmat(arma::sign(lambda_transf_back));
+                                                arma::diagmat(lambdasign.diag());
+
         arma::mat vcov = arma::cov(v_temp);
         vcov_mcmc.slice(w_saved) = vcov;
+        
+        w_mean_mcmc.col(w_saved) = arma::trans(arma::mean(msp.LambdaHw, 0));
         
         tausq_mcmc.col(w_saved) = 1.0 / msp.tausq_inv;
         b_mcmc.slice(w_saved) = msp.Bcoeff;
@@ -281,15 +289,16 @@ Rcpp::List meshed_mcmc(
         arma::mat lambda_save = lambda_transf_back;
         
         reorganize_variance_terms(lambda_save, theta_save, d);
-          
+        
         theta_mcmc.slice(w_saved) = theta_save;
         lambda_mcmc.slice(w_saved) = lambda_save;
         
         llsave(w_saved) = msp.logpost;
         wllsave(w_saved) = msp.param_data.loglik_w;
-        w_saved++;
         
-        if(mx % mcmc_thin == 0){
+        w_saved++; // this will increase by 1 before saving -- good for exporting to R
+        
+        if((mx-mcmc_thin+1) % mcmc_thin == 0){
           std::string iname = std::to_string(mcmc_saved);
           
           v_mcmc[iname] = Rcpp::wrap(v_temp);
@@ -410,6 +419,7 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("v_mcmc") = v_mcmc,
       Rcpp::Named("w_mcmc") = w_mcmc,
+      Rcpp::Named("w_mean_mcmc") = w_mean_mcmc,
       Rcpp::Named("lp_mcmc") = lp_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
@@ -437,6 +447,7 @@ Rcpp::List meshed_mcmc(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("v_mcmc") = v_mcmc,
       Rcpp::Named("w_mcmc") = w_mcmc,
+      Rcpp::Named("w_mean_mcmc") = w_mean_mcmc,
       Rcpp::Named("lp_mcmc") = lp_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,

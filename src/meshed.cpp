@@ -32,6 +32,9 @@ Meshed::Meshed(
   const arma::vec& tausq_inv_in,
   
   const arma::mat& beta_Vi_in,
+  
+  double lambda_prec_in,
+  const arma::vec& sigmasq_ab_in,
   const arma::vec& tausq_ab_in,
   
   int which_hmc_in,
@@ -129,6 +132,8 @@ Meshed::Meshed(
    bprim = arma::zeros(p);
    Vim   = Vi * bprim;
   
+  lambda_prec = lambda_prec_in;
+  sigmasq_ab = sigmasq_ab_in;
   tausq_ab = tausq_ab_in;
   
   // init
