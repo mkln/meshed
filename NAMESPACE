@@ -21,4 +21,4 @@ importFrom(FNN, "get.knnx")
 
 S3method("predict", "spmeshed")
 
-export("spmeshed", "rmeshedgp", "summary_list_mean", "summary_list_q")
+export("spmeshed", "rmeshedgp", "cross_covariance_matrix_function_h", "summary_list_mean", "summary_list_q")

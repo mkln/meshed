@@ -361,6 +361,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// dimension_test
+arma::cube dimension_test(int n, int q, int m);
+RcppExport SEXP _meshed_dimension_test(SEXP nSEXP, SEXP qSEXP, SEXP mSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< int >::type q(qSEXP);
+    Rcpp::traits::input_parameter< int >::type m(mSEXP);
+    rcpp_result_gen = Rcpp::wrap(dimension_test(n, q, m));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cube_tcrossprod
 arma::cube cube_tcrossprod(const arma::cube& x);
 RcppExport SEXP _meshed_cube_tcrossprod(SEXP xSEXP) {
@@ -437,6 +450,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_meshed_mcmc", (DL_FUNC) &_meshed_meshed_mcmc, 43},
     {"_meshed_spmeshed_predict", (DL_FUNC) &_meshed_spmeshed_predict, 16},
     {"_meshed_rmeshedgp_internal", (DL_FUNC) &_meshed_rmeshedgp_internal, 12},
+    {"_meshed_dimension_test", (DL_FUNC) &_meshed_dimension_test, 3},
     {"_meshed_cube_tcrossprod", (DL_FUNC) &_meshed_cube_tcrossprod, 1},
     {"_meshed_crosscov_matfun_h", (DL_FUNC) &_meshed_crosscov_matfun_h, 7},
     {"_meshed_summary_list_mean", (DL_FUNC) &_meshed_summary_list_mean, 2},

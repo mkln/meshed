@@ -85,6 +85,10 @@ rmeshedgp_internal <- function(coords, parents, children, layer_names, layer_gib
     .Call(`_meshed_rmeshedgp_internal`, coords, parents, children, layer_names, layer_gibbs_group, indexing, matern_twonu, theta, num_threads, use_cache, verbose, debug)
 }
 
+dimension_test <- function(n, q, m) {
+    .Call(`_meshed_dimension_test`, n, q, m)
+}
+
 cube_tcrossprod <- function(x) {
     .Call(`_meshed_cube_tcrossprod`, x)
 }

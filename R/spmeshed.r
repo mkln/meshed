@@ -507,7 +507,7 @@ spmeshed <- function(y, x, coords, k=NULL,
         lambda_mask[lower.tri(lambda_mask)] <- 1
         diag(lambda_mask) <- 1 #*** 
       } else {
-        stop("starting$lambda_mask needs to be specified")
+        stop("Set k <= ncol(y)")
       }
     } else {
       lambda_mask <- starting$lambda_mask
