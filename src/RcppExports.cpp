@@ -361,31 +361,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// recover
-arma::cube recover(int n, int q, int m, const arma::uvec& rr);
-RcppExport SEXP _meshed_recover(SEXP nSEXP, SEXP qSEXP, SEXP mSEXP, SEXP rrSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< int >::type q(qSEXP);
-    Rcpp::traits::input_parameter< int >::type m(mSEXP);
-    Rcpp::traits::input_parameter< const arma::uvec& >::type rr(rrSEXP);
-    rcpp_result_gen = Rcpp::wrap(recover(n, q, m, rr));
-    return rcpp_result_gen;
-END_RCPP
-}
-// cube_tcrossprod
-arma::cube cube_tcrossprod(const arma::cube& x);
-RcppExport SEXP _meshed_cube_tcrossprod(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::cube& >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(cube_tcrossprod(x));
-    return rcpp_result_gen;
-END_RCPP
-}
 // crosscov_matfun_h
 arma::cube crosscov_matfun_h(double h, const arma::cube& lambda, const arma::cube& theta, bool correl, int num_threads, int dd, int matern_twonu_in);
 RcppExport SEXP _meshed_crosscov_matfun_h(SEXP hSEXP, SEXP lambdaSEXP, SEXP thetaSEXP, SEXP correlSEXP, SEXP num_threadsSEXP, SEXP ddSEXP, SEXP matern_twonu_inSEXP) {
@@ -400,6 +375,45 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type dd(ddSEXP);
     Rcpp::traits::input_parameter< int >::type matern_twonu_in(matern_twonu_inSEXP);
     rcpp_result_gen = Rcpp::wrap(crosscov_matfun_h(h, lambda, theta, correl, num_threads, dd, matern_twonu_in));
+    return rcpp_result_gen;
+END_RCPP
+}
+// recover_W_cpp
+arma::cube recover_W_cpp(const arma::cube& V, const arma::cube& L, const arma::uvec& mcmcix);
+RcppExport SEXP _meshed_recover_W_cpp(SEXP VSEXP, SEXP LSEXP, SEXP mcmcixSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::cube& >::type V(VSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type L(LSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type mcmcix(mcmcixSEXP);
+    rcpp_result_gen = Rcpp::wrap(recover_W_cpp(V, L, mcmcix));
+    return rcpp_result_gen;
+END_RCPP
+}
+// recover_linear_predictor_cpp
+arma::cube recover_linear_predictor_cpp(const arma::mat& X, const arma::cube& B, const arma::cube& V, const arma::cube& L, const arma::uvec& mcmcix);
+RcppExport SEXP _meshed_recover_linear_predictor_cpp(SEXP XSEXP, SEXP BSEXP, SEXP VSEXP, SEXP LSEXP, SEXP mcmcixSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type B(BSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type V(VSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type L(LSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type mcmcix(mcmcixSEXP);
+    rcpp_result_gen = Rcpp::wrap(recover_linear_predictor_cpp(X, B, V, L, mcmcix));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cube_tcrossprod
+arma::cube cube_tcrossprod(const arma::cube& x);
+RcppExport SEXP _meshed_cube_tcrossprod(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::cube& >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(cube_tcrossprod(x));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -451,9 +465,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_meshed_meshed_mcmc", (DL_FUNC) &_meshed_meshed_mcmc, 43},
     {"_meshed_spmeshed_predict", (DL_FUNC) &_meshed_spmeshed_predict, 16},
     {"_meshed_rmeshedgp_internal", (DL_FUNC) &_meshed_rmeshedgp_internal, 12},
-    {"_meshed_recover", (DL_FUNC) &_meshed_recover, 4},
-    {"_meshed_cube_tcrossprod", (DL_FUNC) &_meshed_cube_tcrossprod, 1},
     {"_meshed_crosscov_matfun_h", (DL_FUNC) &_meshed_crosscov_matfun_h, 7},
+    {"_meshed_recover_W_cpp", (DL_FUNC) &_meshed_recover_W_cpp, 3},
+    {"_meshed_recover_linear_predictor_cpp", (DL_FUNC) &_meshed_recover_linear_predictor_cpp, 5},
+    {"_meshed_cube_tcrossprod", (DL_FUNC) &_meshed_cube_tcrossprod, 1},
     {"_meshed_summary_list_mean", (DL_FUNC) &_meshed_summary_list_mean, 2},
     {"_meshed_summary_list_q", (DL_FUNC) &_meshed_summary_list_q, 3},
     {NULL, NULL, 0}

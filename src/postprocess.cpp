@@ -8,18 +8,6 @@
 using namespace std;
 
 
-//[[Rcpp::export]]
-arma::cube cube_tcrossprod(const arma::cube& x){
-  arma::cube result = arma::zeros(x.n_rows, x.n_rows, x.n_slices);
-  
-#ifdef _OPENMP
-#pragma omp parallel for 
-#endif
-  for(unsigned int i=0; i<x.n_slices; i++){
-    result.slice(i) = x.slice(i) * x.slice(i).t();
-  }
-  return result;
-}
 
 //[[Rcpp::export]]
 arma::cube crosscov_matfun_h(double h, 
@@ -78,6 +66,60 @@ arma::cube crosscov_matfun_h(double h,
     }
   }
   return sigma;
+}
+
+
+//[[Rcpp::export]]
+arma::cube recover_W_cpp(const arma::cube& V, const arma::cube& L, const arma::uvec& mcmcix){
+
+  arma::cube Lsub = L.slices(mcmcix-1);
+  
+  int n = V.n_rows;
+  int q = L.n_rows;
+  int mcmc = V.n_slices;
+  
+  arma::cube W = arma::zeros(n, q, mcmc);
+  
+  for(int m=0; m<mcmc; m++){
+    W.slice(m) = V.slice(m) * arma::trans( Lsub.slice(m) );
+  }
+  
+  return W;
+}
+
+//[[Rcpp::export]]
+arma::cube recover_linear_predictor_cpp(const arma::mat& X, const arma::cube& B,
+                         const arma::cube& V, const arma::cube& L, const arma::uvec& mcmcix){
+  
+  arma::cube Bsub = B.slices(mcmcix-1);
+  arma::cube Lsub = L.slices(mcmcix-1);
+  
+  int n = X.n_rows;
+  int q = L.n_rows;
+  int mcmc = V.n_slices;
+  
+  arma::cube LP = arma::zeros(n, q, mcmc);
+  
+  for(int m=0; m<mcmc; m++){
+    LP.slice(m) = X * Bsub.slice(m) + V.slice(m) * arma::trans( Lsub.slice(m) );
+  }
+  
+  return LP;
+}
+
+
+
+//[[Rcpp::export]]
+arma::cube cube_tcrossprod(const arma::cube& x){
+  arma::cube result = arma::zeros(x.n_rows, x.n_rows, x.n_slices);
+  
+#ifdef _OPENMP
+#pragma omp parallel for 
+#endif
+  for(unsigned int i=0; i<x.n_slices; i++){
+    result.slice(i) = x.slice(i) * x.slice(i).t();
+  }
+  return result;
 }
 
 //[[Rcpp::export]]

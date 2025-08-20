@@ -85,16 +85,20 @@ rmeshedgp_internal <- function(coords, parents, children, layer_names, layer_gib
     .Call(`_meshed_rmeshedgp_internal`, coords, parents, children, layer_names, layer_gibbs_group, indexing, matern_twonu, theta, num_threads, use_cache, verbose, debug)
 }
 
-recover <- function(n, q, m, rr) {
-    .Call(`_meshed_recover`, n, q, m, rr)
+crosscov_matfun_h <- function(h, lambda, theta, correl = FALSE, num_threads = 1L, dd = 2L, matern_twonu_in = 1L) {
+    .Call(`_meshed_crosscov_matfun_h`, h, lambda, theta, correl, num_threads, dd, matern_twonu_in)
+}
+
+recover_W_cpp <- function(V, L, mcmcix) {
+    .Call(`_meshed_recover_W_cpp`, V, L, mcmcix)
+}
+
+recover_linear_predictor_cpp <- function(X, B, V, L, mcmcix) {
+    .Call(`_meshed_recover_linear_predictor_cpp`, X, B, V, L, mcmcix)
 }
 
 cube_tcrossprod <- function(x) {
     .Call(`_meshed_cube_tcrossprod`, x)
-}
-
-crosscov_matfun_h <- function(h, lambda, theta, correl = FALSE, num_threads = 1L, dd = 2L, matern_twonu_in = 1L) {
-    .Call(`_meshed_crosscov_matfun_h`, h, lambda, theta, correl, num_threads, dd, matern_twonu_in)
 }
 
 summary_list_mean <- function(x, n_threads = 1L) {

@@ -268,9 +268,7 @@ Rcpp::List meshed_mcmc(
       if(mx >= 0){
         arma::mat lambdasign = arma::sign(lambda_transf_back);
         
-        arma::mat v_temp = msp.w.rows(osix) * ps_forward(msp.param_data.theta, 
-                                              d, msp.matern.twonu, use_ps) * 
-                                                arma::diagmat(lambdasign.diag());
+        arma::mat v_temp = msp.w.rows(osix) * arma::diagmat(lambdasign.diag());
 
         arma::mat vcov = arma::cov(v_temp);
         vcov_mcmc.slice(w_saved) = vcov;
@@ -304,14 +302,6 @@ Rcpp::List meshed_mcmc(
           msp.predicty();
           //yhat_mcmc[iname] = Rcpp::wrap(yh);
           yhat_mcmc.slice(mcmc_saved) = msp.yhat.rows(osix);
-          
-          if(!low_mem){
-            //w_mcmc[iname] = Rcpp::wrap(LHW);
-            w_mcmc.slice(mcmc_saved) = msp.LambdaHw.rows(osix);
-            
-            //lp_mcmc[iname] = Rcpp::wrap(lp);
-            lp_mcmc.slice(mcmc_saved) = msp.linear_predictor.rows(osix);
-          }
           
           mcmc_ix(mcmc_saved) = w_saved;
           
@@ -415,9 +405,7 @@ Rcpp::List meshed_mcmc(
     return Rcpp::List::create(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("v_mcmc") = v_mcmc,
-      Rcpp::Named("w_mcmc") = w_mcmc,
       Rcpp::Named("w_mean_mcmc") = w_mean_mcmc,
-      Rcpp::Named("lp_mcmc") = lp_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,
@@ -443,9 +431,7 @@ Rcpp::List meshed_mcmc(
     return Rcpp::List::create(
       Rcpp::Named("yhat_mcmc") = yhat_mcmc,
       Rcpp::Named("v_mcmc") = v_mcmc,
-      Rcpp::Named("w_mcmc") = w_mcmc,
       Rcpp::Named("w_mean_mcmc") = w_mean_mcmc,
-      Rcpp::Named("lp_mcmc") = lp_mcmc,
       Rcpp::Named("beta_mcmc") = b_mcmc,
       Rcpp::Named("tausq_mcmc") = tausq_mcmc,
       Rcpp::Named("theta_mcmc") = theta_mcmc,

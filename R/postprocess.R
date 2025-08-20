@@ -9,3 +9,11 @@ cross_covariance_matrix_function_h <- function(spmeshed_object, distance=0, corr
   
   return(result)
 }
+
+recover_W <- function(spmeshed_object){
+  with(spmeshed_object, recover_W_cpp(v_mcmc, lambda_mcmc, mcmc_ix))
+}
+
+recover_linear_predictor <- function(spmeshed_object){
+  with(spmeshed_object, recover_linear_predictor_cpp(savedata$x[savedata$osix,], beta_mcmc, v_mcmc, lambda_mcmc, mcmc_ix))
+}
