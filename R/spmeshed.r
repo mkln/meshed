@@ -638,7 +638,7 @@ spmeshed <- function(y, x, coords, k=NULL,
     
     imtellingyou <- "saved data may be ordered differently from input data, use carefully"
     saved <- listN(y, x, coords_blocking, k,
-      
+                   osix,
                    family,
       parents, children, 
       block_names, block_groups,
