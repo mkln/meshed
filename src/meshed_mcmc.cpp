@@ -156,19 +156,14 @@ Rcpp::List meshed_mcmc(
   arma::vec llsave = arma::zeros(mcmc_thin*mcmc_keep);
   arma::vec wllsave = arma::zeros(mcmc_thin*mcmc_keep);
   
-  Rcpp::List v_mcmc;
-  Rcpp::List w_mcmc;
-  Rcpp::List lp_mcmc;
-  Rcpp::List yhat_mcmc;
+  arma::cube v_mcmc = arma::zeros(msp.w.n_rows, k, mcmc_keep);
+  arma::cube yhat_mcmc = arma::zeros(msp.y.n_rows, q, mcmc_keep);
   
-  for(int i=0; i<mcmc_keep; i++){
-    std::string iname = std::to_string(i);
-    v_mcmc[iname] = Rcpp::wrap(arma::zeros(msp.w.n_rows, k));
-    yhat_mcmc[iname] = Rcpp::wrap(arma::zeros(msp.y.n_rows, q)); 
-    if(!low_mem){
-      w_mcmc[iname] = Rcpp::wrap(arma::zeros(msp.w.n_rows, q));
-      lp_mcmc[iname] = Rcpp::wrap(arma::zeros(msp.y.n_rows, q));
-    }
+  arma::cube w_mcmc;
+  arma::cube lp_mcmc;
+  if(!low_mem){
+    w_mcmc = arma::zeros(msp.w.n_rows, q, mcmc_keep);
+    lp_mcmc = arma::zeros(msp.w.n_rows, q, mcmc_keep);
   }
   
   bool acceptable = false;
@@ -299,21 +294,23 @@ Rcpp::List meshed_mcmc(
         w_saved++; // this will increase by 1 before saving -- good for exporting to R
         
         if((mx-mcmc_thin+1) % mcmc_thin == 0){
-          std::string iname = std::to_string(mcmc_saved);
+          //std::string iname = std::to_string(mcmc_saved);
           
-          v_mcmc[iname] = Rcpp::wrap(v_temp);
+          //v_mcmc[iname] = Rcpp::wrap(v_temp);
+          v_mcmc.slice(mcmc_saved) = v_temp;
+          
           
           Rcpp::RNGScope scope;
           msp.predicty();
-          arma::mat yh = msp.yhat.rows(osix);
-          yhat_mcmc[iname] = Rcpp::wrap(yh);
+          //yhat_mcmc[iname] = Rcpp::wrap(yh);
+          yhat_mcmc.slice(mcmc_saved) = msp.yhat.rows(osix);
           
           if(!low_mem){
-            arma::mat LHW = msp.LambdaHw.rows(osix);
-            w_mcmc[iname] = Rcpp::wrap(LHW);
+            //w_mcmc[iname] = Rcpp::wrap(LHW);
+            w_mcmc.slice(mcmc_saved) = msp.LambdaHw.rows(osix);
             
-            arma::mat lp = msp.linear_predictor.rows(osix);
-            lp_mcmc[iname] = Rcpp::wrap(lp);
+            //lp_mcmc[iname] = Rcpp::wrap(lp);
+            lp_mcmc.slice(mcmc_saved) = msp.linear_predictor.rows(osix);
           }
           
           mcmc_ix(mcmc_saved) = w_saved;

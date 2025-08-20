@@ -9,12 +9,6 @@ using namespace std;
 
 
 //[[Rcpp::export]]
-arma::cube dimension_test(int n, int q, int m){
-  arma::cube tester = arma::zeros(n, q, m);
-  return tester;
-}
-
-//[[Rcpp::export]]
 arma::cube cube_tcrossprod(const arma::cube& x){
   arma::cube result = arma::zeros(x.n_rows, x.n_rows, x.n_slices);
   

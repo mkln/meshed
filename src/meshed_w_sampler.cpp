@@ -376,9 +376,9 @@ void Meshed::predicty(){
   int n = XB.n_rows;
   yhat.fill(0);
   Rcpp::RNGScope scope;
-  arma::mat Lw = w*Lambda.t();
+  
   for(unsigned int j=0; j<q; j++){
-    linear_predictor.col(j) = XB.col(j) + Lw.col(j);
+    linear_predictor.col(j) = XB.col(j) + LambdaHw.col(j);
     if(familyid(j) == 0){
       // gaussian
       yhat.col(j) = linear_predictor.col(j);
