@@ -37,8 +37,6 @@ arma::mat Correlationc(const arma::mat& coordsx, const arma::mat& coordsy,
 
 
 
-void reorganize_variance_terms(arma::mat& lambda, arma::mat& theta, unsigned int d);
-
 
 
 // inplace functions

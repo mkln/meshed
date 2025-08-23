@@ -17,7 +17,7 @@ Rcpp::List spmeshed_predict(
     const arma::field<arma::uvec>& parents,
     const arma::uvec& block_names,
     const arma::field<arma::uvec>& indexing,
-    const arma::field<arma::mat>& v_sampled,
+    const arma::cube& v_sampled,
     const arma::cube& theta_sampled,
     const arma::cube& lambda_sampled,
     const arma::cube& beta_sampled,
@@ -32,10 +32,10 @@ Rcpp::List spmeshed_predict(
 #endif
   
   unsigned int q = lambda_sampled.n_rows;
-  unsigned int k = v_sampled(0).n_cols;
+  unsigned int k = v_sampled.n_cols;
   arma::uvec oneuv = arma::ones<arma::uvec>(1);
   
-  unsigned int nsamples = v_sampled.n_elem;
+  unsigned int nsamples = v_sampled.n_slices;
   
   MaternParams matern;
   matern.using_ps = use_ps,
@@ -117,10 +117,11 @@ Rcpp::List spmeshed_predict(
             Rcholpred(j,ix) = pow(Rcholtemp, .5); 
           }
         }
-        
-      arma::mat wpars = v_sampled(m).rows(parents_indexing);
       
-      arma::mat Lambda = reparametrize_lambda_forward(lambda_sampled.slice(m), theta, d, matern.twonu, matern.using_ps);
+      arma::mat vslice = v_sampled.slice(m);
+      arma::mat wpars = vslice.rows(parents_indexing);
+      
+      arma::mat Lambda = lambda_sampled.slice(m);//reparametrize_lambda_forward(lambda_sampled.slice(m), theta, d, matern.twonu, matern.using_ps);
       
       for(unsigned int ix=0; ix<block_coords.n_rows; ix++){
         arma::rowvec wtemp = arma::sum(arma::trans(Hpred.slice(ix)) % wpars, 0);

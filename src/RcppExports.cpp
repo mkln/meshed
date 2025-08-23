@@ -314,7 +314,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // spmeshed_predict
-Rcpp::List spmeshed_predict(const arma::mat& predx, const arma::mat& predcoords, const arma::uvec& predblock, const arma::mat& coords, const arma::field<arma::uvec>& parents, const arma::uvec& block_names, const arma::field<arma::uvec>& indexing, const arma::field<arma::mat>& v_sampled, const arma::cube& theta_sampled, const arma::cube& lambda_sampled, const arma::cube& beta_sampled, const arma::mat& tausq_sampled, int twonu, bool use_ps, bool verbose, int num_threads);
+Rcpp::List spmeshed_predict(const arma::mat& predx, const arma::mat& predcoords, const arma::uvec& predblock, const arma::mat& coords, const arma::field<arma::uvec>& parents, const arma::uvec& block_names, const arma::field<arma::uvec>& indexing, const arma::cube& v_sampled, const arma::cube& theta_sampled, const arma::cube& lambda_sampled, const arma::cube& beta_sampled, const arma::mat& tausq_sampled, int twonu, bool use_ps, bool verbose, int num_threads);
 RcppExport SEXP _meshed_spmeshed_predict(SEXP predxSEXP, SEXP predcoordsSEXP, SEXP predblockSEXP, SEXP coordsSEXP, SEXP parentsSEXP, SEXP block_namesSEXP, SEXP indexingSEXP, SEXP v_sampledSEXP, SEXP theta_sampledSEXP, SEXP lambda_sampledSEXP, SEXP beta_sampledSEXP, SEXP tausq_sampledSEXP, SEXP twonuSEXP, SEXP use_psSEXP, SEXP verboseSEXP, SEXP num_threadsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -326,7 +326,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type parents(parentsSEXP);
     Rcpp::traits::input_parameter< const arma::uvec& >::type block_names(block_namesSEXP);
     Rcpp::traits::input_parameter< const arma::field<arma::uvec>& >::type indexing(indexingSEXP);
-    Rcpp::traits::input_parameter< const arma::field<arma::mat>& >::type v_sampled(v_sampledSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type v_sampled(v_sampledSEXP);
     Rcpp::traits::input_parameter< const arma::cube& >::type theta_sampled(theta_sampledSEXP);
     Rcpp::traits::input_parameter< const arma::cube& >::type lambda_sampled(lambda_sampledSEXP);
     Rcpp::traits::input_parameter< const arma::cube& >::type beta_sampled(beta_sampledSEXP);

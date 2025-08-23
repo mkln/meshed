@@ -138,3 +138,28 @@ inline arma::mat reparametrize_lambda_forward(const arma::mat& Lambda_in,
   }
   return Lambda_in * reparametrizer;
 }
+
+
+inline void reorganize_variance_terms(arma::mat& lambda, arma::mat& theta, unsigned int d){
+  {
+    arma::vec ldiag = lambda.diag();
+    //arma::vec lsign = arma::sign(ldiag);
+    //if(arma::any(lsign != 1)){
+    //  v = v * arma::diagmat(lsign);
+    //}
+    lambda = lambda * arma::diagmat(1.0/ldiag);
+    
+    if(d==2){
+      if(theta.n_rows == 3){
+        // estimating nu and sigmasq is at (2)
+        theta.row(2) = pow(ldiag, 2.0).t();
+      } else {
+        // not estimating nu and sigmasq is at (1)
+        theta.row(1) = pow(ldiag, 2.0).t();
+      }
+    } else {
+      // sigmasq is at (3)
+      theta.row(3) = pow(ldiag, 2.0).t();
+    }
+  }
+}
