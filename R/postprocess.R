@@ -15,6 +15,6 @@ recover_W <- function(spmeshed_object){
 }
 
 recover_linear_predictor <- function(spmeshed_object){
-  with(spmeshed_object, recover_linear_predictor_cpp(savedata$x[savedata$osix,], 
+  with(spmeshed_object, recover_linear_predictor_cpp(savedata$x[savedata$osix,,drop=FALSE], 
                                                      beta_mcmc, savedata$v_mcmc, savedata$lambda_raw_mcmc, mcmc_ix))
 }
