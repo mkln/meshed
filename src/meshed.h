@@ -138,6 +138,9 @@ public:
   void update_block_wlogdens(int, MeshDataLMC& data);
   bool get_loglik_comps_w(MeshDataLMC& data);
   
+  
+  arma::mat At_Cinvj_B(const arma::mat& A, const arma::mat& B, int j);
+  
   // - caching
   arma::uvec coords_caching; 
   arma::uvec coords_caching_ix;
@@ -230,19 +233,19 @@ public:
   //std::vector<AdaptE> beta_hmc_adapt; // std::vector
   //arma::uvec beta_hmc_started;
   
-  void deal_with_BetaLambdaTau(MeshDataLMC& data, bool sample_beta, bool sample_lambda, bool sample_tau);
+  void deal_with_BetaLambdaTau(bool sample_beta, bool sample_lambda, bool sample_tau);
   arma::vec sample_BetaLambda_row(int j, const arma::mat& rnorm_precalc);
-  void sample_hmc_BetaLambdaTau(bool sample_beta, bool sample_lambda, bool sample_tau);
+  arma::vec update_BetaLambda_row(int j, const arma::mat& rnorm_precalc);
   
   // Lambda
-  void deal_with_Lambda(MeshDataLMC& data);
-  void sample_nc_Lambda_std(); // noncentered
+  //void deal_with_Lambda(MeshDataLMC& data);
+  //void sample_nc_Lambda_std(); // noncentered
   
-  arma::vec sample_Lambda_row(int j);
-  void sample_hmc_Lambda();
-  std::vector<NodeDataB> lambda_node; // std::vector
-  std::vector<AdaptE> lambda_hmc_adapt; // std::vector
-  arma::uvec lambda_hmc_started;
+  //arma::vec sample_Lambda_row(int j);
+  //void sample_hmc_Lambda();
+  std::vector<NodeDataB> BL_node; // std::vector
+  std::vector<AdaptE> BL_hmc_adapt; // std::vector
+  arma::uvec BL_hmc_started;
   
   
   // Tausq
@@ -340,5 +343,9 @@ public:
     bool debugging,
     int num_threads);
 };
+
+inline arma::uvec find_lambda_subcols(int j, int k, int q, const arma::umat& Lambda_mask){
+  return arma::find(Lambda_mask.row(j) == 1);
+}
 
 #endif

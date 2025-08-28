@@ -111,7 +111,7 @@ spmeshed <- function(y, x, coords, k=NULL,
     if(all(family == "gaussian") & (q == 1)){ 
       use_ps <- settings$ps %>% set_default(TRUE)
     } else {
-      use_ps <- settings$ps %>% set_default(FALSE)
+      use_ps <- settings$ps %>% set_default(TRUE) # 
     }
     
     binomial_n <- rep(0, q)

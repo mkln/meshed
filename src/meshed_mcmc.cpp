@@ -244,7 +244,7 @@ Rcpp::List meshed_mcmc(
 
       if(sample_lambda+sample_beta+sample_tausq){
         start = std::chrono::steady_clock::now();
-        msp.deal_with_BetaLambdaTau(msp.param_data, sample_beta, sample_lambda, sample_tausq); // true = sample
+        msp.deal_with_BetaLambdaTau(sample_beta, sample_lambda, sample_tausq); // true = sample
         end = std::chrono::steady_clock::now();
         if(verbose_mcmc & verbose){
           Rcpp::Rcout << "[BetaLambdaTau] " 

@@ -128,16 +128,16 @@ Meshed::Meshed(
   }
   
   // prior params
-   Vi    = beta_Vi_in;
-   bprim = arma::zeros(p);
-   Vim   = Vi * bprim;
+  Vi    = beta_Vi_in;
+  bprim = arma::zeros(p);
+  Vim   = Vi * bprim;
   
   lambda_prec = lambda_prec_in;
   sigmasq_ab = sigmasq_ab_in;
   tausq_ab = tausq_ab_in;
   
   // init
-  u_is_which_col_f    = arma::field<arma::field<arma::field<arma::uvec> > > (n_blocks);
+  u_is_which_col_f = arma::field<arma::field<arma::field<arma::uvec> > > (n_blocks);
   
   predicting = true;
   
@@ -757,6 +757,55 @@ void Meshed::update_block_wlogdens(int u, MeshDataLMC& data){
   //message("[update_block_wlogdens] done.");
 }
 
+arma::mat Meshed::At_Cinvj_B(const arma::mat& A, const arma::mat& B, int j){
+  //Rcpp::Rcout << "At_Cinvj_B start " << endl; 
+  
+  // we compute this in blocks by taking advantage of the fact that
+  // w^T Ci w = sum_r{ (w_r - H_r wpa_r)^T Ri_r (w_r - H_r wpa_r) } 
+  
+  arma::mat result = arma::zeros(A.n_cols, B.n_cols);
+  for(int i = 0; i<n_ref_blocks; i++){
+    int u = block_names( reference_blocks(i) )-1;
+    update_block_covpars(u, param_data);
+    bool has_parents = parents(u).n_elem > 0;
+    
+    //Rcpp::Rcout << "j: " << j << " i: " << i << " u: " << u << endl;
+    //Rcpp::Rcout << "w_cond_prec_ptr" << endl;
+    
+    arma::mat Rj_inv = param_data.w_cond_prec_ptr.at(u)->slice(j);
+    
+    arma::mat Arows = A.rows(indexing(u));
+    arma::mat Brows = B.rows(indexing(u));
+    
+    arma::mat Hj, Apar, Bpar;
+    if(has_parents){
+      //Rcpp::Rcout << "w_cond_mean_K_ptr" << endl;
+      
+      Hj = param_data.w_cond_mean_K_ptr.at(u)->slice(j);
+      Apar = A.rows(parents_indexing(u));
+      Bpar = B.rows(parents_indexing(u));
+    }
+
+    
+    for(int r=0; r<A.n_cols; r++){
+      arma::vec A_r = Arows.col(r);
+      for(int c=0; c<B.n_cols; c++){
+        arma::vec B_c = Brows.col(c);
+        if(has_parents){
+          result(r,c) += arma::conv_to<double>::from(  
+            (A_r - Hj * Apar.col(r)).t() * Rj_inv * (B_c - Hj * Bpar.col(c)) );
+        } else {
+          // root node
+          result(r,c) += arma::conv_to<double>::from( 
+            A_r.t() * Rj_inv * B_c );
+        }   
+      }
+    }
+  }
+  //Rcpp::Rcout << "At_Cinvj_B end " << endl; 
+  return result;
+}
+
 void Meshed::init_gaussian(){
   if(verbose & debug){
     Rcpp::Rcout << "init_gaussian\n";
@@ -1024,13 +1073,13 @@ void Meshed::init_for_mcmc(){
   }
   
   //beta_node.reserve(q); // for beta
-  lambda_node.reserve(q); // for lambda
+  BL_node.reserve(q); // for lambda
   
   // start with small epsilon for a few iterations,
   // then find reasonable and then start adapting
   
   //beta_hmc_started = arma::zeros<arma::uvec>(q);
-  lambda_hmc_started = arma::zeros<arma::uvec>(q);
+  BL_hmc_started = arma::zeros<arma::uvec>(q);
   
   arma::mat LHW = w * Lambda.t();
   
@@ -1057,14 +1106,14 @@ void Meshed::init_for_mcmc(){
     
     // Lambda
     NodeDataB new_lambda_block(yj_obs, offsets_for_beta, X_obs, family, binomial_n(j));
-    lambda_node.push_back(new_lambda_block);
+    BL_node.push_back(new_lambda_block);
     
     // *** sampling beta and lambda together so we use p+k here
-    arma::uvec subcols = arma::find(Lambda_mask.row(j) == 1);
+    arma::uvec subcols = find_lambda_subcols(j, k, q, Lambda_mask);
     int n_lambdas = subcols.n_elem;
     AdaptE new_lambda_adapt;
     new_lambda_adapt.init(.05, p+n_lambdas, which_hmc);
-    lambda_hmc_adapt.push_back(new_lambda_adapt);
+    BL_hmc_adapt.push_back(new_lambda_adapt);
   }
   
   
