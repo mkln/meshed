@@ -4,7 +4,9 @@ rmeshedgp <- function(coords, theta, axis_partition=NULL, block_size=100,
   
   dd             <- ncol(coords)
   nr             <- nrow(coords)
-  orig_coords_colnames <- colnames(coords)
+  
+  colnames(coords) <- paste0("Var", seq_len(dd))
+  
   
   if(is.null(axis_partition)){
     axis_partition <- rep(round((nr/block_size)^(1/dd)), dd)
@@ -89,9 +91,6 @@ rmeshedgp <- function(coords, theta, axis_partition=NULL, block_size=100,
   indexing <- (1:nrow(simdata_in)-1) %>% 
     split(blocking)
   
-  indexing_grid <- indexing
-  indexing_obs <- indexing_grid
-  
   matern_nu <- T
   matern_fix_twonu <- 1
   
@@ -105,36 +104,25 @@ rmeshedgp <- function(coords, theta, axis_partition=NULL, block_size=100,
   } 
   theta %<>% matrix(ncol=1)
   
-  # finally prepare data
   sort_ix <- simdata_in$ix
-  
-  na_which <- simdata_in$na_which
   
   coords <- simdata_in %>% 
     dplyr::select(dplyr::contains("Var")) %>% 
     as.matrix()
-  
-  
-  coords_renamer <- colnames(coords)
-  names(coords_renamer) <- orig_coords_colnames
-  
-  coordsdata <- simdata_in %>% 
-    dplyr::select(1:dd, .data$thegrid) %>%
-    dplyr::rename(!!!coords_renamer,
-                  forced_grid=.data$thegrid)
   
   if(verbose & debug){
     cat("Sending to C++ for sampling.\n")
   }
   w <- rmeshedgp_internal(coords, parents, children,
                                      block_names, block_groups,
-                                     indexing_grid, indexing_obs,
+                                     indexing,
                                      matern_fix_twonu,
                                      theta,
                                      n_threads,
                                      use_cache,
                                      verbose, debug)
-  simulated_data <- coords %>% cbind(w) %>% as.data.frame()
-  colnames(simulated_data)[dd+1] <- "w"
-  return(simulated_data)
+  #simulated_data <- coords %>% cbind(w) %>% as.data.frame()
+  #colnames(simulated_data)[dd+1] <- "w"
+  #return(simulated_data)
+  return(as.numeric(w[order(sort_ix)]))
 }
