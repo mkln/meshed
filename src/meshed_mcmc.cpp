@@ -159,8 +159,8 @@ Rcpp::List meshed_mcmc(
   arma::vec llsave = arma::zeros(mcmc_thin*mcmc_keep);
   arma::vec wllsave = arma::zeros(mcmc_thin*mcmc_keep);
   
-  arma::cube v_mcmc = arma::zeros(msp.w.n_rows, k, mcmc_keep);
-  arma::cube yhat_mcmc = arma::zeros(msp.y.n_rows, q, mcmc_keep);
+  arma::cube v_mcmc = arma::zeros(osix.n_elem, k, mcmc_keep);
+  arma::cube yhat_mcmc = arma::zeros(osix.n_elem, q, mcmc_keep);
   
   arma::cube w_mcmc;
   arma::cube lp_mcmc;
@@ -272,12 +272,9 @@ Rcpp::List meshed_mcmc(
         //arma::mat lambdasign = arma::sign(lambda_transf_back);
         
         arma::mat v_temp = msp.w.rows(osix);// * arma::diagmat(lambda_transf_back.diag());// * lambdasign.diag());
-
         arma::mat vcov = arma::cov(v_temp);
         vcov_mcmc.slice(w_saved) = vcov;
-        
         w_mean_mcmc.col(w_saved) = arma::trans(arma::mean(msp.LambdaHw, 0));
-        
         tausq_mcmc.col(w_saved) = 1.0 / msp.tausq_inv;
         b_mcmc.slice(w_saved) = msp.Bcoeff;
         
@@ -285,10 +282,8 @@ Rcpp::List meshed_mcmc(
         arma::mat lambda_save = lambda_transf_back;
         
         reorganize_variance_terms(lambda_save, theta_save, d);
-        
         theta_mcmc.slice(w_saved) = theta_save;
         lambda_mcmc.slice(w_saved) = lambda_save;
-        
         theta_raw_mcmc.slice(w_saved) = msp.param_data.theta;
         lambda_raw_mcmc.slice(w_saved) = msp.Lambda;
         
@@ -301,8 +296,8 @@ Rcpp::List meshed_mcmc(
           //std::string iname = std::to_string(mcmc_saved);
           
           //v_mcmc[iname] = Rcpp::wrap(v_temp);
-          v_mcmc.slice(mcmc_saved) = v_temp;
           
+          v_mcmc.slice(mcmc_saved) = v_temp;
           
           Rcpp::RNGScope scope;
           msp.predicty();
