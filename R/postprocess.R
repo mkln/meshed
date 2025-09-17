@@ -1,6 +1,6 @@
 cross_covariance_matrix_function_h <- function(spmeshed_object, distance=0, correl=FALSE, num_threads=1){
   
-  dd <- (ncol(meshed_out$coordsdata)-3)/2
+  dd <- (ncol(spmeshed_object$coordsdata)-3)/2
   twonu_in <- spmeshed_object$savedata$matern_fix_twonu
 
   result <- with(spmeshed_object, crosscov_matfun_h(distance, 
