@@ -264,7 +264,7 @@ void Meshed::make_gibbs_groups(){
     int p=0; 
     for(unsigned int i=0; i<n_blocks; i++){
       int u = block_names(i) - 1;
-      if(block_ct_obs(u) < na_1_blocks(u).n_elem){
+      if(block_ct_obs(u) == 0){ //< na_1_blocks(u).n_elem){
         u_predicts(p) = u;
         p ++;
       }
