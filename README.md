@@ -14,9 +14,7 @@ The package also provides a function for sampling MGPs a priori via the `rmeshed
 MGPs are introduced in [Peruzzi et al. (2020)](https://doi.org/10.1080/01621459.2020.1833889), [arXiv](https://arxiv.org/abs/2003.11208). This package implements cubic MGPs (QMGPs). Posterior sampling of all unknowns can be performed via MCMC-GriPS as detailed in [Peruzzi et al. (2021)](https://arxiv.org/abs/2101.03579). For non-Gaussian outcomes, QMGPs are fit via Langevin-SiMPA as detailed in [Peruzzi & Dunson (2022)](https://arxiv.org/abs/2201.10080).
 
 
-### Install from CRAN: `install.packages("meshed")`
-
-Alternatively, `devtools::install_github("mkln/meshed")` installs from GitHub.
+### `devtools::install_github("mkln/meshed")` installs from GitHub.
 
 #### Tips for best performance:
 
