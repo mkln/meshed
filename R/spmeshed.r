@@ -748,7 +748,7 @@ spmeshed <- function(y, x, coords, k=NULL,
     c(results)
   
   class(returning) <- "spmeshed"
-  
+  message("Output from meshed is reorderd relative to original data. Refer to 'coordsdata' object")
   return(returning) 
     
 }
